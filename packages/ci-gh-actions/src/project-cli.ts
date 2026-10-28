@@ -6,9 +6,15 @@ import {
 	applyCiEnvironmentPolicy,
 	type CiPolicyApplyOptions,
 	ciEnvironmentPolicySha256,
+	ciEnvironmentSecretsSha256,
 	parseCiProjectConfig,
+	requiredCiSecrets,
 	selectCiEnvironment,
 } from "./project-config.js";
+import {
+	createCiSecretDirectoryResolver,
+	resolveCiSecrets,
+} from "./project-secrets.js";
 
 const maxConfigBytes = 256 * 1024;
 
@@ -57,13 +63,19 @@ export async function runCiProjectCli(
 			"trusted-account": { type: "string" },
 			"trusted-policy-sha256": { type: "string" },
 			"token-file": { type: "string" },
+			phase: { type: "string" },
+			"secret-dir": { type: "string" },
+			"allow-secret": { type: "string", multiple: true },
+			"trusted-secrets-sha256": { type: "string" },
 		},
 	});
 	if (
 		positionals.length !== 1 ||
-		(positionals[0] !== "inspect" && positionals[0] !== "apply")
+		(positionals[0] !== "inspect" &&
+			positionals[0] !== "apply" &&
+			positionals[0] !== "check-secrets")
 	)
-		throw new Error("expected inspect or apply");
+		throw new Error("expected inspect, apply, or check-secrets");
 	const env = options.env ?? process.env;
 	const initialDirectory = env.INIT_CWD || undefined;
 	if (
@@ -91,7 +103,11 @@ export async function runCiProjectCli(
 			values["token-file"] ||
 			values["trusted-origin"] ||
 			values["trusted-account"] ||
-			values["trusted-policy-sha256"]
+			values["trusted-policy-sha256"] ||
+			values.phase ||
+			values["secret-dir"] ||
+			values["allow-secret"] ||
+			values["trusted-secrets-sha256"]
 		)
 			throw new Error("inspect does not accept credentials or trusted origins");
 		write(
@@ -102,10 +118,51 @@ export async function runCiProjectCli(
 				accountId: selected.policy.accountId,
 				budgetMicros: selected.policy.budget?.limitMicros,
 				policySha256: await ciEnvironmentPolicySha256(config, selected.name),
+				secretsSha256: await ciEnvironmentSecretsSha256(config, selected.name),
 			})}\n`,
 		);
 		return;
 	}
+	if (positionals[0] === "check-secrets") {
+		if (
+			!values.environment ||
+			(values.phase !== "deployment" && values.phase !== "execution") ||
+			!values["secret-dir"] ||
+			!values["trusted-secrets-sha256"] ||
+			!values["trusted-origin"] ||
+			!values["trusted-account"] ||
+			values["token-file"] ||
+			values["trusted-policy-sha256"]
+		)
+			throw new Error(
+				"check-secrets requires an explicit environment, phase, secret directory, and trusted digest",
+			);
+		if (
+			selected.relayOrigin !== values["trusted-origin"] ||
+			selected.policy.accountId !== values["trusted-account"]
+		)
+			throw new Error("CI relay environment binding is not trusted");
+		const digest = await ciEnvironmentSecretsSha256(config, values.environment);
+		if (digest !== values["trusted-secrets-sha256"])
+			throw new Error("untrusted secret requirements");
+		const names = requiredCiSecrets(config, values.environment, values.phase);
+		await resolveCiSecrets(
+			names,
+			values["allow-secret"] ?? [],
+			createCiSecretDirectoryResolver(values["secret-dir"]),
+		);
+		write(
+			`${JSON.stringify({ environment: selected.name, phase: values.phase, checked: names })}\n`,
+		);
+		return;
+	}
+	if (
+		values.phase ||
+		values["secret-dir"] ||
+		values["allow-secret"] ||
+		values["trusted-secrets-sha256"]
+	)
+		throw new Error("apply does not accept secret preflight options");
 	if (
 		!values.environment ||
 		!values["trusted-origin"] ||

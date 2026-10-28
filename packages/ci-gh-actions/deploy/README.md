@@ -48,6 +48,15 @@ After rotating source files, recreate the Compose relay or restart the Kubernete
 deployment so the process reads the new credentials. Keep the old credentials
 valid until the replacement is ready, then revoke them with their issuer.
 
+Repository environment profiles can declare required secret names for deployment
+and execution, without embedding values. Use the `check-secrets` preflight in
+the [repository environment guide](../README.md#repository-and-organization-environments)
+with a trusted secret directory for the selected environment and phase. The
+preflight checks only the declared files; it does not provision them, configure
+these container mounts, or automatically gate deployment. Configure the actual
+relay bindings above independently, and include all credentials needed by your
+chosen backend in your declarations.
+
 ## Build and start with Compose
 
 Run from the repository root:

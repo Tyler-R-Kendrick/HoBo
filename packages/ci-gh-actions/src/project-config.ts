@@ -10,20 +10,44 @@ import { createCiRelayClient } from "./client.js";
 const environmentName = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
 const ExplicitEnvironment = z.string().regex(environmentName);
 const validatedConfigs = new WeakSet<CiProjectConfig>();
+const SecretRequirement = z
+	.object({
+		requiredFor: z
+			.array(z.enum(["deployment", "execution"]))
+			.min(1)
+			.max(2)
+			.refine((phases) => new Set(phases).size === phases.length),
+	})
+	.strict();
+const SecretDeclarations = z
+	.record(z.string().regex(/^[A-Z][A-Z0-9_]{0,63}$/), SecretRequirement)
+	.refine((secrets) => Object.keys(secrets).length <= 64);
+const JsonValue = z.json();
+const JsonObject = z.record(z.string(), JsonValue);
+type JsonData = z.infer<typeof JsonValue>;
+const EnvironmentFields = z
+	.object({
+		relayOrigin: z.string().min(1).max(2048),
+		githubWebhookOrigin: z.string().min(1).max(2048).optional(),
+		allowInsecureLoopback: z.boolean().optional(),
+		secrets: SecretDeclarations.optional(),
+		policy: JsonValue,
+	})
+	.strict();
+const EnvironmentTemplate = EnvironmentFields.partial();
 const ProjectInput = z
 	.object({
 		defaultEnvironment: z.string().regex(environmentName).optional(),
+		templates: z
+			.record(z.string().regex(environmentName), EnvironmentTemplate)
+			.refine((templates) => Object.keys(templates).length <= 32)
+			.optional(),
 		environments: z
 			.record(
 				z.string().regex(environmentName),
-				z
-					.object({
-						relayOrigin: z.string().min(1).max(2048),
-						githubWebhookOrigin: z.string().min(1).max(2048).optional(),
-						allowInsecureLoopback: z.boolean().optional(),
-						policy: z.unknown(),
-					})
-					.strict(),
+				EnvironmentTemplate.extend({
+					extends: ExplicitEnvironment.optional(),
+				}).strict(),
 			)
 			.optional(),
 	})
@@ -35,7 +59,14 @@ export interface CiProjectEnvironment {
 	/** Declared public GitHub ingress; reachability and registration are separate. */
 	readonly githubWebhookOrigin: string | undefined;
 	readonly allowInsecureLoopback: boolean;
+	/** Logical names and required phases only; secret values are never configured here. */
+	readonly secrets: Readonly<Record<string, CiSecretRequirement>>;
 	readonly policy: ParsedCiPolicy;
+}
+
+export type CiSecretPhase = "deployment" | "execution";
+export interface CiSecretRequirement {
+	readonly requiredFor: readonly CiSecretPhase[];
 }
 
 export interface CiProjectConfig {
@@ -45,15 +76,57 @@ export interface CiProjectConfig {
 
 export interface CiProjectConfigInput {
 	defaultEnvironment?: string;
-	environments?: Record<
-		string,
-		{
-			relayOrigin: string;
-			githubWebhookOrigin?: string;
-			allowInsecureLoopback?: boolean;
-			policy: Parameters<typeof import("@hobo/ci").defineCiPolicy>[0];
-		}
+	templates?: Record<string, CiProjectEnvironmentTemplate>;
+	environments?: Record<string, CiProjectEnvironmentInput>;
+}
+
+type DeepPartial<T> = T extends readonly unknown[]
+	? T
+	: T extends object
+		? { [K in keyof T]?: DeepPartial<T[K]> }
+		: T;
+export interface CiProjectEnvironmentTemplate {
+	relayOrigin?: string;
+	githubWebhookOrigin?: string;
+	allowInsecureLoopback?: boolean;
+	secrets?: Readonly<
+		Record<string, { readonly requiredFor: readonly CiSecretPhase[] }>
 	>;
+	policy?: DeepPartial<Parameters<typeof import("@hobo/ci").defineCiPolicy>[0]>;
+}
+export type CiProjectEnvironmentInput = CiProjectEnvironmentTemplate &
+	(
+		| { extends: string }
+		| {
+				extends?: never;
+				relayOrigin: string;
+				policy: Parameters<typeof import("@hobo/ci").defineCiPolicy>[0];
+		  }
+	);
+
+/** Merge data only; arrays and primitives replace the inherited value. */
+function mergeTemplate(
+	base: JsonData,
+	override: JsonData,
+	depth = 0,
+): JsonData {
+	if (depth > 32) throw new Error("template nesting too deep");
+	const baseObject = JsonObject.safeParse(base);
+	const overrideObject = JsonObject.safeParse(override);
+	if (!baseObject.success || !overrideObject.success) return override;
+	const entries = new Map(Object.entries(baseObject.data));
+	for (const [key, value] of Object.entries(overrideObject.data)) {
+		if (key === "__proto__" || key === "constructor" || key === "prototype")
+			throw new Error("invalid template key");
+		const inherited = entries.get(key);
+		entries.set(
+			key,
+			inherited === undefined
+				? value
+				: mergeTemplate(inherited, value, depth + 1),
+		);
+	}
+	return Object.fromEntries(entries);
 }
 
 function projectConfig(
@@ -149,7 +222,14 @@ export function parseCiProjectConfig(
 		const input = ProjectInput.parse(JSON.parse(json));
 		const entries = Object.entries(input.environments ?? {});
 		const environments = Object.fromEntries(
-			entries.map(([name, entry]) => {
+			entries.map(([name, rawEntry]) => {
+				const { extends: templateName, ...overrides } = rawEntry;
+				if (templateName && !Object.hasOwn(input.templates ?? {}, templateName))
+					throw new Error("unknown environment template");
+				const template = templateName ? input.templates?.[templateName] : {};
+				const entry = EnvironmentFields.parse(
+					mergeTemplate(JsonValue.parse(template), JsonValue.parse(overrides)),
+				);
 				const allowInsecureLoopback = entry.allowInsecureLoopback ?? false;
 				return [
 					name,
@@ -160,6 +240,18 @@ export function parseCiProjectConfig(
 							? githubWebhookOrigin(entry.githubWebhookOrigin)
 							: undefined,
 						allowInsecureLoopback,
+						secrets: Object.freeze(
+							Object.fromEntries(
+								Object.entries(entry.secrets ?? {}).map(
+									([key, requirement]) => [
+										key,
+										Object.freeze({
+											requiredFor: Object.freeze([...requirement.requiredFor]),
+										}),
+									],
+								),
+							),
+						),
 						policy: parseCiPolicy(JSON.stringify(entry.policy)),
 					}),
 				];
@@ -213,6 +305,25 @@ export function selectCiEnvironment(
 	return selected;
 }
 
+/** Return the declared logical names for an explicitly selected environment and phase. */
+export function requiredCiSecrets(
+	config: CiProjectConfig,
+	environment: string,
+	phase: CiSecretPhase,
+): readonly string[] {
+	if (!ExplicitEnvironment.safeParse(environment).success)
+		throw new Error("explicit CI environment required");
+	if (phase !== "deployment" && phase !== "execution")
+		throw new Error("invalid CI secret phase");
+	const selected = selectCiEnvironment(config, environment);
+	return Object.freeze(
+		Object.entries(selected.secrets)
+			.filter(([, requirement]) => requirement.requiredFor.includes(phase))
+			.map(([name]) => name)
+			.sort(),
+	);
+}
+
 export interface CiEnvironmentCredentialScope {
 	readonly environment: string;
 	readonly origin: string;
@@ -245,6 +356,32 @@ export async function ciEnvironmentPolicySha256(
 		toJsonString(DesiredCiPolicySchema, selected.policy),
 	);
 	const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+	return Array.from(new Uint8Array(digest), (byte) =>
+		byte.toString(16).padStart(2, "0"),
+	).join("");
+}
+
+/** Digest an environment's secret names and lifecycle requirements, not their values. */
+export async function ciEnvironmentSecretsSha256(
+	config: CiProjectConfig,
+	environment: string,
+): Promise<string> {
+	if (!ExplicitEnvironment.safeParse(environment).success)
+		throw new Error("explicit CI environment required");
+	const selected = selectCiEnvironment(config, environment);
+	const declarations = Object.entries(selected.secrets)
+		.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+		.map(([name, requirement]) => [name, [...requirement.requiredFor].sort()]);
+	const payload = JSON.stringify({
+		environment: selected.name,
+		origin: selected.relayOrigin,
+		accountId: selected.policy.accountId,
+		secrets: declarations,
+	});
+	const digest = await globalThis.crypto.subtle.digest(
+		"SHA-256",
+		new TextEncoder().encode(payload),
+	);
 	return Array.from(new Uint8Array(digest), (byte) =>
 		byte.toString(16).padStart(2, "0"),
 	).join("");

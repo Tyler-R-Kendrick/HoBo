@@ -136,6 +136,50 @@ publicly reachable. Credentials are sent only to the trusted control origin.
 Amounts are USD microdollars. Each policy still requires separately provisioned
 providers and a repository connection on its selected relay.
 
+Each environment may declare the names of its required secrets under `secrets`.
+For example, `"HOBO_CI_ACCOUNT_TOKEN": { "requiredFor": ["deployment"] }`
+declares a requirement without recording a value. Names are uppercase identifiers;
+`requiredFor` contains one or both of `deployment` and `execution`. Do not put
+credentials, secret-manager URLs, or commands in the project file. Provision and
+rotate each environment's secrets through trusted operator-controlled bindings
+outside the repository.
+After building and inspecting a profile as shown below, the `check-secrets`
+command provides an explicit preflight for a deployment or
+execution phase. Point it at a trusted directory containing a file for each
+declared name required in that phase; file contents are not printed. For example:
+
+```sh
+pnpm --filter @hobo/ci-gh-actions project check-secrets \
+  --environment local --phase deployment --secret-dir /path/to/local-secrets \
+  --trusted-origin http://127.0.0.1:8787 --trusted-account local-ci \
+  --trusted-secrets-sha256 "$REVIEWED_SECRETS_SHA256" \
+  --allow-secret HOBO_CI_ACCOUNT_TOKEN
+```
+
+Run the corresponding `execution` preflight before starting the relay.
+Inspection prints the secret declaration digest; review and record that digest
+independently of untrusted repository changes. Supply a separate `--allow-secret`
+for every name the chosen phase is authorized to resolve. Trust the target,
+digest, directory and allowlist from operator-controlled sources.
+The example demonstrates two requirements; add every secret required by your
+actual deployment and runtime. A declaration name identifies a secret for the
+preflight and does not itself configure a server binding.
+The SDK also exposes `resolveCiSecrets` with an operator-approved name allowlist
+and a caller-supplied resolver. `createCiSecretDirectoryResolver` reads mounted
+files, while `createCiEnvironmentSecretResolver` supports explicitly mapped
+environment variables. Applications can supply another trusted resolver without
+putting its configuration in the project file.
+This check is explicit: declaring a secret does not create it, inject it into
+the relay, or automatically gate a Vercel deployment. For containerized relays,
+mount secret files separately as described in the [deployment guide](deploy/README.md).
+Configure secret bindings from a trusted operator source, not from a pull request
+or the repository file. An external proxy can protect a credential only when its
+substitution rules cover the destination and request. The existing
+[`@hobo/adapter-opensesame`](../adapters/adapter-opensesame/README.md) verifies
+surrogate substitution for the Vercel API; it does not currently provide a
+verified substitution binding for the HoBo relay account token or GitHub App
+credentials.
+
 Build the package, then inspect a profile without credentials or writes:
 
 ```sh
@@ -171,7 +215,11 @@ The same operations are available from `@hobo/ci-gh-actions/project-config`:
 
 An organization can supply its own config with `--organization-config PATH`.
 Repository profiles replace entire same-named organization profiles; they are
-not merged field by field. The selected environment's trusted target and policy
+not merged field by field. Within a single file, `templates` provide reusable
+partial profiles and an environment may select one using `extends`. Environment
+fields recursively override template object fields; arrays are replaced. Templates
+cannot extend other templates or cross the organization/repository file boundary.
+The selected environment's trusted target and policy
 digest must still come from a source independent of both files. Distinct
 profiles require distinct `(origin, accountId)` pairs; separate origins can
 still share storage, so provision separate relay stores and account credentials

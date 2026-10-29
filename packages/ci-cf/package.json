@@ -19,7 +19,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc -p tsconfig.worker.json",
     "lint": "biome check .",
     "test": "vitest run",
-    "typecheck:worker": "tsc -p tsconfig.worker.json"
+    "typecheck:worker": "tsc -p tsconfig.worker.json",
+    "local:prepare": "node --import tsx scripts/local.ts prepare",
+    "local:dev": "node --import tsx scripts/local.ts dev",
+    "local:trigger": "node --import tsx scripts/local.ts trigger"
   },
   "dependencies": {
     "@bufbuild/protobuf": "2.12.1",
@@ -28,6 +31,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260730.1",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "wrangler": "4.114.0"
   }
 }

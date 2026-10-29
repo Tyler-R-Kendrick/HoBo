@@ -21,6 +21,7 @@ const providers = new Set([
 	"kubernetes",
 	"local",
 	"vercel",
+	"azure-devops",
 ]);
 
 /** Parse a data manifest; provider/Station authority is resolved by the host. */

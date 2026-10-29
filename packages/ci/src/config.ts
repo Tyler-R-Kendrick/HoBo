@@ -46,10 +46,14 @@ export function parseConfiguration(json: string): Configuration {
 				throw new Error("invalid or duplicate offer");
 			ids.add(offer.id);
 			if (
-				!["", "gh-actions", "dagger", "cf", "sandbox"].includes(offer.backend)
+				!["", "gh-actions", "dagger", "cf", "sandbox", "ado"].includes(
+					offer.backend,
+				)
 			)
 				throw new Error("unsupported execution backend");
 			if (
+				(offer.provider === "azure-devops" && offer.backend !== "ado") ||
+				(offer.backend === "ado" && offer.provider !== "azure-devops") ||
 				(offer.provider === "dagger" && offer.backend !== "dagger") ||
 				(offer.provider === "cloudflare" && offer.backend !== "cf") ||
 				(offer.provider === "vercel" && offer.backend !== "sandbox") ||
@@ -69,6 +73,7 @@ export function parseConfiguration(json: string): Configuration {
 					"dagger",
 					"cloudflare",
 					"vercel",
+					"azure-devops",
 				].includes(offer.provider)
 			)
 				throw new Error("unsupported provider");

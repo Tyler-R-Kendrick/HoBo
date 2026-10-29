@@ -13,6 +13,7 @@ export function parseAdoProject(json: string): ParsedAdoProject {
 		project.pool.toLowerCase() === "azure pipelines" ||
 		project.pool !== project.pool.trim() ||
 		!/^[A-Za-z0-9_-]{1,64}$/.test(project.artifactPrefix) ||
+		Object.keys(project.environmentRefs).length > 64 ||
 		project.demands.length > 16 ||
 		new Set(project.demands).size !== project.demands.length ||
 		project.demands.some(
@@ -28,6 +29,26 @@ export function parseAdoProject(json: string): ParsedAdoProject {
 			"invalid Azure Pipelines self-hosted project configuration",
 		);
 	parseProjectPath(project.pipelinePath);
+	for (const [target, source] of Object.entries(project.environmentRefs)) {
+		parseEnvironmentName(target);
+		parseEnvironmentName(source);
+		if (target.startsWith("HOBO_CI_") || source.startsWith("HOBO_CI_"))
+			throw new Error("HoBo CI metadata cannot be rebound");
+	}
+	if (!project.runnerArgv.length)
+		project.runnerArgv = ["node", "packages/ci-ado/dist/cli.js"];
+	if (!project.bootstrapArgv.length)
+		project.bootstrapArgv = [
+			"bash",
+			"-euc",
+			"corepack pnpm install --frozen-lockfile\ncorepack pnpm exec turbo run build --filter=@hobo/ci-ado --concurrency=100%",
+		];
+	project.verifyArtifacts ??= true;
+	parseCommand(project.runnerArgv);
+	parseCommand(project.bootstrapArgv);
+	Object.freeze(project.environmentRefs);
+	Object.freeze(project.runnerArgv);
+	Object.freeze(project.bootstrapArgv);
 	Object.freeze(project.demands);
 	// SAFETY: strict protobuf parsing, dependent constraints and frozen nested fields refine the generated record.
 	return Object.freeze(project) as ParsedAdoProject;
@@ -39,4 +60,26 @@ export function parseProjectPath(path: string): string {
 	if (!/^[A-Za-z0-9_.-][A-Za-z0-9_./-]{0,499}$/.test(path))
 		throw new Error("ADO paths must be literal workspace-relative paths");
 	return path;
+}
+
+export function parseEnvironmentName(name: string): string {
+	if (!/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(name))
+		throw new Error("invalid environment reference name");
+	return name;
+}
+function parseCommand(argv: readonly string[]): void {
+	if (
+		argv.length > 256 ||
+		argv.reduce((total, value) => total + value.length, 0) > 65536 ||
+		argv.some(
+			(value) =>
+				!value ||
+				value.length > 65536 ||
+				value.includes("\0") ||
+				/\$\(|\$\{\{|\$\[/.test(value),
+		)
+	)
+		throw new Error(
+			"runner/bootstrap argv must be bounded literals without Azure expressions",
+		);
 }

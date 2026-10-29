@@ -177,7 +177,7 @@ export function createWorkspaceBackend(options: {
 				if (closed) throw new Error("CI session is closed");
 				const file = await open(
 					target,
-					constants.O_RDONLY | constants.O_NOFOLLOW,
+					constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
 				);
 				try {
 					const metadata = await file.stat({ bigint: true });

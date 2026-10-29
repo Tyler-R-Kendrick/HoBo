@@ -1,0 +1,72 @@
+{
+  "consumer": {
+    "name": "hobo-ci-ado-live-verification"
+  },
+  "provider": {
+    "name": "azure-devops-rest-7.1"
+  },
+  "interactions": [
+    {
+      "type": "Synchronous/Messages",
+      "description": "native pipeline and artifact verification timeline",
+      "request": {
+        "contents": {
+          "method": "GET",
+          "path": "/_apis/build/builds/42/timeline",
+          "apiVersion": "7.1"
+        }
+      },
+      "response": [
+        {
+          "contents": {
+            "records": [
+              {
+                "type": "Job",
+                "name": "hobo_ci",
+                "identifier": "hobo_ci",
+                "state": "completed",
+                "result": "succeeded"
+              },
+              {
+                "type": "Job",
+                "name": "hobo_ci_verify_artifacts",
+                "identifier": "hobo_ci_verify_artifacts",
+                "state": "completed",
+                "result": "succeeded"
+              },
+              {
+                "type": "Task",
+                "name": "Run HoBo CI checks",
+                "state": "completed",
+                "result": "succeeded"
+              },
+              {
+                "type": "Task",
+                "name": "Publish verified execution bundle",
+                "state": "completed",
+                "result": "succeeded"
+              },
+              {
+                "type": "Task",
+                "name": "Download execution bundle",
+                "state": "completed",
+                "result": "succeeded"
+              },
+              {
+                "type": "Task",
+                "name": "Verify downloaded artifact hashes",
+                "state": "completed",
+                "result": "succeeded"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "4.0.0"
+    }
+  }
+}

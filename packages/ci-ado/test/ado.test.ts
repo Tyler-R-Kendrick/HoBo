@@ -313,10 +313,12 @@ it("renders the approved self-hosted pipeline and artifact task configuration", 
 	});
 	expect(document.jobs[0].steps.at(-1)).toMatchObject({
 		task: "PublishPipelineArtifact@1",
-		condition: "succeeded()",
+		condition:
+			"and(succeededOrFailed(), eq(variables['HOBO_CI_BUNDLE_READY'], 'true'))",
 		inputs: {
-			targetPath: "$(Build.SourcesDirectory)/hobo-ci-result.txt",
-			artifact: "hobo-1",
+			targetPath:
+				"$(Agent.TempDirectory)/hobo-ci-$(System.JobId)-$(System.JobAttempt)",
+			artifact: "hobo-$(System.JobId)-$(System.JobAttempt)",
 		},
 	});
 	expect(yaml).not.toContain("vmImage");

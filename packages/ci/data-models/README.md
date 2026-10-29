@@ -14,3 +14,8 @@ Account, leases and observed usage. `ci.cue` constrains policy fixtures.
 `parseCiPolicy` enforces cross-reference and duplicate checks at the protobuf
 JSON boundary; provider/Station authorization requires an external resolver.
 Only manual budget periods are accepted until automatic rollover is implemented.
+
+Azure DevOps offers pair `provider: "azure-devops"` with `backend: "ado"`;
+desired policy accepts the same provider kind. CUE and runtime configuration
+parsers reject mismatched backend/provider pairs. This authorizes an explicitly
+host-bound adapter and does not infer a provider entitlement or remote agent.

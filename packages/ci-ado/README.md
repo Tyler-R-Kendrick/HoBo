@@ -1,17 +1,13 @@
 # HoBo CI Azure DevOps
 
 `@hobo/ci-ado` runs HoBo's portable command checks locally and generates Azure
-Pipelines YAML that runs the same checks on an official self-hosted Linux agent.
-The configuration names a self-hosted pool; generated jobs never select a
-Microsoft-hosted image. Azure DevOps Services still manages the pipeline, job
-status, checkout, logs and Pipeline Artifacts.
+DevOps Services YAML for Microsoft's official self-hosted Linux agent. Both jobs
+select your named pool. Azure still manages checkout, logs, status and Pipeline
+Artifacts; checks and artifact verification execute on your machine.
 
-## Configuration and local checks
+## Local checks and configuration
 
-Run from the HoBo monorepo root with Node 24, pnpm, Bash and the tools needed by
-your checks installed. Local checks require no Azure account, agent, PAT or
-network access beyond what the check commands themselves need. Initial dependency
-installation and build can require network access.
+From the HoBo monorepo root, with Node 24, pnpm, Bash and your check tools installed:
 
 ```sh
 corepack pnpm install --frozen-lockfile
@@ -19,7 +15,9 @@ corepack pnpm exec turbo run build --filter=@hobo/ci-ado --concurrency=100%
 node packages/ci-ado/dist/cli.js run packages/ci-ado/examples/ci.json .
 ```
 
-The project file selects the pool and a workspace-relative portable Pipeline JSON:
+Local preflight needs no Azure account, agent or token. The commands themselves
+and initial dependency installation may need network access. It creates no ADO
+run, status or upload.
 
 ```json
 {
@@ -27,104 +25,196 @@ The project file selects the pool and a workspace-relative portable Pipeline JSO
   "pool": "hobo-local",
   "demands": ["Agent.OS -equals Linux"],
   "pipelinePath": "packages/ci-ado/examples/pipeline.json",
-  "artifactPrefix": "hobo"
+  "artifactPrefix": "hobo",
+  "environmentRefs": {},
+  "verifyArtifacts": true
 }
 ```
 
-Use `pipelinePath` to point to your actual checks. The example writes
-`hobo-ci-result.txt`; replace it with lint, build and test argv commands. Steps
-run sequentially and stop at the first nonzero exit. `cwd` is workspace-relative;
-`env` supplies explicit environment values. Ambient ADO tokens and arbitrary host
-variables are not inherited. Keep credentials out of committed JSON. The current
-CLI has no secret binding resolver; checks requiring secrets need an authorized
-SDK host to supply step environments in memory.
+Point `pipelinePath` at your portable `@hobo/ci` Pipeline JSON. Steps contain
+literal `argv`, optional workspace-relative `cwd`, and explicit `env` values.
+They execute sequentially and stop at the first nonzero exit. Artifact paths
+name regular files inside the workspace; directories and globs are unsupported.
+The runtime bounds output streams and individual artifact files to 1 MiB,
+enforces the command deadline, and confirms process-group shutdown on timeout
+or repeated cancellation signals. Each direct invocation gets a fresh execution
+ID; direct CLI execution has no durable budget or replay journal.
 
-The shared runtime enforces the pipeline deadline, confirms process-group
-shutdown even after repeated cancellation signals, bounds each output stream and each artifact file to 1 MiB, and hashes
-artifact bytes with SHA-256. Artifacts must be regular files in the workspace,
-not directories or glob patterns. Successful artifacts remain at their declared
-paths on disk. Local mode does not upload them or create an ADO run/status.
-Each invocation gets a fresh execution ID, including repeated local runs and ADO
-job attempts; this direct runner does not provide durable replay/idempotency.
+To persist the collected result, pass `--artifacts /existing-parent/fresh-name`.
+The leaf directory must not exist. Successful bundles contain `result.json`
+(metadata and SHA-256 hashes) and `artifacts/<declared-path>`. Files are copied
+from the bytes already collected by the runtime, so later source-file changes
+do not change the published snapshot. Failed or timed-out checks exit nonzero
+and retain a failure report without partial artifact bytes. Cancellation can
+prevent ADO publication; no upload is promised after cancellation.
 
-## Run the actual ADO pipeline on your machine
+### Environment references
 
-1. Create a dedicated Azure DevOps self-hosted agent pool named `hobo-local` (or
-   change `pool`). Register Microsoft's Linux agent on your machine and keep it
-   online. Registration/authentication is an operator setup step, outside HoBo's
-   JSON config. Authorize the pipeline to use that pool. Use a dedicated agent
-   workspace and only trusted repository code; a self-hosted agent executes code
-   with the machine user's access. The YAML cleans the agent workspace.
-2. Generate and commit a pipeline definition from the same configuration:
+Keep credentials out of committed plan JSON. `environmentRefs` maps a check
+variable to an explicitly authorized host/ADO variable:
+
+```json
+{ "environmentRefs": { "API_TOKEN": "CHECK_API_TOKEN" } }
+```
+
+Set `CHECK_API_TOKEN` locally, or define it as a secret pipeline variable in ADO.
+The generated YAML maps it only onto the check task. Missing, empty or unresolved
+bindings fail before commands execute. A binding cannot override a step literal
+or HoBo's reserved `HOBO_CI_` metadata. Arbitrary ambient host variables and ADO
+tokens are not inherited by check processes; required secrets must be declared.
+Complete bound values are masked in captured stdout/stderr. This is exact-value
+masking: transformed values and artifact contents remain the command author's
+responsibility. Use trusted code and a dedicated self-hosted agent account.
+
+### Consumer repositories
+
+This is currently a private workspace package, like the other HoBo CI adapters;
+it is not published to the public npm registry. The default bootstrap uses a
+frozen monorepo install and a scoped `@hobo/ci-ado` build. A repository that
+already vendors or distributes the package can override both literal argv lists:
+
+```json
+{
+  "runnerArgv": ["node", "tools/hobo-ci-ado/dist/cli.js"],
+  "bootstrapArgv": ["pnpm", "run", "prepare-hobo-ci"]
+}
+```
+
+Empty lists retain the monorepo defaults. Azure expression tokens are rejected
+in these lists. Bootstrap executes repository code and must install/build the
+chosen runner. Its required package-registry authentication belongs in the
+operator's agent setup; check secret bindings are not passed to bootstrap.
+
+## Run the ADO pipeline on your machine
+
+1. Create a dedicated self-hosted pool named `hobo-local`, or change `pool`.
+   Register Microsoft's Linux agent, keep it online and authorize the pipeline
+   to use the pool. Agent installation and repository connection setup are
+   operator prerequisites. The YAML cleans each agent workspace.
+2. Generate and commit the YAML beside the config and command plan:
 
    ```sh
    node packages/ci-ado/dist/cli.js yaml packages/ci-ado/examples/ci.json . > azure-pipelines.yml
+   node packages/ci-ado/dist/cli.js yaml packages/ci-ado/examples/ci.json . --check azure-pipelines.yml
    ```
 
-3. Create an ADO pipeline pointing to that YAML and queue it manually. Configure
-   triggers or Azure Repos branch build-validation policies explicitly as needed.
-   The generated example disables automatic triggers. With the agent offline,
-   the job queues in its configured pool; there is no hosted fallback.
+3. Create an ADO pipeline pointing to the YAML and queue it manually. Configure
+   triggers or Azure Repos branch build-validation policies explicitly. Generated
+   YAML disables automatic triggers. An offline agent leaves the job queued in
+   its selected pool; there is no Microsoft-hosted fallback.
 
-The generated YAML bootstraps this HoBo monorepo with a frozen install and a
-scoped Turbo build, then calls the same local CLI in `Build.SourcesDirectory`.
-Its job timeout adds ten minutes for bootstrap and publication to the command
-plan's timeout. Regenerate after changing the config, timeout or artifact list.
-`examples/azure-pipelines.yml` is the approved deterministic rendering fixture.
+Generated scripts carry a canonical config/plan digest. Changes to commands,
+timeouts, bindings or artifact declarations require regeneration; stale intent
+fails before check execution. `yaml --check` detects rendering drift, including
+changes to the generator. Producer timeout includes ten minutes beyond the
+command deadline for setup/publication; the verifier has ten minutes for its
+own setup/download. An agent must have the prerequisite tools and adequate disk.
 
-After successful checks, `PublishPipelineArtifact@1` uploads each declared file
-as `<artifactPrefix>-<1-based index>` on the original ADO run. Downstream jobs can
-use `DownloadPipelineArtifact@2` or `download: current` with those artifact names.
-Missing/oversized artifacts fail the checks before publication. Publication is a
-separate ADO task and can itself fail the job. Failed/cancelled checks publish no
-artifacts, matching the shared portable runtime. ADO publishes from the original
-file path after collection; the local hash does not attest those later uploaded
-bytes. Pipeline retention controls artifact lifetime.
+The producer stages a fresh bundle under `Agent.TempDirectory` and publishes it
+with `PublishPipelineArtifact@1`. Names include `System.JobId` and
+`System.JobAttempt`, so job retries do not collide with immutable earlier
+artifacts. Failure reports can publish while the producer remains failed.
 
-## Costs and supported boundary
+By default a second job in the same self-hosted pool uses
+`DownloadPipelineArtifact@2` for the current run. Native output variables carry
+the producer's artifact name and manifest SHA-256 into the consumer. The CLI
+verifies that digest, the config/plan identity, the exact declared file set,
+sizes and each file's SHA-256. The pipeline succeeds only after verification.
+`verifyArtifacts: false` explicitly removes this second job. Hashes protect
+transport consistency; they are not signed attestations against a compromised
+agent or malicious check process. Pipeline retention controls bundle lifetime.
+
+For a downloaded bundle, the equivalent local command is:
+
+```sh
+node packages/ci-ado/dist/cli.js verify /path/to/bundle --config packages/ci-ado/examples/ci.json --expected-plan PLAN_SHA256 --expected-bundle PRODUCER_MANIFEST_SHA256
+```
+
+Both digests are printed by execution or present in the generated/native output.
+Without `--expected-bundle`, standalone verification checks manifest/file
+consistency and plan identity without the producer's manifest anchor.
+
+## Live acceptance command
+
+The package can queue and observe one existing pipeline at an exact committed
+source version. Create a local target file containing references, never a token:
+
+```json
+{
+  "organizationUrl": "https://dev.azure.com/your-organization",
+  "project": "your-project",
+  "pipelineId": 7,
+  "refName": "refs/heads/main",
+  "sourceVersion": "0000000000000000000000000000000000000000",
+  "tokenEnv": "HOBO_ADO_PAT",
+  "authentication": "pat",
+  "timeoutSeconds": 1800
+}
+```
+
+Replace the zero SHA with the commit containing your generated YAML/config/plan
+and set `HOBO_ADO_PAT` through your secret environment. PAT authorization needs
+Build Read & execute and Agent Pools Read plus access to the configured project,
+pipeline and pool. `authentication: "bearer"` supports an already authorized
+bearer token through the same environment reference.
+
+```sh
+node packages/ci-ado/dist/cli.js live packages/ci-ado/examples/ci.json live-target.json .
+```
+
+The command confirms the pool is self-hosted, pins the pipeline revision,
+previews the exact source commit, and refuses hosted/extra jobs or a missing
+plan guard/native verification. It then queues one run and checks source/pool
+provenance, successful producer/consumer jobs and native upload/download/hash
+tasks, and a retained Pipeline Artifact. The JSON result includes the run URL.
+Timeout or interruption cancels a known unfinished run and waits for terminal
+state. Ambiguous run creation is never automatically retried; inspect ADO's run
+list before retrying manually. This command requires `verifyArtifacts: true`.
+It does not create pipelines, install agents or infer billing entitlements.
+
+## Scheduler integration
+
+`createAdoBackend({ workspace })` can be bound to `PipelineScheduler` as backend
+`ado`. Configure its authorized offer with `provider: "azure-devops"` and
+`backend: "ado"`; desired policies also accept `kind: "azure-devops"`. Bindings
+execute the host workspace directly, without queueing a remote ADO pipeline.
+The shared SQLite actor owns `ci.*` commands/events, leases, snapshots and replay.
+A recovered completed execution returns its recorded result without rerunning
+commands. Set prices and entitlements from account-authorized observations;
+self-hosted execution does not invent a free-minute balance. Keep secrets out
+of durable generic Pipeline records; the direct CLI environment-reference path
+resolves secrets only in memory.
+
+## Costs, scope and verification evidence
 
 Vendor documentation checked 2026-10-29:
 
-- [Self-hosted parallel jobs](https://learn.microsoft.com/en-us/azure/devops/pipelines/licensing/concurrent-jobs?view=azure-devops): private projects include one self-hosted parallel job, with unlimited minutes, plus entitlements for eligible Visual Studio Enterprise subscribers. Additional concurrent jobs can require paid capacity. Verify your organization's actual entitlement.
-- [Pipeline Artifacts](https://learn.microsoft.com/en-us/azure/devops/pipelines/artifacts/pipeline-artifacts?view=azure-devops): Pipeline Artifacts and Pipeline Caching are exempt from storage billing. Azure Artifacts package feeds are a different service.
-- [Self-hosted agents](https://learn.microsoft.com/en-us/azure/devops/pipelines/agents/linux-agent?view=azure-devops): use Microsoft's official agent for real Azure Pipelines execution.
+- [Self-hosted parallel jobs](https://learn.microsoft.com/en-us/azure/devops/pipelines/licensing/concurrent-jobs?view=azure-devops): private projects include one self-hosted parallel job with unlimited minutes, plus eligible Visual Studio Enterprise entitlements. Extra concurrency can require paid capacity. Verify your organization's entitlement.
+- [Pipeline Artifacts](https://learn.microsoft.com/en-us/azure/devops/pipelines/artifacts/pipeline-artifacts?view=azure-devops): Pipeline Artifacts and Pipeline Caching are exempt from storage billing. Azure Artifacts package feeds are a separate service.
+- [Linux agents](https://learn.microsoft.com/en-us/azure/devops/pipelines/agents/linux-agent?view=azure-devops): real Azure Pipelines execution uses Microsoft's official agent.
 
-Using your machine avoids Microsoft-hosted compute minutes. It does not erase
-hardware, electricity, network, extra parallel-job or other service costs. Pure
-local preflight consumes no ADO parallel job. A real ADO run requires connectivity
-to Azure DevOps even though the checks execute on your machine.
+Your machine avoids Microsoft-hosted compute minutes. Hardware, electricity,
+network and extra concurrency remain possible costs. Local preflight consumes
+no ADO parallel slot. Real ADO runs require Azure connectivity.
 
-This package supports Linux self-hosted Azure DevOps **Services** pipelines and
-a portable command subset for offline preflight. It does not interpret arbitrary
-Azure YAML, tasks, templates, variable groups, service connections, matrices,
-approvals or deployment jobs offline. Existing arbitrary ADO YAML should keep
-using the official self-hosted agent. Azure DevOps Server needs Build Artifacts
-instead of the Pipeline Artifact task and is outside this initial package.
-No agent installation, remote pipeline registration, or account budget routing
-is performed. The existing scheduler offer/config vocabulary remains unchanged;
-`createAdoBackend({workspace})` is a direct, explicitly bound execution adapter.
+Supported scope is Linux self-hosted Azure DevOps Services and portable command
+plans. Arbitrary Azure templates, tasks, variable groups, service connections,
+matrices, approvals and deployments still require the official agent; this CLI
+does not emulate Azure YAML offline. Azure DevOps Server's Build Artifacts tasks
+are outside this Services adapter.
 
-## Contracts and verification
-
-Parse, don't validate: the parser produces derived types at the boundary.
-`parseAdoProject` derives a frozen `ParsedAdoProject` from generated Protobuf
-records. CUE and valid/invalid fixtures pin config constraints; strict runtime
-parsing also rejects duplicate/conflicting OS demands. `parsePipeline` owns the
-shared command plan boundary. TypeScript build/typecheck, schema-tools codegen
-and drift checks, real local command tests, a YAML approval fixture, and the
-hand-authored consumer Pact cover this package. The Pact exercises generated YAML
-expectations, not a provider-verified ADO service interaction. Live ADO assignment,
-upload/download and billing have not been exercised by the offline lane.
-
-This direct adapter emits no new durable commands/events. `PipelineScheduler`
-continues to own `ci.*` command/event actor coordination, the event store,
-materialized projections, snapshot and read store persistence for its supported routed backends. Running
-this CLI bypasses that scheduler and has no budget/lease journal side effects.
+Protobuf/CUE contracts, valid/invalid fixtures, hand-authored consumer Pacts,
+real subprocess tests and deterministic YAML fixtures cover local boundaries.
+The generated two-job acceptance test executes the actual Bash/CLI scripts with
+a filesystem stand-in for Azure upload/download. Live REST tests use injected
+HTTP responses; these are not Azure provider verification. No live organization,
+agent assignment, native service upload/download or billing verification was
+available in the implementation environment. Run the live acceptance command
+against the intended organization before certifying deployment there.
 
 ```sh
 corepack pnpm --filter @hobo/ci-ado build
 corepack pnpm --filter @hobo/ci-ado typecheck
 corepack pnpm --filter @hobo/ci-ado test
-corepack pnpm codegen --filter packages/ci-ado
 corepack pnpm codegen:check --filter packages/ci-ado
 ```

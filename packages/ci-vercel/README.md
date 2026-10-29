@@ -1,4 +1,109 @@
-# HoBo CI Vercel relay
+# HoBo CI Vercel support
+
+## Run Vercel CI checks locally
+
+`@hobo/ci-vercel/turbo-ci` runs the checks declared for the new Vercel CI
+runtime on a developer machine or a HoBo-owned runner. The existing HTTP relay
+and Sandbox integration are described below.
+
+Vercel CI selects tasks with `"tags": ["ci"]` in `turbo.json`. HoBo asks Turbo
+for those resolved task tags, honors `!ci`, package overrides and
+`$TURBO_EXTENDS$`, then runs the exact `package#task` entrypoints. Turbo owns the
+dependency graph, input hashes, strict environment filtering, outputs and cache.
+A dependency tagged `!ci` still runs when a selected check requires it. Package
+labels alone do not opt tasks into CI.
+
+From this repository's root:
+
+```sh
+pnpm ci:local --dry-run
+pnpm ci:local
+pnpm ci:local --affected --base origin/main
+```
+
+The checked-in [package configuration](turbo.json) initially selects only this
+package's `test` and `typecheck`. Other packages can opt in with the same task
+tags. This does not enable hosted CI or any GitHub Actions workflow.
+The local runner requires Turbo >=2.11.10 <3; the root dependency is pinned to
+2.11.10 because the planner consumes its GraphQL task metadata. Vercel's own
+documented minimum is Turbo 2.11.7. Recheck the CLI contract before upgrading.
+
+For another checkout, use `pnpm ci:local --cwd /path/to/repository`. Dependencies
+and the repository's Turbo version must already be installed. The SDK exposes
+`planTurboCi({cwd})` and `runTurboCi({cwd, signal})`; after building the package,
+`pnpm --filter @hobo/ci-vercel ci:local --cwd /path/to/repository` uses its CLI.
+
+`--affected` requires an explicit `--base` and sufficient Git history; `--head`
+defaults to `HEAD`. The planner intersects CI entrypoints with Turbo's
+input-aware `affectedTasks` query **before** emitting explicit selectors.
+Appending `--affected` to qualified selectors does not narrow them in Turbo
+2.11.10. Invalid refs fail planning. The default runs every tagged check and
+lets Turbo reuse matching cached results. An empty selection succeeds without
+starting a task runner. Dry runs query and inspect the graph but execute no checks.
+
+Local cache is the default (`--cache=local:rw`), even for a checkout linked to
+Vercel Remote Cache. `--remote-cache` explicitly enables both local and configured
+remote cache reads/writes. That can share results with Vercel or another cache
+server, subject to input/environment/platform compatibility and provider terms.
+It does not change where checks execute. Each invocation uses
+`--concurrency=100%` and `--continue=never`, streams task logs, returns Turbo's
+exit code, and asks Turbo to stop its task process groups on cancellation. The
+CLI continues handling repeated interrupts until shutdown completes. POSIX hosts are
+required. Run only trusted checkout code: this is not an isolation boundary.
+
+### Billing and runtime boundaries
+
+As checked October 29, 2026, the [Vercel CI documentation](https://vercel.com/docs/ci)
+and [CLI reference](https://vercel.com/docs/cli/ci) document hosted push-triggered
+execution, not a self-hosted runner registration or local `vercel ci run`.
+HoBo executes the same Turbo checks locally; it does not impersonate a Vercel
+worker or publish Vercel CI success checks.
+
+To avoid Vercel CI compute charges, keep hosted Vercel CI disabled in that
+repository's Vercel settings. Tagging tasks does not itself enable it. If CI is
+already enabled, turn it off there; a local run does not disable it. Configure
+branch protection to require the actual HoBo/GitHub check when using the existing
+[Actions relay](../ci-gh-actions/README.md) for automated checks. A local success
+does not satisfy a required Vercel CI status.
+
+[Vercel CI pricing](https://vercel.com/docs/ci/pricing) bills bootstrapping as
+well as executed tasks. Warming the remote cache can avoid task CPU minutes but
+does not guarantee a free hosted invocation. This runner makes no Vercel API
+calls and uses no Vercel compute. Commands inside checks, remote caches, the
+separate relay, Sandbox runners and deployments may still incur their own costs.
+
+Vercel CPU/image tags describe cloud resource choices; local checks use the
+caller's OS and installed tools. HoBo does not reproduce Vercel's per-task VM
+isolation, bootstrap snapshots, project secrets, deployment waits or OIDC header
+injection. Persistent tasks, managed OIDC tags (including package defaults) and
+virtual `#deployment` dependencies are refused before execution. An explicit
+`ci:oidc:none` task override is supported. Supply local test services and ordinary
+environment variables through existing Turbo `env`/`passThroughEnv` declarations;
+keep cloud-only deployment checks on their intended runtime.
+
+### Local runner gates
+
+`test/turbo-ci.test.ts` exercises real Turbo processes for tag inheritance,
+opt-outs, required dependencies, cache restoration, affected roots, failures,
+cancellation and cloud-feature refusals. `test/turbo-ci-cli.test.ts` verifies empty
+dry-run JSON and repeated interrupts against the real CLI. The CLI consumer PACT in
+`contracts/turbo-ci.consumer.test.ts` verifies the metadata contract against the
+installed binary without Vercel credentials. TypeScript covers the SDK and CLI.
+The plan uses generated [Protobuf](data-models/turbo_ci.proto), with independent
+[CUE constraints and fixtures](data-models/turbo-ci/plan.cue). Check codegen with
+`pnpm codegen:check --filter packages/ci-vercel`; run `cue vet -d '#TurboCiPlan'
+packages/ci-vercel/data-models/turbo-ci/plan.cue <fixture.json>` for each plan
+fixture (invalid fixtures must fail). Plan fixtures are separate from queue
+fixtures because schema-tools applies every top-level CUE schema to that
+directory's entire fixture corpus.
+
+Planning is an ephemeral query, not a new durable relay command. It does not
+write relay events or projections. Turbo persists its ordinary local task cache;
+the generated plan is printed by `--dry-run` and is not accepted as executable
+input. The existing relay command/event and PostgreSQL replay semantics remain
+independent.
+
+## Hosted relay
 
 This package provides a Vercel Node Function HTTP boundary, a Postgres-backed
 relay, a private queue consumer, and an independent scheduler. Signed

@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file checks.proto.
  */
 export const file_checks: GenFile = /*@__PURE__*/
-  fileDesc("CgxjaGVja3MucHJvdG8SEWhvYm8uY2kuZGFnZ2VyLnYxIokBCgtDaGVja0NvbmZpZxIOCgZlbmdpbmUYASABKAkSEwoLY2xpX3ZlcnNpb24YAiABKAkSEQoJd29ya3NwYWNlGAMgASgJEg8KB2ZpbHRlcnMYBCADKAkSDAoEc2tpcBgFIAMoCRIQCghwYXJhbGxlbBgGIAEoDRIRCglmYWlsX2Zhc3QYByABKAhiBnByb3RvMw");
+  fileDesc("CgxjaGVja3MucHJvdG8SEWhvYm8uY2kuZGFnZ2VyLnYxIrcBCgtDaGVja0NvbmZpZxIOCgZlbmdpbmUYASABKAkSEwoLY2xpX3ZlcnNpb24YAiABKAkSEQoJd29ya3NwYWNlGAMgASgJEg8KB2ZpbHRlcnMYBCADKAkSDAoEc2tpcBgFIAMoCRIQCghwYXJhbGxlbBgGIAEoDRIRCglmYWlsX2Zhc3QYByABKAgSFwoPdGltZW91dF9zZWNvbmRzGAggASgNEhMKC2Vudmlyb25tZW50GAkgASgJYgZwcm90bzM");
 
 /**
  * Native Dagger CI checks on operator-owned infrastructure. No Cloud selector.
@@ -61,6 +61,20 @@ export type CheckConfig = Message<"hobo.ci.dagger.v1.CheckConfig"> & {
    * @generated from field: bool fail_fast = 7;
    */
   failFast: boolean;
+
+  /**
+   * Overall wall-clock deadline, including CLI startup. Zero uses 900 seconds.
+   *
+   * @generated from field: uint32 timeout_seconds = 8;
+   */
+  timeoutSeconds: number;
+
+  /**
+   * Optional named overlay from dagger.toml (for example, ci).
+   *
+   * @generated from field: string environment = 9;
+   */
+  environment: string;
 };
 
 /**

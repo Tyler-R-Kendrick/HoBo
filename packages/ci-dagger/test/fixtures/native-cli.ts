@@ -1,31 +1,57 @@
 #!/usr/bin/env -S node --experimental-strip-types
-import { appendFileSync, existsSync, readFileSync, writeSync } from "node:fs";
+import { spawn } from "node:child_process";
+import {
+	appendFileSync,
+	existsSync,
+	readFileSync,
+	writeFileSync,
+	writeSync,
+} from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // A real subprocess derived from the CLI Pact. No engine or network is started.
-const settings = process.env.XDG_CONFIG_HOME;
-const config = process.env.DAGGER_CONFIG;
-if (!settings || !config) throw new Error("missing isolated CLI settings");
-if (process.env.FIXTURE_IGNORE_TERM) process.on("SIGTERM", () => {});
-appendFileSync(
-	join(process.cwd(), "observed.jsonl"),
-	`${JSON.stringify({
-		argv: process.argv.slice(2),
-		settings,
-		savedLogin: existsSync(join(settings, "dagger", "credentials.json")),
-		configText: readFileSync(config, "utf8"),
-		keys: Object.keys(process.env),
-		proxyPreserved: process.env.HTTPS_PROXY === process.env.FIXTURE_PROXY,
-		caPreserved: process.env.NODE_EXTRA_CA_CERTS === process.env.FIXTURE_CA,
-	})}\n`,
-);
-if (process.argv[2] === "version") {
-	writeSync(
-		1,
-		`dagger v${process.env.FIXTURE_VERSION ?? "1.0.0-beta.21"} (fixture)\n`,
-	);
-} else if (process.env.FIXTURE_WAIT) {
+if (process.argv[2] === "transport-child") {
+	process.on("SIGTERM", () => {});
+	writeFileSync(join(process.cwd(), "child.pid"), String(process.pid));
 	setInterval(() => {}, 100);
 } else {
-	process.exitCode = 17;
+	const settings = process.env.XDG_CONFIG_HOME;
+	const config = process.env.DAGGER_CONFIG;
+	if (!settings || !config) throw new Error("missing isolated CLI settings");
+	if (process.env.FIXTURE_IGNORE_TERM) process.on("SIGTERM", () => {});
+	appendFileSync(
+		join(process.cwd(), "observed.jsonl"),
+		`${JSON.stringify({
+			argv: process.argv.slice(2),
+			settings,
+			savedLogin: existsSync(join(settings, "dagger", "credentials.json")),
+			configText: readFileSync(config, "utf8"),
+			keys: Object.keys(process.env),
+			proxyPreserved: process.env.HTTPS_PROXY === process.env.FIXTURE_PROXY,
+			caPreserved: process.env.NODE_EXTRA_CA_CERTS === process.env.FIXTURE_CA,
+		})}\n`,
+	);
+	if (process.argv[2] === "version") {
+		writeSync(
+			1,
+			process.env.FIXTURE_VERSION_OUTPUT ??
+				`version:     v${process.env.FIXTURE_VERSION ?? "1.0.0-beta.21"}\ncommit:      fixture\nplatform:    linux/amd64\n`,
+		);
+	} else if (process.env.FIXTURE_CHILD) {
+		spawn(
+			process.execPath,
+			[
+				"--experimental-strip-types",
+				fileURLToPath(import.meta.url),
+				"transport-child",
+			],
+			{ stdio: "ignore" },
+		);
+		setInterval(() => {}, 100);
+	} else if (process.env.FIXTURE_WAIT) {
+		setInterval(() => {}, 100);
+	} else {
+		process.exitCode = Number(process.env.FIXTURE_EXIT_CODE ?? 17);
+	}
 }

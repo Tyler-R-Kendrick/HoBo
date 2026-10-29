@@ -24,6 +24,23 @@ no Cloud mode is exposed. Provider/API use inside an operator's modules remains
 outside this runner's cost boundary. Repository Cloud Checks are a separate
 trigger and require the documented `dagger cloud checks off` opt-out.
 
+Native execution has a bounded overall deadline (900 seconds by default), checks
+for an actual workspace configuration before allocation, and preserves 124/130/143
+timeout/signal exit codes. POSIX process groups keep a CLI's transport child from
+surviving cancellation; remaining children are killed even when the CLI exits
+before them. Configuration files are bounded regular files, opened nonblocking
+so FIFOs cannot hang the CLI. Case-insensitive credential-key filtering avoids
+inherited Cloud/session values on platforms with case-insensitive environments.
+Explicit local container-runtime transports and named workspace overlays are
+configuration choices, still separated from Cloud engine selection.
+
+The live acceptance lane delegates no behavior to mocks: the built CLI runs
+Dagger 1.0.0-beta.21, its real local engine, and digest-pinned Alpine commands.
+It checks source snapshots after uncommitted changes, exit status, filters,
+overlays, timeout and cancellation, while invalid inherited credentials prove
+that a local run does not attach to the caller's Cloud/session identity. The
+lane is manual, never an implicit PR dependency on Docker or external services.
+
 The runtime record types come from shared `@hobo/ci` protobufs and this package's
 local Readiness protobuf. Parse, don't validate: `parsePipeline` establishes a parsed
 domain type and `parseReadiness` establishes the derived domain type `DaggerReadiness`.

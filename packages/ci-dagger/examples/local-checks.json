@@ -5,5 +5,7 @@
   "filters": [],
   "skip": [],
   "parallel": 4,
-  "failFast": false
+  "failFast": false,
+  "timeoutSeconds": 900,
+  "environment": ""
 }

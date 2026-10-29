@@ -25,13 +25,16 @@ in the consuming repository from [`examples/local-checks.json`](examples/local-c
   "filters": [],
   "skip": [],
   "parallel": 4,
-  "failFast": false
+  "failFast": false,
+  "timeoutSeconds": 900,
+  "environment": ""
 }
 ```
 
 Set `cliVersion` to the exact installed 1.x version from `dagger version`.
-The version above is an example from the upstream self-hosting documentation,
-not an assertion of the latest available release. HoBo checks the version before
+Version 1.0.0-beta.21 is exercised by this package's live Linux acceptance lane.
+Install it using the [upstream installation guide](https://docs.dagger.io/getting-started/install/).
+HoBo checks the version before
 starting checks and never downloads or upgrades a CLI. Build the package once,
 then run from the repository containing `.hobo/dagger.json`:
 
@@ -41,7 +44,8 @@ pnpm --filter @hobo/ci-dagger checks --plan
 pnpm --filter @hobo/ci-dagger checks
 ```
 
-`--config path/to/config.json` selects another file. `--plan` prints the exact
+`--config path/to/config.json` selects another file; `--dagger /path/to/dagger`
+selects a host-installed executable. `--plan` prints the exact
 executable and argv without requiring Dagger, Docker, an account, or network
 access. The invocation directory (`INIT_CWD` under pnpm) is the repository root;
 `workspace` is relative to that root, independently of the config file location.
@@ -53,6 +57,11 @@ There is no upstream engine value named `local`; HoBo translates it. The CLI
 streams check logs and preserves its exit code, including failed checks.
 `filters` selects check links, `skip` excludes links, `parallel: 0` removes the
 parallelism limit, and `failFast` cancels remaining checks on first failure.
+`timeoutSeconds` sets an overall wall-clock deadline including startup (default
+900 seconds, at most 86400; zero selects the default). A timeout exits with code
+124. `environment: "ci"` selects the matching `[env.ci]` overlay in `dagger.toml`;
+omit it or use an empty string for the workspace's default environment. Execution
+fails before starting the CLI when the selected workspace lacks `dagger.toml`.
 
 To use infrastructure you operate, change `engine` to an explicit URI, for example
 `unix:///run/dagger/engine.sock`, `kube-pod://checks-0?namespace=dagger`, or
@@ -60,6 +69,9 @@ To use infrastructure you operate, change `engine` to an explicit URI, for examp
 are also accepted. Keep the CLI and engine versions matched. Use private
 networking for unauthenticated TCP engines or an authenticated transport. Persistent
 engine disks preserve cache; ephemeral engines lose it between jobs.
+Explicit container runtime transports such as `image+podman://IMAGE`,
+`container+docker://NAME`, `image+apple://IMAGE`, `image+finch://IMAGE`, and
+`image+nerdctl://IMAGE` are forwarded to Dagger as well.
 
 The native runner rejects Cloud selectors, removes inherited Cloud tokens,
 engine selectors and nested session credentials **in the child process**, and
@@ -88,7 +100,10 @@ process.exitCode = await runDaggerChecks(config);
 
 `runDaggerChecks` accepts a host-selected executable, environment, working
 directory, and abort signal. Aborting sends SIGTERM, escalates to SIGKILL after
-five seconds, and awaits CLI exit; it is not an acknowledgment
+five seconds, and awaits CLI exit. On POSIX, transport subprocesses in the owned
+process group are terminated too. The CLI preserves conventional SIGINT/SIGTERM
+exit codes 130/143. The programmatic API rejects with `DaggerCheckTimeoutError`
+on a deadline, and propagates caller abort reasons. Neither is an acknowledgment
 that a remote engine terminated every operation. This direct check runner does
 not participate in HoBo's budget lease/scheduler lifecycle.
 
@@ -164,4 +179,12 @@ Native checks use generated `CheckConfig` protobuf types and `ci_dagger.cue`
 constraints with valid/invalid fixtures. `contracts/checks-cli.pact.json` and
 `test/checks.test.ts` verify real subprocess argv, version pins, Cloud/session
 isolation, preserved toolchain settings, exit status, and side-effect-free plans.
-These are local consumer contracts; a live Dagger engine was not used as evidence.
+These consumer-contract tests run without a live Dagger engine.
+
+The separate [live acceptance lane](acceptance/README.md) runs the **compiled**
+CLI against a real Dagger engine and digest-pinned container commands. It verifies
+passing/failing checks, exclusions, unmatched filters, named overlays, uncommitted
+workspace changes, deadlines, SIGINT/SIGTERM and isolation from saved/inherited
+Cloud and session credentials. It is a manual operator-owned-infrastructure lane;
+the default unit/contract tests remain offline. Run it with `pnpm --filter
+@hobo/ci-dagger test:acceptance --dagger /path/to/dagger`.

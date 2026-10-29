@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import {
 	access,
 	mkdir,
@@ -12,6 +13,7 @@ import { describe, expect, it } from "vitest";
 import pact from "../contracts/checks-cli.pact.json" with { type: "json" };
 import { runDaggerCheckCli } from "../src/check-cli.js";
 import {
+	DaggerCheckTimeoutError,
 	daggerCheckArgs,
 	parseDaggerCheckConfig,
 	runDaggerChecks,
@@ -25,6 +27,17 @@ const configJson = {
 	failFast: true,
 };
 const config = parseDaggerCheckConfig(JSON.stringify(configJson));
+
+async function prepareCli(root: string): Promise<string> {
+	const executable = join(root, "dagger.ts");
+	await writeFile(join(root, "dagger.toml"), "[modules]\n");
+	await writeFile(
+		executable,
+		await readFile(new URL("./fixtures/native-cli.ts", import.meta.url)),
+		{ mode: 0o755 },
+	);
+	return executable;
+}
 
 describe("native Dagger checks configuration", () => {
 	it("accepts the minimal shared schema fixture with local defaults", async () => {
@@ -42,6 +55,7 @@ describe("native Dagger checks configuration", () => {
 			workspace: ".",
 			cliVersion: "1.0.0-beta.21",
 			parallel: 0,
+			timeoutSeconds: 900,
 			filters: [],
 			skip: [],
 		});
@@ -76,6 +90,8 @@ describe("native Dagger checks configuration", () => {
 		{ parallel: 257 },
 		{ parallel: -1 },
 		{ cloud: true },
+		{ timeoutSeconds: 86401 },
+		{ environment: "--engine=cloud" },
 	])("rejects invalid or Cloud configuration: %j", (override) => {
 		expect(() =>
 			parseDaggerCheckConfig(JSON.stringify({ ...configJson, ...override })),
@@ -97,6 +113,11 @@ describe("native Dagger checks configuration", () => {
 	});
 	it.each([
 		"container://dagger-engine",
+		"image+podman://registry.dagger.io/engine:v1.0.0-beta.21",
+		"container+docker://dagger-engine",
+		"image+apple://registry.dagger.io/engine:v1.0.0-beta.21",
+		"container+finch://dagger-engine",
+		"image+nerdctl://registry.dagger.io/engine:v1.0.0-beta.21",
 		"unix:///run/dagger/engine.sock",
 		"tcp://engine.internal:1234",
 		"tls://engine.internal:1234?ca_path=ca&cert_path=cert&key_path=key",
@@ -113,12 +134,7 @@ describe("native Dagger checks configuration", () => {
 it("executes the subprocess Pact with isolated Cloud settings and preserves failing checks", async () => {
 	const root = await mkdtemp(join(tmpdir(), "hobo-dagger-cli-"));
 	try {
-		const executable = join(root, "dagger.ts");
-		await writeFile(
-			executable,
-			await readFile(new URL("./fixtures/native-cli.ts", import.meta.url)),
-			{ mode: 0o755 },
-		);
+		const executable = await prepareCli(root);
 		await mkdir(join(root, "dagger"));
 		await writeFile(join(root, "dagger", "credentials.json"), "fixture login");
 		const env = {
@@ -126,10 +142,14 @@ it("executes the subprocess Pact with isolated Cloud settings and preserves fail
 			XDG_CONFIG_HOME: root,
 			DAGGER_CONFIG: join(root, "saved-config.toml"),
 			DAGGER_ENGINE: "cloud",
+			DAGGER_ENV: "nonexistent-parent-overlay",
 			DAGGER_CLOUD_ENGINE: "1",
 			DAGGER_CLOUD_TOKEN: "fixture-cloud-token",
 			DAGGER_SESSION_PORT: "1234",
 			DAGGER_SESSION_TOKEN: "fixture-session-token",
+			dagger_cloud_token: "case-variant-cloud-token",
+			Dagger_Session_Port: "1",
+			xdg_config_home: root,
 			_EXPERIMENTAL_DAGGER_RUNNER_HOST: "cloud",
 			FIXTURE_PROXY: process.env.HTTPS_PROXY ?? "",
 			FIXTURE_CA: process.env.NODE_EXTRA_CA_CERTS ?? "",
@@ -156,6 +176,10 @@ it("executes the subprocess Pact with isolated Cloud settings and preserves fail
 			});
 			for (const key of interaction.request.contents.removedEnvironment ?? [])
 				expect(observation.keys).not.toContain(key);
+			expect(observation.keys).not.toContain("dagger_cloud_token");
+			expect(observation.keys).not.toContain("Dagger_Session_Port");
+			expect(observation.keys).not.toContain("xdg_config_home");
+			expect(observation.keys).not.toContain("DAGGER_ENV");
 			await expect(access(observation.settings)).rejects.toThrow();
 		}
 		expect(observations).toHaveLength(pact.interactions.length);
@@ -170,12 +194,7 @@ it("executes the subprocess Pact with isolated Cloud settings and preserves fail
 it("rejects mismatched CLI versions before starting an engine", async () => {
 	const root = await mkdtemp(join(tmpdir(), "hobo-dagger-version-"));
 	try {
-		const executable = join(root, "dagger.ts");
-		await writeFile(
-			executable,
-			await readFile(new URL("./fixtures/native-cli.ts", import.meta.url)),
-			{ mode: 0o755 },
-		);
+		const executable = await prepareCli(root);
 		await expect(
 			runDaggerChecks(config, {
 				cwd: root,
@@ -226,17 +245,162 @@ it("honors an already-aborted request before launching the CLI", async () => {
 	).rejects.toThrow(/abort/i);
 });
 
+it("runs legacy version output and a named workspace overlay with successful exit status", async () => {
+	const root = await mkdtemp(join(tmpdir(), "hobo-dagger-success-"));
+	try {
+		const executable = await prepareCli(root);
+		const selected = parseDaggerCheckConfig(
+			JSON.stringify({ ...configJson, environment: "ci", timeoutSeconds: 10 }),
+		);
+		expect(
+			await runDaggerChecks(selected, {
+				cwd: root,
+				executable,
+				env: {
+					...process.env,
+					FIXTURE_EXIT_CODE: "0",
+					FIXTURE_VERSION_OUTPUT: "dagger v1.0.0-beta.21 (legacy)\n",
+				},
+			}),
+		).toBe(0);
+		expect(daggerCheckArgs(selected, root)).toContain("--env=ci");
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
+it("rejects unrecognized version output even if its second token matches the pin", async () => {
+	const root = await mkdtemp(join(tmpdir(), "hobo-dagger-bad-version-"));
+	try {
+		const executable = await prepareCli(root);
+		await expect(
+			runDaggerChecks(config, {
+				cwd: root,
+				executable,
+				env: {
+					...process.env,
+					FIXTURE_VERSION_OUTPUT: "unrelated v1.0.0-beta.21\n",
+				},
+			}),
+		).rejects.toThrow(/unrecognized version/);
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
+it("rejects a missing workspace configuration before launching any CLI", async () => {
+	const root = await mkdtemp(join(tmpdir(), "hobo-dagger-no-workspace-"));
+	try {
+		await expect(
+			runDaggerChecks(config, { cwd: root, executable: "not-installed" }),
+		).rejects.toThrow(/workspace configuration not found/);
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
+it("bounds a hung check without a caller-provided abort signal", async () => {
+	const root = await mkdtemp(join(tmpdir(), "hobo-dagger-timeout-"));
+	try {
+		const executable = await prepareCli(root);
+		const selected = parseDaggerCheckConfig(
+			JSON.stringify({ ...configJson, timeoutSeconds: 1 }),
+		);
+		await expect(
+			runDaggerChecks(selected, {
+				cwd: root,
+				executable,
+				env: { ...process.env, FIXTURE_WAIT: "1" },
+			}),
+		).rejects.toBeInstanceOf(DaggerCheckTimeoutError);
+		const observation = JSON.parse(
+			(await readFile(join(root, "observed.jsonl"), "utf8")).split("\n")[0] ??
+				"{}",
+		);
+		await expect(access(observation.settings)).rejects.toThrow();
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
+it.skipIf(process.platform !== "linux")(
+	"stops a transport child even when the CLI exits first on SIGTERM",
+	async () => {
+		const root = await mkdtemp(join(tmpdir(), "hobo-dagger-process-group-"));
+		const controller = new AbortController();
+		let running: Promise<number> | undefined;
+		let pid = 0;
+		try {
+			const executable = await prepareCli(root);
+			running = runDaggerChecks(config, {
+				cwd: root,
+				executable,
+				signal: controller.signal,
+				env: { ...process.env, FIXTURE_CHILD: "1" },
+			});
+			const rejected = expect(running).rejects.toThrow(/abort/i);
+			await expect
+				.poll(
+					async () => {
+						pid = Number(
+							await readFile(join(root, "child.pid"), "utf8").catch(() => "0"),
+						);
+						return pid > 0;
+					},
+					{ timeout: 10_000 },
+				)
+				.toBe(true);
+			controller.abort();
+			await rejected;
+			await expect
+				.poll(
+					async () => {
+						const state = await readFile(`/proc/${pid}/stat`, "utf8").catch(
+							() => "",
+						);
+						return state !== "" && !/\)\s+Z\s/.test(state);
+					},
+					{ timeout: 1000 },
+				)
+				.toBe(false);
+		} finally {
+			controller.abort();
+			await running?.catch(() => {});
+			if (pid) {
+				try {
+					process.kill(pid, "SIGKILL");
+				} catch {
+					/* child already reaped */
+				}
+			}
+			await rm(root, { recursive: true, force: true });
+		}
+	},
+	20_000,
+);
+
+it.skipIf(process.platform === "win32")(
+	"rejects a FIFO config without waiting for a writer",
+	async () => {
+		const root = await mkdtemp(join(tmpdir(), "hobo-dagger-fifo-"));
+		try {
+			const path = join(root, "config.pipe");
+			execFileSync("mkfifo", [path]);
+			await expect(
+				runDaggerCheckCli(["--config", path, "--plan"], { cwd: root }),
+			).rejects.toThrow(/must be a file/);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	},
+);
+
 it("bounds abort cleanup even when the CLI ignores SIGTERM", async () => {
 	const root = await mkdtemp(join(tmpdir(), "hobo-dagger-abort-"));
 	const controller = new AbortController();
 	let running: Promise<number> | undefined;
 	try {
-		const executable = join(root, "dagger.ts");
-		await writeFile(
-			executable,
-			await readFile(new URL("./fixtures/native-cli.ts", import.meta.url)),
-			{ mode: 0o755 },
-		);
+		const executable = await prepareCli(root);
 		running = runDaggerChecks(config, {
 			cwd: root,
 			executable,

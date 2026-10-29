@@ -5,6 +5,10 @@
   verifies version pinning, exact check argv, inherited Cloud/session removal,
   saved-login isolation, preserved proxy/CA settings, nonzero exits and planning.
   The fixture does not run a Dagger engine or contact external services.
+  Native and legacy version formats, overall deadlines, process-group cleanup,
+  named overlays, transport selection and nonblocking config-file rejection are
+  covered by the same suite. The separate `../acceptance` lane verifies the built
+  CLI on real operator-owned engines; it is not part of the offline Pact fixture.
 - `readiness.pact.json`: synchronous-message expectation for immutable implemented
   readiness; `readiness.consumer.test.ts` invokes the real SDK getter/parser.
 - `execution.pact.json`: synchronous-message command requests and output expectations

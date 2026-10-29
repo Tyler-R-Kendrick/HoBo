@@ -176,7 +176,7 @@ package ci
 
 #Ci: #SandboxMeasuredUsage | #SandboxAllowance | #SandboxPricing | #DesiredCiPolicy | #BudgetSignal | #BudgetRoutingPolicy | #Offer | #Account | #Connection | #Configuration | #ConfigurationState | #ControlRecord | #AccountState | #RepositorySetupRequest | #ReconcileRequest | #ControlCredential | #ControlCredentials | #Job | #Lease | #CiEvent | #Snapshot | #PipelineStep | #Pipeline | #PipelineStepResult | #PipelineArtifact | #PipelineResult
 
-#PipelineStep: {id: string & !="", argv: [string & !="", ...string], cwd: string, env: [string]: string}
+#PipelineStep: {id: string & !="", argv: [string & !="", ...string], cwd: string, env: [string & !="__proto__"]: string}
 #Pipeline: {
  id: string & =~"^[A-Za-z0-9_-]{1,100}$"
  accountId: string & !=""

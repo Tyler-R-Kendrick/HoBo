@@ -26,6 +26,20 @@ function pipeline(extra = {}) {
 		}),
 	);
 }
+it("rejects environment map keys that protobuf would silently discard", () => {
+	expect(() =>
+		pipeline({
+			steps: [
+				{
+					id: "check",
+					argv: ["node", "--version"],
+					cwd: ".",
+					env: JSON.parse('{"__proto__":"explicit-value"}'),
+				},
+			],
+		}),
+	).toThrow(/prototype/);
+});
 function backend() {
 	const calls: string[] = [];
 	const port: PipelineBackend = {

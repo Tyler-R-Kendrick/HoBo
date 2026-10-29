@@ -37,6 +37,20 @@ the shipped transport, redirects and cancellation. Native artifact task inputs
 are also checked against their Pact during the generated-script acceptance test.
 Hand-authored consumer contracts remain distinct from remote Azure evidence.
 
+Run completion and cancellation require the requested run ID, so a terminal
+response for another run cannot release a known unfinished execution. Admission
+requires one unambiguous self-hosted pool and an exact plan-digest argument.
+Request/header and response-body waits honor abort independently of a custom
+transport; late responses and failed cleanup promises are drained without
+exposing transport credential material. Cancellation reconciliation has its own
+bounded window. The edge-case Pact records these refusal and lifecycle states.
+
+Downloaded bundle verification checks the physical declared tree, including
+zero-byte files, while refusing unlisted entries, links and special files. Source
+constructors reject prototype-map keys before protobuf can silently discard a
+declared environment variable. The portable Pipeline constructor enforces that
+same rule for every CI backend; no new durable command/event format is introduced.
+
 An explicit `ado` backend binding also integrates with the existing SQLite
 scheduler. Provider/backend pairing prevents accidental binding to a different
 execution adapter. The shared actor owns lease events, snapshots and completed

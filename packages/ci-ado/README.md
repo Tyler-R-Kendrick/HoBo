@@ -221,10 +221,18 @@ hand-authored consumer expectations do not constitute remote Azure provider
 verification or published Pact Broker results. The authenticated `live` command
 remains a separate check of actual agent assignment and service behavior.
 
+The [edge-case matrix](test/edges/README.md) maps admission, failure, cancellation,
+transport, filesystem, configuration and CLI boundaries to executable tests.
+Cancellation confirms the exact run identity, and body/header waits are bounded
+even when a custom transport ignores abort. Download verification rejects extra
+entries and symlinks as well as incorrect hashes. Git refs and prototype-map keys
+are rejected before they can produce different execution intent.
+
 ```sh
 corepack pnpm --filter @hobo/ci-ado build
 corepack pnpm --filter @hobo/ci-ado typecheck
 corepack pnpm --filter @hobo/ci-ado test
 corepack pnpm --filter @hobo/ci-ado test:contracts
+corepack pnpm --filter @hobo/ci-ado test:coverage
 corepack pnpm codegen:check --filter packages/ci-ado
 ```

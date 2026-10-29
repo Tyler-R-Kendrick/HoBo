@@ -19,3 +19,8 @@ Azure DevOps offers pair `provider: "azure-devops"` with `backend: "ado"`;
 desired policy accepts the same provider kind. CUE and runtime configuration
 parsers reject mismatched backend/provider pairs. This authorizes an explicitly
 host-bound adapter and does not infer a provider entitlement or remote agent.
+
+Portable Pipeline environment maps reject `__proto__` before protobuf JSON
+parsing can discard that declared binding. The CUE fixture and runtime constructor
+enforce the same rule across all backends; literal values and ordinary names such
+as `constructor` keep their normal meaning.

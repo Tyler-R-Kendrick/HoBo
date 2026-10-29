@@ -524,3 +524,12 @@ container lifecycle checks. Exact-six current-head review and PR-base gates are
 required before squash merge. Actual GitHub/vendor execution remains unverified:
 runner access was HTTP403 and automatic review rejected an extra optional probe;
 no external account/repository resources were created.
+
+
+## 2026-10-29 — Cloudflare CI local execution (#1610)
+
+- **Outcome:** squash-merged [#1610](https://github.com/Tyler-R-Kendrick/HoBo/pull/1610), `147e351edf6dd9ada52e14158f1f03e472b24acc`. Existing `@hobo/ci-cf` now includes opt-in local preparation, Wrangler/Docker execution and local R2 snapshots.
+- **Review repairs:** clear inherited Git repository selectors, reject stale preparations at the same source SHA, describe committed-file inclusion accurately, and name asynchronous submission `local:trigger`.
+- **Validation:** 15 staged/PR-base gates, 35 package tests and 290 root tests; clean-checkout package rerun passed 35/35. Exact-six synthetic review was unanimous yay with a current-head assertion immediately before merge.
+- **PR state:** no unresolved threads or requested changes; CodeRabbit automatic review skipped by repository-star policy. No billing or code-check exception used.
+- **Release boundary:** native command execution remains unverified because this host lacks the iptables socket module required by the Cloudflare proxy container. The local mode is explicitly experimental; no cloud deployment or hosted billing acceptance is claimed.

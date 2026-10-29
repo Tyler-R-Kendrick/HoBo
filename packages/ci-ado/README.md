@@ -203,18 +203,28 @@ matrices, approvals and deployments still require the official agent; this CLI
 does not emulate Azure YAML offline. Azure DevOps Server's Build Artifacts tasks
 are outside this Services adapter.
 
-Protobuf/CUE contracts, valid/invalid fixtures, hand-authored consumer Pacts,
-real subprocess tests and deterministic YAML fixtures cover local boundaries.
-The generated two-job acceptance test executes the actual Bash/CLI scripts with
-a filesystem stand-in for Azure upload/download. Live REST tests use injected
-HTTP responses; these are not Azure provider verification. No live organization,
-agent assignment, native service upload/download or billing verification was
-available in the implementation environment. Run the live acceptance command
-against the intended organization before certifying deployment there.
+Protobuf/CUE contracts, valid/invalid fixtures, real subprocess tests and
+deterministic YAML fixtures cover local boundaries. PACT brokers external
+connections for the default acceptance lane through `@hobo/contract-harness`.
+The complete REST Pact declares pool discovery, revision lookup, compiled/shortcut
+previews, pinned queueing, polling, timeline, artifacts, cancellation, redirects
+and authorization failures. Tests exercise the shipped client through both an
+injected transport and a real loopback HTTP broker. Requests must match the
+recorded headers, exact query/revision, commit and body; unmatched or unconsumed
+interactions fail independently of the client's error handling.
+
+The generated two-job acceptance test executes actual Bash/CLI scripts. Its
+filesystem task host checks native publication and download inputs against the
+Pipeline Artifact Pact before transferring collected bytes. Local end-to-end
+contract acceptance needs no Azure organization, agent or credentials. These
+hand-authored consumer expectations do not constitute remote Azure provider
+verification or published Pact Broker results. The authenticated `live` command
+remains a separate check of actual agent assignment and service behavior.
 
 ```sh
 corepack pnpm --filter @hobo/ci-ado build
 corepack pnpm --filter @hobo/ci-ado typecheck
 corepack pnpm --filter @hobo/ci-ado test
+corepack pnpm --filter @hobo/ci-ado test:contracts
 corepack pnpm codegen:check --filter packages/ci-ado
 ```

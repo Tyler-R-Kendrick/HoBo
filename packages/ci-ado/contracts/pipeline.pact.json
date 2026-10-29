@@ -1,0 +1,48 @@
+{
+  "consumer": {
+    "name": "hobo-ci-ado-project"
+  },
+  "provider": {
+    "name": "azure-pipelines-yaml"
+  },
+  "interactions": [
+    {
+      "type": "Synchronous/Messages",
+      "description": "self-hosted job and Pipeline Artifact publication",
+      "request": {
+        "contents": {
+          "schemaVersion": "hobo.ci.ado/v1",
+          "pool": "hobo-local",
+          "demands": [
+            "Agent.OS -equals Linux"
+          ],
+          "pipelinePath": "packages/ci-ado/examples/pipeline.json",
+          "artifactPrefix": "hobo"
+        }
+      },
+      "response": [
+        {
+          "contents": {
+            "pool": {
+              "name": "hobo-local",
+              "demands": [
+                "Agent.OS -equals Linux"
+              ]
+            },
+            "task": "PublishPipelineArtifact@1",
+            "inputs": {
+              "targetPath": "$(Build.SourcesDirectory)/hobo-ci-result.txt",
+              "artifact": "hobo-1",
+              "publishLocation": "pipeline"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "4.0.0"
+    }
+  }
+}

@@ -8,6 +8,7 @@ HoBo CI is a sibling SDK family in the HoBo monorepo:
 | [`@hobo/ci-gh-actions`](../ci-gh-actions/README.md) | Hosted relay, tenant API, repository installer and JIT-runner host |
 | [`@hobo/ci-dagger`](../ci-dagger/README.md) | Native Dagger CI checks on local/self-hosted engines and portable SDK adapter |
 | [`@hobo/ci-cf`](../ci-cf/README.md) | Implemented native Cloudflare CI adapter |
+| [`@hobo/ci-ado`](../ci-ado/README.md) | Local command checks and self-hosted Azure Pipelines configuration |
 
 A Sandbox offer requires a trusted current rate card for CPU, provisioned
 memory, creation, network, proxy, bootstrap and any host charges. The quote reserves
@@ -325,3 +326,17 @@ treated as a safe desired-only write. Policy contracts, CUE fixtures, the
 The `vercel` declaration must match a separately provisioned Sandbox offer; its
 `runsOn` value identifies that offer and is not a GitHub runner label. Public
 repository and pull request jobs currently require an isolated Sandbox offer.
+
+## Azure Pipelines and shared workspace execution
+
+[`@hobo/ci-ado`](../ci-ado/README.md) provides local command preflight and generates
+Azure DevOps Services YAML for an explicitly named self-hosted Linux agent pool,
+with native Pipeline Artifact publication. It uses the same portable Pipeline
+contract. Full Azure YAML execution remains with Microsoft's official agent.
+Direct ADO execution is not registered as a scheduler offer; account routing and
+budget policy vocabulary remain unchanged.
+
+The Node-only `@hobo/ci/workspace-backend` entrypoint owns shared POSIX process,
+path, cancellation and bounded-file artifact handling for Actions and ADO. It
+inherits only host plumbing and explicit step environments. The Worker-safe
+`@hobo/ci/execution` entrypoint remains free of Node process/filesystem imports.

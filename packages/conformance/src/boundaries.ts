@@ -101,8 +101,10 @@ const KNOWN_PACKAGE_PATHS = new Set([
 	// HoBo.CI application SDKs compose the existing Dispatcher at layer 3.
 	"packages/ci",
 	"packages/ci-gh-actions",
+	"packages/ci-ado",
 	"packages/ci-dagger",
 	"packages/ci-cf",
+	"packages/ci-vercel",
 	"packages/core",
 	"packages/contract-harness",
 	"packages/wit",

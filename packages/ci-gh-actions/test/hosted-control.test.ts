@@ -328,6 +328,44 @@ describe("bridge-free isolated onboarding", () => {
 		expect(github.request).toHaveBeenCalledTimes(1);
 		expect(github.request.mock.calls[0]?.[2]).toBeUndefined();
 	});
+	it("revalidates an isolated connection live without changing custom settings or revision", async () => {
+		const t = setup();
+		t.relay.options.isolatedHost = {
+			launch: async () => {},
+			reconcile: async () => {},
+		};
+		const github = mockIsolatedGithub(t);
+		const path = "/v1/accounts/self/repositories/isolated-connect";
+		expect((await t.request(path, "POST", "admin", input)).status).toBe(200);
+		const saved = await t.store.configuration();
+		const config = saved?.configuration;
+		const connection = config?.connections[0];
+		if (!config || !connection) throw new Error("missing connected fixture");
+		connection.runnerGroupId = 27;
+		const before = await t.store.configure(config, 2, NOW);
+		const response = await t.request(path, "POST", "admin", input, 3);
+		expect(response.status).toBe(200);
+		expect(await response.json()).toMatchObject({ runnerGroupId: 27 });
+		expect(await t.store.configuration()).toEqual(before);
+		expect(github.request).toHaveBeenCalledTimes(2);
+		expect(
+			(
+				await t.request(
+					path,
+					"POST",
+					"admin",
+					{ ...input, runnerGroupId: 28 },
+					3,
+				)
+			).status,
+		).toBe(409);
+		expect(await t.store.configuration()).toEqual(before);
+		github.appRequest.mockImplementation(
+			async () => new Response(null, { status: 404 }),
+		);
+		expect((await t.request(path, "POST", "admin", input, 3)).status).toBe(503);
+		expect(await t.store.configuration()).toEqual(before);
+	});
 	it("rejects configuration before contacting GitHub when no isolated host is enabled", async () => {
 		const t = setup();
 		const github = mockIsolatedGithub(t);

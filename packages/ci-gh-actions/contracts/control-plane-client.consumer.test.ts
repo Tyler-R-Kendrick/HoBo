@@ -49,6 +49,62 @@ function invoke(client: Client, interaction: z.infer<typeof Interaction>) {
 }
 
 describe("typed account control-plane client consumer", () => {
+	it("stops reading and cancels a finite multi-chunk response at the byte cap", async () => {
+		let pulls = 0;
+		let cancelled = false;
+		const client = createCiRelayClient({
+			origin: ORIGIN,
+			accountToken: () => TOKEN,
+			fetch: async () =>
+				new Response(
+					new ReadableStream<Uint8Array>({
+						pull(controller) {
+							if (++pulls > 16) controller.close();
+							else controller.enqueue(new Uint8Array(1024 * 1024).fill(32));
+						},
+						cancel() {
+							cancelled = true;
+						},
+					}),
+				),
+		});
+		await expect(client.getPolicy()).rejects.toEqual(
+			new CiRelayClientError(200, "invalid protobuf relay response"),
+		);
+		expect(cancelled).toBe(true);
+		expect(pulls).toBeLessThan(16);
+	});
+	it.each([
+		"http",
+		"cross-origin",
+		"oversized",
+	])("refuses %s responses even when body cancellation never settles", async (kind) => {
+		let cancelled = false;
+		const response = new Response(
+			new ReadableStream<Uint8Array>({
+				start(controller) {
+					if (kind === "oversized")
+						controller.enqueue(new Uint8Array(2 * 1024 * 1024 + 1));
+				},
+				cancel() {
+					cancelled = true;
+					return new Promise<void>(() => {});
+				},
+			}),
+			{ status: kind === "http" ? 503 : 200 },
+		);
+		if (kind === "cross-origin")
+			Object.defineProperty(response, "url", {
+				value: "https://other.example/policy",
+			});
+		const client = createCiRelayClient({
+			origin: ORIGIN,
+			accountToken: () => TOKEN,
+			fetch: async () => response,
+		});
+		await expect(client.getPolicy()).rejects.toBeInstanceOf(CiRelayClientError);
+		expect(cancelled).toBe(true);
+	}, 1000);
 	it("bounds response bytes and rejects malformed UTF-8 without exposing bodies", async () => {
 		for (const payload of [
 			new Uint8Array(2 * 1024 * 1024 + 1).fill(32),

@@ -466,6 +466,31 @@ export function createCiCommand(
 							message:
 								"This repository is connected through a different GitHub App installation. Inspect hobo ci status; changing the installation requires the relay operator to drain and migrate the connection.",
 						};
+					const verified = await client.connectIsolatedRepository(
+						{
+							repository,
+							repositoryId: existing.repositoryId,
+							installationId: existing.installationId,
+							trustedRepositoryAcknowledged: true,
+							publicRepositoryAcknowledged: true,
+							acceptAllMatchingRepositoryJobs: true,
+						},
+						{ revision: state.revision },
+					);
+					if (
+						verified.accountId !== state.account.id ||
+						verified.repository.toLowerCase() !== repository.toLowerCase() ||
+						verified.repositoryId !== existing.repositoryId ||
+						verified.installationId !== existing.installationId ||
+						!verified.isolatedOnly ||
+						!verified.acceptAllMatchingRepositoryJobs
+					)
+						return {
+							ok: false,
+							code: "HOBO_CI_CONNECTION_UNCONFIRMED",
+							message:
+								"The relay did not verify the existing connection. Inspect hobo ci status before retrying setup.",
+						};
 					await saveLink(
 						directory,
 						path,

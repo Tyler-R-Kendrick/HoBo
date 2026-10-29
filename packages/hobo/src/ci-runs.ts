@@ -339,7 +339,9 @@ export async function runCiRuns(input: {
 				let logs: string;
 				try {
 					logs = await gh(["view", String(run.id), "--log"], undefined, true);
-				} catch {
+				} catch (error) {
+					if (error instanceof CiProcessError && error.httpStatus !== 404)
+						throw error;
 					unavailableRuns.push(run.id);
 					continue;
 				}
@@ -489,11 +491,27 @@ export async function runCiRuns(input: {
 				// Pin the newly requested attempt. Another operator may retry the
 				// same run later; that must not replace the result we are waiting for.
 				viewFlags.push("--attempt", String(targetAttempt));
-				while ((await retryRead(readAttempt)) < targetAttempt) {
+				let observedAttempt = await retryRead(readAttempt);
+				while (observedAttempt < targetAttempt) {
 					if (now() >= deadline) throw new CiWaitTimeout();
 					await sleep(1000);
+					observedAttempt = await retryRead(readAttempt);
 				}
 				run = await retryRead(read, true);
+				if (observedAttempt !== targetAttempt || run.status === "completed")
+					return {
+						ok: false,
+						code: "HOBO_CI_RERUN_AMBIGUOUS",
+						status: "unconfirmed",
+						message:
+							"GitHub accepted the rerun, but its attempt cannot be identified safely: another rerun may have intervened or the next attempt already finished. Inspect the run history; the CLI did not repeat the rerun.",
+						data: {
+							repository,
+							runId: run.id,
+							expectedAttempt: targetAttempt,
+							observedAttempt,
+						},
+					};
 			}
 		}
 		if (wait && run.status !== "completed") {
@@ -564,7 +582,9 @@ export async function runCiRuns(input: {
 						undefined,
 						true,
 					);
-				} catch {
+				} catch (error) {
+					if (error instanceof CiProcessError && error.httpStatus !== 404)
+						throw error;
 					unavailableTasks.push(job.name);
 					continue;
 				}

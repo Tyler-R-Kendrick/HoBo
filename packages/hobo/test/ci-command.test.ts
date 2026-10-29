@@ -114,7 +114,7 @@ describe("hobo ci setup", () => {
 	])("refuses unsupported remote %s", (remote) => {
 		expect(() => ciRepositoryFromRemote(remote)).toThrow();
 	});
-	it("connects once, saves no credential, and reuses its user-owned link", async () => {
+	it("connects, saves no credential, and revalidates its user-owned link", async () => {
 		const { cli, requests, home } = await fixture();
 		const first = await cli.run(
 			[
@@ -146,7 +146,32 @@ describe("hobo ci setup", () => {
 		expect(JSON.parse(second.stdout).data.unchanged).toBe(true);
 		expect(
 			requests.filter((path) => path.includes("isolated-connect")),
-		).toHaveLength(1);
+		).toHaveLength(2);
+	});
+	it("does not reuse a connection when live installation validation fails", async () => {
+		let calls = 0;
+		const { cli, home } = await fixture({
+			fetch: async (url, init) => {
+				calls++;
+				if (String(url).endsWith("/policy"))
+					return Response.json(pact.interactions[3]?.response.body);
+				expect(String(url)).toBe(
+					"https://relay.example/v1/accounts/self/repositories/isolated-connect",
+				);
+				expect(init?.method).toBe("POST");
+				return new Response("removed installation", { status: 404 });
+			},
+		});
+		const result = await cli.run(
+			["ci", "enable", "--relay", "https://relay.example", "--json"],
+			{ cwd: home },
+		);
+		expect(result.exitCode).toBe(1);
+		expect(JSON.parse(result.stdout).data.status).toBe(404);
+		expect(calls).toBe(2);
+		await expect(readdir(join(home, "ci/links"))).rejects.toMatchObject({
+			code: "ENOENT",
+		});
 	});
 	it("refuses an explicit installation change when setup reuses an existing connection", async () => {
 		const { cli, home, requests } = await fixture();
@@ -227,6 +252,37 @@ describe("hobo ci setup", () => {
 		);
 		expect(result.exitCode).toBe(0);
 		expect(calls).toBe(3);
+	});
+	it("reports connected status through the connected policy Pact interaction", async () => {
+		const interaction = pact.interactions[3];
+		if (!interaction) throw new Error("missing connected policy interaction");
+		let calls = 0;
+		const { cli, home } = await fixture({
+			fetch: async (url, init) => {
+				calls++;
+				expect(String(url)).toBe(
+					`https://relay.example${interaction.request.path}`,
+				);
+				expect(init?.method).toBe(interaction.request.method);
+				expect(Object.fromEntries(new Headers(init?.headers))).toEqual(
+					Object.fromEntries(new Headers(interaction.request.headers)),
+				);
+				return Response.json(interaction.response.body, {
+					status: interaction.response.status,
+				});
+			},
+		});
+		const result = await cli.run(
+			["ci", "status", "--relay", "https://relay.example", "--json"],
+			{ cwd: home },
+		);
+		expect(result.exitCode).toBe(0);
+		expect(JSON.parse(result.stdout).data).toMatchObject({
+			connected: true,
+			isolated: true,
+			installationId: 42,
+		});
+		expect(calls).toBe(1);
 	});
 	it("requires an explicit remote choice when several exist without a terminal", async () => {
 		const { cli, requests, home } = await fixture({

@@ -23,7 +23,8 @@ commands reuse a unique remote matching the saved repository. Use
 If the App is not installed, the command prints the relay's GitHub installation
 page; install it and repeat the command. Multiple bound installations require
 `--installation-id`. The relay verifies repository ownership and permissions.
-An existing connection is reported as unchanged. If you explicitly select a
+An existing connection is verified against GitHub again and reported as unchanged
+without rewriting its settings or policy revision. If you explicitly select a
 different installation for an existing connection, setup refuses the mismatch;
 the relay operator must drain and migrate that connection. `status --json`
 includes the connection's installation ID.
@@ -59,8 +60,9 @@ not rewrite or commit workflow files. Setup does not prove a live job executed;
 verify the first run and its runner attribution.
 
 The credential-free link lives under `HOBO_HOME/ci/links/`, keyed by the checkout
-root, outside the repository. It records only the origin, account ID, and
-repository. Future setup/status calls reuse that origin for the same repository
+root. The default home is outside the repository; an explicit `--home` or
+`HOBO_HOME` inside the checkout stores the link there. It records only the origin,
+account ID, and repository. Future setup/status calls reuse that origin for the same repository
 and check account continuity. `--relay` and `--repo` explicitly reconnect a target.
 `HOBO_CI_RELAY_URL` can select the relay instead. Each invocation reads and pins
 its credential so token-file rotation cannot switch accounts halfway through
@@ -90,6 +92,9 @@ List defaults to the current branch. Inspect/logs default to the current commit.
 Rerun without an ID selects a failed run for that commit; retrying a successful
 run requires an explicit ID. `--wait` follows one pinned attempt for up to ten
 minutes, tolerating short GitHub read outages without repeating the rerun.
+If a concurrent rerun intervenes or the next attempt finishes before it can be
+observed running, `rerun --wait` reports `HOBO_CI_RERUN_AMBIGUOUS` rather than
+attributing that result to this request. Inspect the run history before retrying.
 Ending the CLI or reaching that deadline does not cancel remote work. Inspect
 the run before repeating a rerun if a request times out. Log reads share a 2 MiB
 output budget; partial results identify unavailable logs and truncation. Human

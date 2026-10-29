@@ -1,3 +1,6 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { delimiter, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
 	CiProcessError,
@@ -166,6 +169,7 @@ describe("HoBo CI GitHub Actions run boundary", () => {
 			"1\n",
 			"",
 			"2\n",
+			JSON.stringify({ ...record, status: "queued", conclusion: "", jobs: [] }),
 			JSON.stringify({ ...record, conclusion: "success", jobs: [] }),
 		]);
 		const result = await fixture.run("rerun", ["123"], { wait: true });
@@ -215,6 +219,7 @@ describe("HoBo CI GitHub Actions run boundary", () => {
 			"1\n",
 			"",
 			"2\n",
+			JSON.stringify({ ...record, status: "queued", conclusion: "", jobs: [] }),
 			JSON.stringify({ ...record, jobs: [] }),
 		]);
 		const result = await fixture.run("rerun", ["123"], { wait: true });
@@ -326,6 +331,7 @@ describe("HoBo CI GitHub Actions run boundary", () => {
 			"",
 			"2",
 			new CiProcessError("failed", "gh", 404),
+			JSON.stringify({ ...record, status: "queued", conclusion: "", jobs: [] }),
 			JSON.stringify({ ...record, conclusion: "success", jobs: [] }),
 		];
 		const result = await runCiRuns({
@@ -347,6 +353,40 @@ describe("HoBo CI GitHub Actions run boundary", () => {
 		expect(result.data?.attempt).toBe(2);
 		expect(calls.filter((args) => args.includes("rerun"))).toHaveLength(1);
 		for (const args of calls.slice(4)) expect(args).toContain("--attempt");
+	});
+	it.each([
+		{ attempt: 2, status: "completed" },
+		{ attempt: 3, status: "completed" },
+		{ attempt: 3, status: "queued" },
+	])("refuses ambiguous rerun attribution for $attempt / $status", async ({
+		attempt,
+		status,
+	}) => {
+		const fixture = harness([
+			JSON.stringify({ ...record, jobs: [] }),
+			"1",
+			"",
+			String(attempt),
+			JSON.stringify({
+				...record,
+				status,
+				conclusion: status === "completed" ? "success" : "",
+				jobs: [],
+			}),
+		]);
+		const result = await fixture.run("rerun", ["123"], { wait: true });
+		expect(result).toMatchObject({
+			ok: false,
+			code: "HOBO_CI_RERUN_AMBIGUOUS",
+			status: "unconfirmed",
+		});
+		expect(result.data).toMatchObject({
+			expectedAttempt: 2,
+			observedAttempt: attempt,
+		});
+		expect(
+			fixture.calls.filter((call) => call.args.includes("rerun")),
+		).toHaveLength(1);
 	});
 	it("returns an explicit wait timeout while remote work continues", async () => {
 		let clock = 0;
@@ -446,10 +486,69 @@ describe("HoBo CI GitHub Actions run boundary", () => {
 			2 * 1024 * 1024 + 1000,
 		);
 	});
+	it.skipIf(process.platform === "win32")(
+		"bounds stdout from the real child-process executor",
+		async () => {
+			const directory = await mkdtemp(join(tmpdir(), "hobo-ci-gh-overflow-"));
+			try {
+				const metadata = JSON.stringify({
+					...record,
+					jobs: [{ databaseId: 1, name: "test", conclusion: "success" }],
+				});
+				await writeFile(
+					join(directory, "gh"),
+					`#!${process.execPath}\nrequire('node:fs').writeFileSync(1, process.argv.includes('--log') ? 'x'.repeat(3 * 1024 * 1024) : ${JSON.stringify(metadata)});\n`,
+					{ mode: 0o700 },
+				);
+				const result = await runCiRuns({
+					command: "logs",
+					repository: "owner/project",
+					cwd: directory,
+					args: ["123"],
+					options: {},
+					env: {
+						...process.env,
+						PATH: `${directory}${delimiter}${process.env.PATH ?? ""}`,
+					},
+				});
+				expect(result.ok).toBe(true);
+				expect(result.data).toMatchObject({ partial: true, truncated: true });
+			} finally {
+				await rm(directory, { recursive: true, force: true });
+			}
+		},
+	);
+	it.each([
+		401, 403, 429,
+	])("preserves HTTP %i from grep and task-log reads", async (status) => {
+		for (const command of ["grep", "logs"]) {
+			const fixture = harness([
+				JSON.stringify(
+					command === "grep"
+						? [record]
+						: { ...record, jobs: [{ databaseId: 1, name: "test" }] },
+				),
+				new CiProcessError("failed", "gh", status),
+			]);
+			const result = await fixture.run(
+				command,
+				command === "grep" ? ["error"] : ["123"],
+				command === "grep" ? { "all-branches": true } : {},
+			);
+			expect(result).toMatchObject({
+				ok: false,
+				code: "HOBO_CI_GITHUB_FAILED",
+				data: { httpStatus: status },
+			});
+			expect(result.message).toContain(
+				status === 429 ? "rate limited" : "denied",
+			);
+		}
+	});
 	it("keeps available grep results when another run's logs have expired", async () => {
 		const fixture = harness([
 			JSON.stringify([record, { ...record, databaseId: 124 }]),
-			new Error("Log archive expired"),
+			new CiProcessError("failed", "gh", 404),
 			"a useful ERROR line",
 		]);
 		const result = await fixture.run("grep", ["error"], {

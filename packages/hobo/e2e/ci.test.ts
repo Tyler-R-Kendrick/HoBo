@@ -45,21 +45,24 @@ let control: ReturnType<typeof createHostedControlPlane>;
 let loseResponse = false;
 let mutations = 0;
 let failure: Error | undefined;
+let installationAvailable = true;
 
 const github: OnboardingGithubPort = {
 	async appRequest(path) {
 		if (path === "/app") return Response.json({ id: 42 });
 		if (path === "/app/installations/10")
-			return Response.json({
-				id: 10,
-				app_id: 42,
-				suspended_at: null,
-				permissions: {
-					actions: "write",
-					administration: "write",
-					metadata: "read",
-				},
-			});
+			return installationAvailable
+				? Response.json({
+						id: 10,
+						app_id: 42,
+						suspended_at: null,
+						permissions: {
+							actions: "write",
+							administration: "write",
+							metadata: "read",
+						},
+					})
+				: new Response(null, { status: 404 });
 		if (/^\/repos\/example\/[a-z-]+\/installation$/.test(path))
 			return Response.json({ id: 10, app_id: 42 });
 		throw new Error("Unexpected GitHub App fixture request");
@@ -149,6 +152,7 @@ async function start(port = 0) {
 						headers.set(name, Array.isArray(value) ? value.join(", ") : value);
 				const init: RequestInit = { method: request.method ?? "GET", headers };
 				if (chunks.length) init.body = Buffer.concat(chunks).toString("utf8");
+				const beforeRevision = (await store.configuration())?.revision;
 				const result = await control(
 					new Request(`${origin}${request.url}`, init),
 				);
@@ -161,7 +165,8 @@ async function start(port = 0) {
 					request.url?.endsWith("/isolated-connect") &&
 					result.ok
 				) {
-					mutations++;
+					if ((await store.configuration())?.revision !== beforeRevision)
+						mutations++;
 					if (loseResponse) {
 						loseResponse = false;
 						request.socket.destroy();
@@ -350,6 +355,19 @@ describe("shipped hobo ci over trusted HTTPS and native PostgreSQL", () => {
 		expect(JSON.parse(enabled.stdout).data.unchanged).toBe(true);
 		expect((await store.configuration())?.revision).toBe(2);
 		expect(mutations).toBe(1);
+	});
+	it("rejects reuse after the App installation is removed while preserving the connection", async () => {
+		const before = await store.configuration();
+		installationAvailable = false;
+		try {
+			const result = await cli(["enable"]);
+			expect(result.code).toBe(1);
+			expect(JSON.parse(result.stdout).data.status).toBe(503);
+			expect(await store.configuration()).toEqual(before);
+			expect(mutations).toBe(1);
+		} finally {
+			installationAvailable = true;
+		}
 	});
 	it("enforces consent and real account authentication without mutating state", async () => {
 		const refused = await cli([

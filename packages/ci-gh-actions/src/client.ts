@@ -100,7 +100,8 @@ async function responseText(response: Response): Promise<string> {
 			if (chunk.done) break;
 			bytes += chunk.value.byteLength;
 			if (bytes > 2 * 1024 * 1024) {
-				await reader.cancel();
+				// Disposal is best effort; a stalled source must not stall refusal.
+				void reader.cancel().catch(() => undefined);
 				throw new Error("Relay response is too large");
 			}
 			chunks.push(chunk.value);
@@ -171,12 +172,11 @@ export function createCiRelayClient(
 				"relay transport failed; operation outcome may be unconfirmed",
 			);
 		}
-		async function refuseResponse(message: string): Promise<never> {
-			try {
-				await response.body?.cancel();
-			} catch {
-				// Failed disposal must not replace the sanitized request refusal.
-			}
+		function refuseResponse(message: string): never {
+			// Disposal must neither delay nor replace the sanitized refusal.
+			void Promise.resolve()
+				.then(() => response.body?.cancel())
+				.catch(() => undefined);
 			throw new CiRelayClientError(response.status, message);
 		}
 		let responseOrigin = base;

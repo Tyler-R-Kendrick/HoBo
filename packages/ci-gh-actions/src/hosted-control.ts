@@ -783,6 +783,28 @@ export function createHostedControlPlane(options: {
 					)
 				)
 					throw new ControlError(409, "repository identity changed");
+				const existing = latest.configuration.connections.find(
+					(entry) => entry.repositoryId === connection.repositoryId,
+				);
+				if (existing?.isolatedOnly) {
+					if (
+						existing.installationId !== connection.installationId ||
+						(input.runnerGroupId !== 0 &&
+							input.runnerGroupId !== existing.runnerGroupId) ||
+						!existing.acceptAllMatchingRepositoryJobs
+					)
+						throw new ControlError(
+							409,
+							"existing connection requires operator migration",
+						);
+					// Identity and authority were checked live above. Revalidation must
+					// preserve custom runner settings, active leases and the revision.
+					return response(
+						200,
+						toJsonString(ConnectionSchema, existing),
+						latest.revision,
+					);
+				}
 				const next = create(ConfigurationSchema, {
 					accounts: latest.configuration.accounts,
 					connections: [

@@ -226,7 +226,15 @@ checked-out revision verification, artifact upload and post-job steps succeeded.
 The matching relay lease recorded the job, stopped both Sandboxes, deleted the
 runner and settled the measured usage. This verifies the Vercel path for that
 workflow and configuration; it does not verify external runner vendors or every
-workflow's dependencies. Live Sandbox tests on a Pro team also verified 16 MiB
+workflow's dependencies. On October 29, 2026, the built product CLI repeated that
+acceptance through `hobo ci rerun --wait` in
+[attempt 4](https://github.com/Tyler-R-Kendrick/HoBo/actions/runs/40569580252/attempts/4).
+GitHub job `123727970151` matched lease `b1c3b545-ee2b-4bfd-be2c-1a47cb4d1257`;
+both sandbox stages stopped, runner deletion was confirmed and 259,321
+microdollars settled against a 637,800 microdollar reservation. Before admission,
+the supported rate reattestation operation refreshed expired zero-credit pricing
+evidence after checking the published rates; budgets and usage accounting stayed
+unchanged. Live Sandbox tests on a Pro team also verified 16 MiB
 transfers through an exposed port and matched forwarding identity claims to the
 guest session; see [Sandbox egress](SANDBOX-EGRESS.md). The gateway's maximum
 transfer size remains unverified.

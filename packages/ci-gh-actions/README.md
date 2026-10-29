@@ -1,5 +1,16 @@
 # HoBo CI GitHub Actions
 
+For end-user setup, use [`hobo ci connect`](../hobo/CI.md). It calls the isolated
+onboarding API; the older workflow-bridge ceremony below remains available to
+SDK callers on relays that support it. The package is publishable with its MIT
+license because the product CLI consumes the exported account client; server
+startup remains an explicit operation.
+The exported browser/Node account client bounds response bodies to 2 MiB and
+rejects invalid UTF-8 before protobuf decoding. Its executable consumer contract
+covers these limits and disposal of error/redirect response streams. Product CLI setup is also checked through the production
+HTTPS control plane and native PostgreSQL store in
+[`packages/hobo/e2e/ci.test.ts`](../hobo/e2e/ci.test.ts).
+
 `@hobo/ci-gh-actions` provides the hosted HoBo CI relay, account API, repository
 installer and ephemeral GitHub Actions runner host. Once the repository's setup
 PR is merged and its connection activated, workflows select HoBo with one line:

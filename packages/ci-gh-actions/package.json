@@ -4,8 +4,9 @@
   "description": "HoBo CI GitHub Actions webhook relay and ephemeral runner providers",
   "license": "MIT",
   "type": "module",
-  "private": true,
+  "publishConfig": { "access": "public" },
   "files": [
+    "LICENSE",
     "dist",
     "templates",
     "src/bootstrap.ts",

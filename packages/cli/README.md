@@ -36,9 +36,9 @@ componentizer seam and contract artifact lane for digest-parity tests.
 
 ## Surface
 
-Canonical verbs: **42**, defined in `src/shell/verbs.ts` — including lifecycle
+Canonical verbs: **43**, defined in `src/shell/verbs.ts` — including lifecycle
 (`up`, `down`, `dev`), identity (`login`, `connection`, `identity`, `access`,
-`claim`), delivery (`feature`, `deploy`, `incident`), control plane (`broker`,
+`claim`), delivery (`feature`, `deploy`, `ci`, `incident`), control plane (`broker`,
 `yard`, `station`), observability (`replay`, `logs`, `inspect`), governance
 (`attest`, `erase`, `runbook`), and the authoring/diagnostics set
 (`plan`, `verify`, `can-deploy`, `doctor`, `codegen`, `build`, `collect`, `stub`,
@@ -46,6 +46,19 @@ Canonical verbs: **42**, defined in `src/shell/verbs.ts` — including lifecycle
 `trails`, `new`), plus `recipes`, `offer`, `messaging`, and `serve`.
 
 Global flags: `--json`, `--camp <camp>`, `--cwd <path>`, `--verbose`, `-q`, `--help`.
+
+`hobo ci` shows setup help. `hobo ci enable` (alias `connect`) connects a GitHub
+repository; `list`/`ls`, `inspect`, `logs`, `grep`, and `rerun` operate on its
+GitHub Actions runs using the authenticated GitHub CLI (`gh`). `status` inspects
+the relay connection. A sole Git remote is selected automatically; pass
+`--remote <name>` to select among several. After connection, use `runs-on: hobo`
+in an Actions workflow and push a commit.
+
+CI works in ordinary Git repositories without a Bindle. The shell handles output,
+cwd and help flags;
+the composed CI handler strictly parses its own setup options. TypeScript and
+the shell dispatch contract tests pin this boundary; the existing envelope
+protobuf/CUE contracts continue to describe the command output.
 
 This package exposes `dispatchCommand` for MCP parity; the composed MCP binary
 ships from `@hobo/hobo` (`hobo-mcp`).

@@ -10,6 +10,7 @@
 	},
 	"files": [
 		"LICENSE",
+		"CI.md",
 		"dist",
 		"wit"
 	],
@@ -33,6 +34,7 @@
 		"@hobo/camps": "workspace:*",
 		"@hobo/capability-profiles": "workspace:*",
 		"@hobo/claims": "workspace:*",
+		"@hobo/ci-gh-actions": "workspace:*",
 		"@hobo/cli": "workspace:*",
 		"@hobo/cloud": "workspace:*",
 		"@hobo/code": "workspace:*",
@@ -81,13 +83,18 @@
 		"tsx": "4.22.4"
 	},
 	"devDependencies": {
+		"@hobo/ci": "workspace:*",
 		"@hobo/contract-harness": "workspace:*",
-		"@hobo/testing": "workspace:*"
+		"@hobo/testing": "workspace:*",
+		"@types/pg": "8.15.5",
+		"pg": "8.22.0"
 	},
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"test": "vitest run"
+		"test": "vitest run",
+		"pretest:ci-e2e": "node --experimental-strip-types ../../scripts/ensure-built.mts",
+		"test:ci-e2e": "vitest run --config vitest.ci-e2e.config.ts"
 	}
 }

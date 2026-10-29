@@ -56,3 +56,10 @@ message LocalDeploymentLifecycleEvent {
   LocalDeploymentReceipt receipt = 1;
   string reason = 2;
 }
+
+// User-owned CLI link. Credentials never enter this record or the repository.
+message CiRepositoryLink {
+  string relay_origin = 1;
+  string account_id = 2;
+  string repository = 3;
+}

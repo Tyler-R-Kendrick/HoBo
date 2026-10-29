@@ -58,6 +58,11 @@ export const CANONICAL_VERBS: readonly Verb[] = [
 		summary: "Attested continuous delivery status/logs/rollback (secret-free)",
 	},
 	{
+		name: "ci",
+		role: "delivery",
+		summary: "Connect a repository and inspect CI runs (connect/list/inspect)",
+	},
+	{
 		name: "incident",
 		role: "delivery",
 		summary: "CD failure disposition: A2H handoff or sandboxed self-heal",
@@ -230,6 +235,7 @@ export const projectScopedVerbs = new Set(
 				"new",
 				"doctor",
 				"login",
+				"ci",
 				"claim",
 				"identity",
 				"trails",
@@ -299,6 +305,63 @@ export function verbHelpText(
 			: options.implemented
 				? "Status: implemented in this composition\n"
 				: "Status: not yet implemented in this composition\n";
+
+	if (verb.name === "ci") {
+		return `HoBo CI
+
+Usage:
+  hobo ci [global flags]
+  hobo ci enable [--remote <name>] [--relay <https-origin>]
+  hobo ci connect                  Alias of enable
+  hobo ci list|ls                  List GitHub Actions runs
+  hobo ci inspect [run]            Inspect a run
+  hobo ci logs [run]               Read run logs
+  hobo ci grep <text>              Search recent run logs
+  hobo ci rerun [run]              Retry a completed run
+  hobo ci status                  Inspect the relay connection
+
+Role: ${verb.role}
+${statusLine}
+Running hobo ci without a subcommand shows help. connect and enable share the
+repository setup flow. A sole Git remote supplies the repository automatically;
+use --remote when the repository has several remotes.
+
+Connection options:
+  --remote <name>              Select the Git remote
+  --repo <owner/repository>    Select a GitHub repository explicitly
+  --relay <https-origin>      Select the HoBo CI relay
+  --token-file <path>         Read the account credential from a file
+  --installation-id <id>      Select an installed GitHub App
+  --accept-all-matching-jobs  Allow isolated runners for matching repository jobs
+  -y, --yes                   Skip the connection confirmation
+  --non-interactive           Never prompt (enable also requires --yes)
+
+Run options:
+  --git-branch, --branch <name>  Filter list/grep by branch
+  --all-branches                Search list/grep across branches
+  --commit <sha>                Filter list by commit
+  --status <status>             Filter list/grep: queued, running, succeeded,
+                                failed or skipped
+  --limit <count>               List runs (1-100) or log tasks (1-25)
+  --attempt <number>            Select an inspect/logs run attempt
+  --wait                        Wait for inspect/rerun completion
+  --failed                      Read failed job logs only
+  --task <name>                 Select an exact job name for logs (repeatable)
+  --grep <text>                 Filter log lines by text
+  --runs <count>                Search this many recent runs with grep (1-50)
+
+--follow, --level and --next are unsupported. GitHub Actions logs are
+unstructured; use --grep for text filtering.
+
+Use runs-on: hobo in a GitHub Actions workflow, then push a commit.
+Authentication: HOBO_CI_ACCOUNT_TOKEN, HOBO_CI_ACCOUNT_TOKEN_FILE or --token-file.
+Relay selection: --relay or HOBO_CI_RELAY_URL on first connection. Run commands
+use the authenticated GitHub CLI (gh). Credentials are never written to the
+repository. Use --json, --format json or -F json for machine-readable output.
+HoBo runs existing Actions workflows; Vercel's Turbo task tags and invocation
+IDs do not apply.
+`;
+	}
 
 	if (verb.name === "identity") {
 		return `HoBo identity

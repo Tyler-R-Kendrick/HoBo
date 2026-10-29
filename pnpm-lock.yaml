@@ -1334,6 +1334,9 @@ importers:
       '@hobo/capability-profiles':
         specifier: workspace:*
         version: link:../capability-profiles
+      '@hobo/ci-gh-actions':
+        specifier: workspace:*
+        version: link:../ci-gh-actions
       '@hobo/claims':
         specifier: workspace:*
         version: link:../claims
@@ -1476,12 +1479,21 @@ importers:
         specifier: 4.22.4
         version: 4.22.4
     devDependencies:
+      '@hobo/ci':
+        specifier: workspace:*
+        version: link:../ci
       '@hobo/contract-harness':
         specifier: workspace:*
         version: link:../contract-harness
       '@hobo/testing':
         specifier: workspace:*
         version: link:../testing
+      '@types/pg':
+        specifier: 8.15.5
+        version: 8.15.5
+      pg:
+        specifier: 8.22.0
+        version: 8.22.0
 
   packages/iac/iac-crossplane:
     dependencies:

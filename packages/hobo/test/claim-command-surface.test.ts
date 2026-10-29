@@ -23,12 +23,20 @@
  * deployment stream is fenced by owner epoch. Appending outside the fence
  * would let a stale process overwrite an ownership change it never saw.
  */
-import type { CliContext, YardRuntime } from "@hobo/cli";
-import { deploymentIdFor } from "@hobo/cli";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { YardRuntime } from "@hobo/cli";
+import { deploymentIdFor, parseArgv } from "@hobo/cli";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { RemoteBrokerClientError } from "../src/broker-remote-client.js";
+import {
+	type RemoteBrokerClient,
+	RemoteBrokerClientError,
+	type RemoteClaimRequest,
+	type RemoteClaimResult,
+} from "../src/broker-remote-client.js";
 import {
 	type ClaimCommandDeps,
 	createClaimCommand,
@@ -38,48 +46,50 @@ import { createDefaultYardRuntime } from "../src/index.js";
 const BROKER = "https://public.example.com";
 
 let openStores: RuntimeLocalEventStore[] = [];
+const credentialHomes: string[] = [];
 
 afterEach(() => {
 	for (const store of openStores) store.close();
 	openStores = [];
+	for (const home of credentialHomes.splice(0))
+		rmSync(home, { recursive: true, force: true });
 });
 
 function runtime(): YardRuntime {
 	const created = createDefaultYardRuntime();
+	// SAFETY: the default runtime factory owns and returns a RuntimeLocalEventStore.
 	openStores.push(created.store as RuntimeLocalEventStore);
 	return created;
 }
 
 /** A remote client that records its claim call and answers what a test needs. */
-function fakeRemote(
-	answer: Partial<{
-		deploymentId: string;
-		alreadyClaimed: boolean;
-		owner: unknown;
-		previousOwner: unknown;
-		resources: Record<string, string>;
-		primaryUrl: string;
-		status: string;
-	}> = {},
-) {
-	const calls: Array<Record<string, unknown>> = [];
+function fakeRemote(answer: Partial<RemoteClaimResult> = {}) {
+	const calls: RemoteClaimRequest[] = [];
+	const unused = async () => {
+		throw new Error("Unexpected non-claim operation");
+	};
+	const client: RemoteBrokerClient = {
+		brokerUri: BROKER,
+		discover: unused,
+		createAnonymousSession: unused,
+		place: unused,
+		claim: async (input: RemoteClaimRequest) => {
+			calls.push(input);
+			return {
+				deploymentId: "dep-1",
+				alreadyClaimed: false,
+				owner: { kind: "user", id: "acme" },
+				previousOwner: { kind: "user", id: "temp:abc" },
+				resources: { web: "https://app.example", kv: "kv://store" },
+				primaryUrl: "https://app.example",
+				status: "running",
+				...answer,
+			};
+		},
+	};
 	return {
 		calls,
-		client: {
-			claim: async (input: Record<string, unknown>) => {
-				calls.push(input);
-				return {
-					deploymentId: "dep-1",
-					alreadyClaimed: false,
-					owner: { kind: "user", id: "acme" },
-					previousOwner: { kind: "user", id: "temp:abc" },
-					resources: { web: "https://app.example", kv: "kv://store" },
-					primaryUrl: "https://app.example",
-					status: "running",
-					...answer,
-				};
-			},
-		} as never,
+		client,
 	};
 }
 
@@ -89,24 +99,32 @@ const NO_PRESENTER: NonNullable<ClaimCommandDeps["presenter"]> = {
 	presentAnonymous: () => {
 		throw new Error("not used by claim");
 	},
-} as never;
+};
 
 async function run(
 	args: readonly string[],
 	options: {
-		readonly flags?: Record<string, unknown>;
+		readonly flags?: Partial<ReturnType<typeof parseArgv>["flags"]>;
 		readonly deps?: ClaimCommandDeps;
 		readonly cwd?: string;
 	} = {},
 ) {
 	const cwd = options.cwd ?? "/tmp/hobo-claim-project";
+	const hoboHome = mkdtempSync(join(tmpdir(), "hobo-claim-credentials-"));
+	credentialHomes.push(hoboHome);
+	const env = { HOBO_HOME: hoboHome };
 	return createClaimCommand({
-		env: {},
+		env,
 		presenter: NO_PRESENTER,
-		...(options.deps ?? {}),
+		...options.deps,
 	}).run({
-		context: { cwd, projectDir: cwd, env: {} } as unknown as CliContext,
-		flags: (options.flags ?? {}) as never,
+		context: {
+			cwd,
+			projectDir: cwd,
+			identity: null,
+			clients: { readApi: "fixture", runtime: "fixture" },
+		},
+		flags: { ...parseArgv(["claim"]).flags, ...options.flags },
 		args: [...args],
 		verb: "claim",
 		emitProgress: () => {},
@@ -173,7 +191,7 @@ describe("remote lane selection", () => {
 		expect(result.code).toBe("HOBO_CLAIM_NO_TOKEN");
 		expect((result.remediation ?? []).join(" ")).toContain("--anonymous");
 		expect((result.remediation ?? []).join(" ")).toContain(BROKER);
-		expect((result.data as { brokerUri: string }).brokerUri).toBe(BROKER);
+		expect(result.data).toMatchObject({ brokerUri: BROKER });
 	});
 
 	it("accepts the broker under either flag spelling", async () => {
@@ -189,7 +207,7 @@ describe("remote lane selection", () => {
 				deps: { createRemoteClient: () => client },
 			});
 			expect(result.ok).toBe(true);
-			expect((result.data as { mode: string }).mode).toBe("remote");
+			expect(result.data).toMatchObject({ mode: "remote" });
 		}
 	});
 
@@ -212,17 +230,12 @@ describe("remote claim", () => {
 		});
 		expect(result.ok).toBe(true);
 		expect(result.status).toBe("claimed");
-		const data = result.data as {
-			urlPreserved: boolean;
-			primaryUrl: string;
-			resources: Record<string, string>;
-			previousOwner: { id: string };
-			owner: { id: string };
-		};
-		expect(data.urlPreserved).toBe(true);
-		expect(data.primaryUrl).toBe("https://app.example");
-		expect(data.previousOwner.id).toBe("temp:abc");
-		expect(data.owner.id).toBe("acme");
+		expect(result.data).toMatchObject({
+			urlPreserved: true,
+			primaryUrl: "https://app.example",
+			previousOwner: { id: "temp:abc" },
+			owner: { id: "acme" },
+		});
 		expect(calls[0]).toMatchObject({ claimToken: "tok-1", account: "acme" });
 	});
 
@@ -278,7 +291,7 @@ describe("remote claim", () => {
 					presentAnonymous: () => {
 						throw new Error("not used");
 					},
-				} as never,
+				},
 			},
 		});
 		expect(withSome.calls[0]).toHaveProperty("credential");
@@ -291,24 +304,24 @@ describe("remote claim", () => {
 		const result = await run(["acme"], {
 			flags: { broker: BROKER, token: "stale" },
 			deps: {
-				createRemoteClient: () =>
-					({
-						claim: async () => {
-							throw new RemoteBrokerClientError(
-								"claim token expired",
-								"HOBO_CLAIM_TOKEN_EXPIRED",
-								{ expiredAt: "2026-01-01T00:00:00.000Z" },
-							);
-						},
-					}) as never,
+				createRemoteClient: () => ({
+					...fakeRemote().client,
+					claim: async () => {
+						throw new RemoteBrokerClientError(
+							"claim token expired",
+							"HOBO_CLAIM_TOKEN_EXPIRED",
+							{ expiredAt: "2026-01-01T00:00:00.000Z" },
+						);
+					},
+				}),
 			},
 		});
 		expect(result.ok).toBe(false);
 		expect(result.status).toBe("remote_claim_failed");
 		expect(result.code).toBe("HOBO_CLAIM_TOKEN_EXPIRED");
-		expect((result.data as { expiredAt: string }).expiredAt).toBe(
-			"2026-01-01T00:00:00.000Z",
-		);
+		expect(result.data).toMatchObject({
+			expiredAt: "2026-01-01T00:00:00.000Z",
+		});
 		expect((result.remediation ?? []).join(" ")).toContain("TTL elapsed");
 	});
 
@@ -319,12 +332,12 @@ describe("remote claim", () => {
 			run(["acme"], {
 				flags: { broker: BROKER, token: "tok" },
 				deps: {
-					createRemoteClient: () =>
-						({
-							claim: async () => {
-								throw new TypeError("client is broken");
-							},
-						}) as never,
+					createRemoteClient: () => ({
+						...fakeRemote().client,
+						claim: async () => {
+							throw new TypeError("client is broken");
+						},
+					}),
 				},
 			}),
 		).rejects.toThrow("client is broken");
@@ -352,8 +365,8 @@ describe("local lane", () => {
 		expect(result.ok).toBe(false);
 		expect(result.code).toBe("HOBO_CLAIM_NO_DEPLOYMENT");
 		expect(result.message).toContain("hobo up");
-		expect((result.data as { deploymentId: string }).deploymentId).toBe(
-			deploymentIdFor("/tmp/hobo-claim-never-deployed"),
-		);
+		expect(result.data).toMatchObject({
+			deploymentId: deploymentIdFor("/tmp/hobo-claim-never-deployed"),
+		});
 	});
 });

@@ -136,6 +136,18 @@
       }
     },
     {
+      "name": "ci",
+      "role": "delivery",
+      "summary": "Connect a repository and inspect CI runs (connect/list/inspect)",
+      "cli": "hobo ci",
+      "mcpTool": "ci",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:ci",
+        "verb": "call"
+      }
+    },
+    {
       "name": "incident",
       "role": "delivery",
       "summary": "CD failure disposition: A2H handoff or sandboxed self-heal",

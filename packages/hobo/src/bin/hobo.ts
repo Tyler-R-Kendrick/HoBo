@@ -7,7 +7,9 @@ import { defaultHoboHome } from "../bare-metal-yard.js";
 
 register();
 
+import { createHoboCli, type HoboCli, parseArgv } from "@hobo/cli";
 import { createCloudflareProvider } from "@hobo/provider-cloudflare";
+import { createCiCommand } from "../ci-command.js";
 
 import { createComposedHoboCli } from "../cli.js";
 import {
@@ -37,9 +39,27 @@ import { removeOwnedDirsOnSignals } from "../owned-temp-dir.js";
 // is bootstrapped alongside cloudflare so local Yards are first-class.
 const args = process.argv.slice(2);
 
+function writeResult(result: Awaited<ReturnType<HoboCli["run"]>>): number {
+	if (result.stdout) process.stdout.write(result.stdout);
+	if (result.stderr) process.stderr.write(result.stderr);
+	return result.exitCode;
+}
+
 async function runComposed(
 	options: DefaultYardRuntimeOptions = {},
 ): Promise<number> {
+	// CI talks to its account relay and GitHub directly. It must work before
+	// local Yard provisioning and without creating an unrelated SQLite journal.
+	let verb: string | null;
+	try {
+		verb = parseArgv(args).verb;
+	} catch {
+		return writeResult(await createHoboCli().run(args));
+	}
+	if (verb === "ci")
+		return writeResult(
+			await createHoboCli({ commands: { ci: createCiCommand() } }).run(args),
+		);
 	// The live Pulumi lane's temporary workspace is removed on exit; as the entry
 	// point, this process has owned temporary directories removed on a signal too.
 	removeOwnedDirsOnSignals();

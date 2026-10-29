@@ -24,6 +24,7 @@
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { PINNED_WASMTIME_VERSION } from "@hobo/runtime-wasm";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { initBareMetalYard } from "../src/bare-metal-yard.js";
@@ -64,7 +65,7 @@ function fakeBinary(path: string, version: string): void {
 function toolchainEnv(hoboHome: string): NodeJS.ProcessEnv {
 	const wasmtime = join(hoboHome, "wasmtime");
 	const kubectl = join(hoboHome, "kubectl");
-	fakeBinary(wasmtime, "wasmtime 26.0.0");
+	fakeBinary(wasmtime, `wasmtime ${PINNED_WASMTIME_VERSION}`);
 	fakeBinary(kubectl, "Client Version: v1.31.0");
 	return {
 		HOBO_HOME: hoboHome,
@@ -100,7 +101,7 @@ async function run(
 	const hoboHome = options.hoboHome ?? home();
 	// SAFETY: this helper supplies the command's complete test-runner context.
 	return createYardCommand().run({
-		context: { cwd: hoboHome, env: options.env ?? { HOBO_HOME: hoboHome } },
+		context: { cwd: hoboHome, env: options.env ?? toolchainEnv(hoboHome) },
 		flags: { home: hoboHome, ...options.flags },
 		args: [...args],
 		emitProgress: () => {},

@@ -1,3 +1,10 @@
+---
+type: Delivery Plan
+title: "HoBo CI hosting and SDK policy plan"
+description: "Selected hosting architecture, policy boundaries and implementation acceptance gates for HoBo CI."
+tags: [ci, hosting, policy]
+---
+
 # HoBo CI hosting and SDK policy plan
 
 Status: Vercel hosting selected by the user, with lowest verified total cost and

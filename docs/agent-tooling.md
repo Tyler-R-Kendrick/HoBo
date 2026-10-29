@@ -13,6 +13,14 @@ OptimizeXP native captures persist the replay command's exit code, mark nonzero 
 
 > **Note:** this is *tooling* config, not part of the HoBo product design (`docs/design/`). It was added on request to make the agents productive in this repo.
 
+The [default dev container](../.devcontainer/devcontainer.json) also installs
+GitHub CLI, Docker in Docker, native Actions runner dependencies and pinned act.
+It starts the local CI runner controller on every container start. Missing
+credentials/configuration leave it waiting while offline checks remain usable.
+See [local CI setup, trust, lifecycle and recovery](../packages/ci-gh-actions/LOCAL-DEVELOPMENT.md)
+for the `local` provider and `HOBO_CI_LOCAL_*` settings. Persistent host runners use
+`hobo-local-host`; only HoBo's reserved JIT runners use `hobo`.
+
 ## Product implementation guardrails
 
 Agents implementing HoBo code must follow the canonical architecture rules in [`../AGENTS.md`](../AGENTS.md): every service boundary is pinned by PACT contracts; records, messages, data shapes, and objects are defined in protobuf with CUE constraints; runtime code parses into derived types instead of validating broad values in place; and flows use CQRS, event stores, materialized views, and actors. Actors consume commands, emit events, and coordinate durable state. Query paths use rx-style projections with cached current snapshots and persisted historical snapshots in a read store.

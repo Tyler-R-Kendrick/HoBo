@@ -252,6 +252,7 @@
         "depot",
         "warpbuild",
         "kubernetes",
+        "local",
         "vercel"
       ]
     },

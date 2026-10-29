@@ -6,8 +6,9 @@ It submits a real HMAC-signed webhook over loopback HTTP to the shipped Relay,
 asserts allocation routing and the exact provider dispatch contract, then runs the
 original `runs-on: hobo` workflow with act's native host executor.
 
-Five provider fixtures use the same workflow bytes: GitHub, Blacksmith, Depot,
-WarpBuild, and Kubernetes. Three additional scenarios exercise free-before-paid,
+Six provider fixtures use the same workflow bytes: GitHub, Blacksmith, Depot,
+WarpBuild, Kubernetes, and the local workstation. The workstation case runs with
+zero monetary budget without inventing free-minute credits. Additional scenarios exercise free-before-paid,
 cheapest-paid-after-exhaustion, and provider-budget fallback. A zero account
 budget explicitly refuses admission and launches zero workflows. Prices and
 allocations are synthetic contract data, not vendor price facts.
@@ -29,7 +30,7 @@ node --import tsx packages/ci-gh-actions/scripts/act-harness.ts \
   --act /tmp/hobo-ci-tools/act --evidence /tmp/hobo-ci-act-evidence
 ```
 
-The checksum-verified installer currently pins the Linux x64 asset. On another
+The checksum-verified installer pins the Linux and macOS x64/arm64 assets. On another
 platform, install the corresponding official v0.2.89 binary and pass `--act`.
 If an outbound proxy requires Node's proxy support, set `NODE_USE_ENV_PROXY=1`
 for the installer; keep normal proxy/CA trust configured. The runtime harness

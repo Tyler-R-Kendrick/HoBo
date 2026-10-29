@@ -1,3 +1,10 @@
+---
+type: Delivery State
+title: "HoBo CI delivery state"
+description: "Durable delivery history and coordination state for the HoBo CI implementation."
+tags: [ci, delivery, state]
+---
+
 # HoBo.CI delivery state
 
 - Current phase: lowest-cost routing implementation and managed Vercel hosting planning

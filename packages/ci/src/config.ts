@@ -65,12 +65,24 @@ export function parseConfiguration(json: string): Configuration {
 					"depot",
 					"warpbuild",
 					"kubernetes",
+					"local",
 					"dagger",
 					"cloudflare",
 					"vercel",
 				].includes(offer.provider)
 			)
 				throw new Error("unsupported provider");
+			if (
+				offer.provider === "local" &&
+				(offer.backend !== "gh-actions" ||
+					offer.runsOn !== "hobo-local-host" ||
+					offer.concurrency !== 1 ||
+					offer.freeMinutes !== 0 ||
+					offer.priceMicrosPerMinute !== 0)
+			)
+				throw new Error(
+					"local provider requires one zero-price gh-actions workstation on hobo-local-host without free-minute credits",
+				);
 			if (offer.backend === "sandbox") {
 				if (!offer.sandboxPricing || offer.freeMinutes !== 0)
 					throw new Error(

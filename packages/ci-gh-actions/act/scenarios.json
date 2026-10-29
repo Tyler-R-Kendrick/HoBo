@@ -1,4 +1,5 @@
 [
+  {"name":"swap-local","expectedProvider":"local","accountBudgetMicros":0,"offers":[{"provider":"local","freeMinutes":0,"priceMicros":0,"budgetMicros":0}]},
   {"name":"swap-github","expectedProvider":"github","offers":[{"provider":"github","freeMinutes":10,"priceMicros":6000,"budgetMicros":1000000}]},
   {"name":"swap-blacksmith","expectedProvider":"blacksmith","offers":[{"provider":"blacksmith","freeMinutes":10,"priceMicros":4000,"budgetMicros":1000000}]},
   {"name":"swap-depot","expectedProvider":"depot","offers":[{"provider":"depot","freeMinutes":10,"priceMicros":2000,"budgetMicros":1000000}]},

@@ -45,6 +45,11 @@ account lease API's actual job attribution to inspect routing and settlement.
 
 ## Follow HoBo platform budgets
 
+For an owned development machine, see [local CI and the default dev container](LOCAL-DEVELOPMENT.md).
+The `local` provider dispatches the existing bridge to `hobo-local-host`; original
+jobs retain `runs-on: hobo`, lease accounting and JIT authorization. Offline act
+also runs the local zero-budget scenario without GitHub credentials.
+
 Stations exports `createCiBudgetRoutingBridge` over the typed relay client.
 Subscribe it to the existing Broker `budget.ThresholdCrossed` and
 `budget.Recovered` facts for the account's tenant. A profile chooses the eligible

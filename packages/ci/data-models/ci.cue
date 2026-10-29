@@ -44,7 +44,7 @@ package ci
 }
 #Offer: {
  id: string & !=""
- provider: "github" | "blacksmith" | "depot" | "warpbuild" | "kubernetes" | "dagger" | "cloudflare" | "vercel"
+ provider: "github" | "blacksmith" | "depot" | "warpbuild" | "kubernetes" | "local" | "dagger" | "cloudflare" | "vercel"
  providerAccountId: string & !=""
  enabled: bool
  runsOn: string & !=""
@@ -60,6 +60,13 @@ package ci
  backend?: "" | "gh-actions" | "dagger" | "cf" | "sandbox"
  sandboxPricing?: #SandboxPricing
  sandboxAllowance?: #SandboxAllowance
+ if provider == "local" {
+  backend: "gh-actions"
+  runsOn: "hobo-local-host"
+  concurrency: 1
+  freeMinutes: 0
+  priceMicrosPerMinute: 0
+ }
 }
 #Account: {
  id: string & !=""
@@ -204,10 +211,11 @@ package ci
 // Desired policy does not contain runtime-owned balances, observations or leases.
 #CiPolicyProvider: {
  id: string & =~"^[A-Za-z0-9_-]{1,80}$"
- kind: "github" | "blacksmith" | "depot" | "warpbuild" | "kubernetes" | "vercel"
+ kind: "github" | "blacksmith" | "depot" | "warpbuild" | "kubernetes" | "local" | "vercel"
  connectionRef: string & !=""
  runsOn: string & =~"^[A-Za-z0-9_.-]{1,100}$"
  enabled?: bool
+ if kind == "local" {runsOn: "hobo-local-host"}
 }
 #CiPolicyPool: {label: "hobo", os: "linux", architecture: "x64"}
 #CiPolicyBudget: {scope: "ci-account", currency: "USD", limitMicros?: int & >=0 & <=9007199254740991, period: "manual", timeZone: "UTC"}

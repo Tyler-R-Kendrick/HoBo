@@ -20,7 +20,9 @@ engine/workspace and rejects Cloud selectors, unsupported versions, flag-shaped
 selectors, paths outside the repository, and excessive parallelism. `ci_dagger.cue`
 contains both named constraints with a `#CiDagger` union because schema-tools vets
 every package fixture against its file-named root definition. The
-`local-checks.json` and `cloud-checks.json` fixtures pin native configuration;
-the existing fixtures continue to pin SDK readiness. Runtime-dependent executable
+`local-checks.json` and `cloud-checks.json` fixtures pin native configuration.
+`minimal-checks.json` exercises omitted engine/workspace defaults; the NUL fixtures
+keep schema rejection aligned with the runtime parser. The existing fixtures
+continue to pin SDK readiness. Runtime-dependent executable
 version matching and child environment isolation are protected by the subprocess
 Pact, not by CUE. There are no new persisted commands, events or read models.

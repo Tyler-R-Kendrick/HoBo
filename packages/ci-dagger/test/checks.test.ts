@@ -27,6 +27,36 @@ const configJson = {
 const config = parseDaggerCheckConfig(JSON.stringify(configJson));
 
 describe("native Dagger checks configuration", () => {
+	it("accepts the minimal shared schema fixture with local defaults", async () => {
+		const minimal = parseDaggerCheckConfig(
+			await readFile(
+				new URL(
+					"../data-models/fixtures/valid/minimal-checks.json",
+					import.meta.url,
+				),
+				"utf8",
+			),
+		);
+		expect(minimal).toMatchObject({
+			engine: "local",
+			workspace: ".",
+			cliVersion: "1.0.0-beta.21",
+			parallel: 0,
+			filters: [],
+			skip: [],
+		});
+	});
+	it.each([
+		"nul-engine.json",
+		"nul-filter.json",
+		"nul-skip.json",
+	])("rejects shared invalid schema fixture: %s", async (fixture) => {
+		const json = await readFile(
+			new URL(`../data-models/fixtures/invalid/${fixture}`, import.meta.url),
+			"utf8",
+		);
+		expect(() => parseDaggerCheckConfig(json)).toThrow();
+	});
 	it("defaults to local engines and freezes the parsed protobuf view", () => {
 		expect(config.engine).toBe("local");
 		expect(config.workspace).toBe(".");

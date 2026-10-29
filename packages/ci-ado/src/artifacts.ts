@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
-import { mkdir, open, realpath, writeFile } from "node:fs/promises";
+import { mkdir, open, opendir, realpath, writeFile } from "node:fs/promises";
 import {
 	basename,
 	dirname,
@@ -131,6 +131,34 @@ export async function readBoundedFile(
 	}
 }
 
+/** Rejects unlisted entries and links without following them during the tree walk. */
+async function verifyBundleEntries(
+	root: string,
+	paths: readonly string[],
+): Promise<void> {
+	const files = new Set([
+		"result.json",
+		...paths.map((path) => `artifacts/${path}`),
+	]);
+	const directories = new Set<string>();
+	for (const file of files) {
+		const parts = file.split("/");
+		for (let end = 1; end < parts.length; end++)
+			directories.add(parts.slice(0, end).join("/"));
+	}
+	async function walk(path: string, prefix: string): Promise<void> {
+		for await (const entry of await opendir(path)) {
+			const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+			if (entry.isDirectory() && directories.has(relativePath)) {
+				await walk(join(path, entry.name), relativePath);
+			} else if (!entry.isFile() || !files.has(relativePath)) {
+				throw new Error("bundle contains an undeclared or non-regular entry");
+			}
+		}
+	}
+	await walk(root, "");
+}
+
 /** Verifies a local or natively downloaded Pipeline Artifact bundle. */
 export async function verifyArtifactBundle(
 	path: string,
@@ -184,5 +212,6 @@ export async function verifyArtifactBundle(
 		)
 			throw new Error("downloaded artifact integrity mismatch");
 	}
+	await verifyBundleEntries(root, expectedArtifactPaths);
 	return report;
 }

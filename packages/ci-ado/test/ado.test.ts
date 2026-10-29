@@ -231,7 +231,8 @@ describe("local ADO command runtime", () => {
 			expect(Buffer.concat(output).toString("utf8")).toContain(
 				"HoBo CI: cancelled",
 			);
-			expect(() => process.kill(commandPid, 0)).toThrow(/ESRCH/);
+			const stoppedPid = commandPid;
+			expect(() => process.kill(stoppedPid, 0)).toThrow(/ESRCH/);
 		} finally {
 			child.kill("SIGKILL");
 			if (commandPid !== undefined) stopProcessGroup(commandPid);

@@ -1,4 +1,4 @@
-import { fromJsonString } from "@bufbuild/protobuf";
+import { fromJson } from "@bufbuild/protobuf";
 import { parseRelativePath } from "@hobo/ci/execution";
 import { type AdoProject, AdoProjectSchema } from "./_generated/project_pb.js";
 
@@ -6,7 +6,17 @@ declare const parsedProject: unique symbol;
 export type ParsedAdoProject = AdoProject & { readonly [parsedProject]: true };
 
 export function parseAdoProject(json: string): ParsedAdoProject {
-	const project = fromJsonString(AdoProjectSchema, json);
+	// Reject this map key before protobuf's defensive JSON parser can silently discard it.
+	const project = fromJson(
+		AdoProjectSchema,
+		JSON.parse(json, (key, value) => {
+			if (key === "__proto__")
+				throw new Error(
+					"prototype keys are not allowed in project configuration",
+				);
+			return value;
+		}),
+	);
 	if (
 		project.schemaVersion !== "hobo.ci.ado/v1" ||
 		!/^[A-Za-z0-9_][A-Za-z0-9_. -]{0,99}$/.test(project.pool) ||

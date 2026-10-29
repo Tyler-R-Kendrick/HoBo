@@ -32,6 +32,12 @@ export function parseAdoLiveTarget(json: string): ParsedAdoLiveTarget {
 		!target.pipelineId ||
 		!/^refs\/heads\/[A-Za-z0-9_./-]+$/.test(target.refName) ||
 		target.refName.includes("..") ||
+		target.refName.endsWith(".") ||
+		target.refName
+			.split("/")
+			.some(
+				(part) => !part || part.startsWith(".") || part.endsWith(".lock"),
+			) ||
 		!/^[a-f0-9]{40}$/.test(target.sourceVersion) ||
 		!["pat", "bearer"].includes(target.authentication) ||
 		target.timeoutSeconds < 1 ||
@@ -66,23 +72,53 @@ function bashScript(step: AdoYamlStep): string {
 		? (step.inputs.script ?? "")
 		: "";
 }
-async function boundedText(response: Response): Promise<string> {
+function hasPlanGuard(script: string, digest: string): boolean {
+	return new RegExp(`(?:^|\\s)--expected-plan[ \\t]+${digest}(?=\\s|$)`).test(
+		script,
+	);
+}
+async function boundedText(
+	response: Response,
+	signal: AbortSignal,
+): Promise<string> {
 	if (!response.body) throw new Error("Azure returned an empty response");
 	const reader = response.body.getReader();
 	const buffers: Uint8Array[] = [];
 	let size = 0;
 	try {
 		for (;;) {
-			const { done, value } = await reader.read();
+			const { done, value } = await new Promise<
+				Awaited<ReturnType<typeof reader.read>>
+			>((resolve, reject) => {
+				const aborted = () => {
+					signal.removeEventListener("abort", aborted);
+					reject(new Error("Azure response stopped"));
+				};
+				signal.addEventListener("abort", aborted, { once: true });
+				if (signal.aborted) {
+					aborted();
+					return;
+				}
+				reader.read().then(
+					(value) => {
+						signal.removeEventListener("abort", aborted);
+						resolve(value);
+					},
+					() => {
+						signal.removeEventListener("abort", aborted);
+						reject(new Error("Azure response stream failed"));
+					},
+				);
+			});
 			if (done) break;
 			size += value.byteLength;
 			if (size > 1024 * 1024) {
-				await reader.cancel();
 				throw new Error("Azure response exceeds one MiB");
 			}
 			buffers.push(value);
 		}
 	} finally {
+		void reader.cancel().catch(() => undefined);
 		reader.releaseLock();
 	}
 	return Buffer.concat(buffers).toString("utf8");
@@ -122,16 +158,16 @@ export async function verifyLiveAdoPipeline(
 			: `Bearer ${token}`;
 	const base = target.organizationUrl;
 	const projectBase = `${base}/${encodeURIComponent(target.project)}`;
+	const requestedPolling = options.pollMilliseconds ?? 1000;
+	if (!Number.isFinite(requestedPolling))
+		throw new Error("invalid Azure polling interval");
 	const signal = options.signal
 		? AbortSignal.any([
 				options.signal,
 				AbortSignal.timeout(target.timeoutSeconds * 1000),
 			])
 		: AbortSignal.timeout(target.timeoutSeconds * 1000);
-	const polling = Math.max(
-		1,
-		Math.min(options.pollMilliseconds ?? 1000, 10000),
-	);
+	const polling = Math.max(1, Math.min(requestedPolling, 10000));
 	async function request(
 		url: string,
 		method = "GET",
@@ -139,6 +175,10 @@ export async function verifyLiveAdoPipeline(
 		requestSignal = signal,
 	): Promise<string> {
 		requestSignal.throwIfAborted();
+		const responseSignal = AbortSignal.any([
+			requestSignal,
+			AbortSignal.timeout(10000),
+		]);
 		const init: RequestInit = {
 			method,
 			headers: {
@@ -146,15 +186,41 @@ export async function verifyLiveAdoPipeline(
 				"Content-Type": "application/json",
 			},
 			redirect: "error",
-			signal: AbortSignal.any([requestSignal, AbortSignal.timeout(10000)]),
+			signal: responseSignal,
 		};
 		if (body !== undefined) init.body = body;
-		const response = await requestFetch(url, init);
+		let response: Response;
+		try {
+			const fetching = requestFetch(url, init);
+			response = await new Promise<Response>((resolve, reject) => {
+				const aborted = () => {
+					responseSignal.removeEventListener("abort", aborted);
+					reject(new Error("Azure request stopped"));
+				};
+				responseSignal.addEventListener("abort", aborted, { once: true });
+				if (responseSignal.aborted) aborted();
+				fetching.then(
+					(value) => {
+						responseSignal.removeEventListener("abort", aborted);
+						if (responseSignal.aborted) {
+							// A custom transport can settle late after ignoring abort. Release its body.
+							void value.body?.cancel().catch(() => undefined);
+						} else resolve(value);
+					},
+					(error: Error) => {
+						responseSignal.removeEventListener("abort", aborted);
+						reject(error);
+					},
+				);
+			});
+		} catch {
+			throw new Error(`Azure ${method} transport failed`);
+		}
 		if (!response.ok) {
-			await response.body?.cancel();
+			void response.body?.cancel().catch(() => undefined);
 			throw new Error(`Azure ${method} failed with HTTP ${response.status}`);
 		}
-		return boundedText(response);
+		return boundedText(response, responseSignal);
 	}
 	const api = (path: string) =>
 		`${projectBase}/_apis/${path}${path.includes("?") ? "&" : "?"}api-version=7.1`;
@@ -164,8 +230,11 @@ export async function verifyLiveAdoPipeline(
 			`${base}/_apis/distributedtask/pools?poolName=${encodeURIComponent(project.pool)}&api-version=7.1`,
 		),
 	);
-	const pool = pools.value.find((value) => value.name === project.pool);
-	if (!pool?.id || pool.isHosted !== false)
+	const matchingPools = pools.value.filter(
+		(value) => value.name === project.pool,
+	);
+	const pool = matchingPools[0];
+	if (matchingPools.length !== 1 || !pool?.id || pool.isHosted !== false)
 		throw new Error(
 			"configured pool is missing or is not confirmed self-hosted",
 		);
@@ -222,7 +291,7 @@ export async function verifyLiveAdoPipeline(
 		!producer?.steps.some(
 			(step) =>
 				step.displayName === "Run HoBo CI checks" &&
-				bashScript(step).includes(`--expected-plan ${planDigest}`),
+				hasPlanGuard(bashScript(step), planDigest),
 		) ||
 		!producer.steps.some((step) => step.task === "PublishPipelineArtifact@1") ||
 		!consumer?.steps.some(
@@ -231,7 +300,7 @@ export async function verifyLiveAdoPipeline(
 		!consumer.steps.some(
 			(step) =>
 				step.displayName === "Verify downloaded artifact hashes" &&
-				bashScript(step).includes(`--expected-plan ${planDigest}`) &&
+				hasPlanGuard(bashScript(step), planDigest) &&
 				bashScript(step).includes("--expected-bundle "),
 		)
 	)
@@ -241,28 +310,26 @@ export async function verifyLiveAdoPipeline(
 	let runId = 0;
 	let completed = false;
 	try {
-		let queued: string;
 		try {
-			queued = await request(
+			const queued = await request(
 				api(runPath),
 				"POST",
 				JSON.stringify({ resources }),
 			);
+			const run = parseRemote(AdoRemoteRunSchema, queued);
+			if (!run.id) throw new Error("missing created run identity");
+			runId = run.id;
 		} catch {
 			throw new Error(
 				"Azure run creation was not confirmed; no automatic retry was attempted",
 			);
 		}
-		const run = parseRemote(AdoRemoteRunSchema, queued);
-		if (!run.id)
-			throw new Error("Azure did not return the created run identity");
-		runId = run.id;
 		for (;;) {
 			const build = parseRemote(
 				AdoRemoteBuildSchema,
 				await request(api(`build/builds/${runId}`)),
 			);
-			completed = build.status === "completed";
+			completed = build.id === runId && build.status === "completed";
 			if (
 				build.id !== runId ||
 				build.sourceVersion !== target.sourceVersion ||
@@ -321,6 +388,7 @@ export async function verifyLiveAdoPipeline(
 		const bundles = artifacts.value.filter(
 			(artifact) =>
 				artifact.name.startsWith(`${project.artifactPrefix}-`) &&
+				artifact.name.length > project.artifactPrefix.length + 1 &&
 				artifact.resource?.type === "PipelineArtifact",
 		);
 		if (!bundles.length)
@@ -353,6 +421,8 @@ export async function verifyLiveAdoPipeline(
 							cancellation,
 						),
 					);
+					if (build.id !== runId)
+						throw new Error("cancellation run identity mismatch");
 					if (build.status === "completed") break;
 					await delay(polling, undefined, { signal: cancellation });
 				}

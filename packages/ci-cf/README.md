@@ -6,6 +6,98 @@ used by GitHub Actions or Dagger can execute against a bound Cloudflare CI conte
 Source selection and account authorization belong to the caller's existing
 `CIWorkflow` and HoBo reservation, rather than a second unauthenticated API.
 
+## Run checks locally
+
+The experimental local mode runs the native Cloudflare CI engine on your machine: Wrangler
+emulates the Worker/Workflow and R2, and Docker runs the Sandbox containers.
+This path needs Git, Node 22+, and a running Docker-compatible engine. No
+Cloudflare account, Artifacts repository, R2 bucket or API token is needed.
+It does not register a hosted runner or send jobs to Cloudflare Workers Builds.
+
+Supply the same portable pipeline JSON consumed by `@hobo/ci/execution`. For
+example, replace the smoke command in [`examples/local/pipeline.json`](examples/local/pipeline.json)
+with install/lint/test steps for your project, then run from the HoBo checkout:
+
+```sh
+pnpm --filter @hobo/ci-cf local:prepare \
+  --source /absolute/path/to/your/git-repo \
+  --pipeline /absolute/path/to/checks.json --ref HEAD
+pnpm --filter @hobo/ci-cf local:dev
+```
+
+In a second terminal:
+
+```sh
+pnpm --filter @hobo/ci-cf local:trigger
+pnpm --filter @hobo/ci-cf exec wrangler workflows instances list hobo-ci-cf-local --local
+pnpm --filter @hobo/ci-cf exec wrangler workflows instances describe hobo-ci-cf-local INSTANCE_ID --local
+```
+
+`local:trigger` starts a Workflow asynchronously; inspect its terminal status to learn
+whether checks passed. The dev terminal prints step results and artifact records.
+Stop the dev process with Ctrl-C. To terminate an individual run while dev is
+running, use `wrangler workflows instances terminate hobo-ci-cf-local INSTANCE_ID --local`.
+Cancellation retains the existing adapter's uncertain-shutdown semantics.
+
+Preparation resolves `--ref` to an immutable Git commit, creates a fresh directory
+under `packages/ci-cf/.hobo/work/`, and writes a reviewable `wrangler.jsonc`, trigger
+parameters and Docker build context there. Only that commit's tracked files enter
+the image, including any environment files or dependencies already committed to
+Git. Uncommitted/untracked host files are excluded; Git submodules and LFS payloads need separate
+materialization. Dependency installation belongs in the pipeline. The base image
+is the same pinned Sandbox 0.12.1 image as the cloud example. If your checks need
+other toolchains, extend the prepared Dockerfile before starting dev.
+
+Each preparation has independent local state. `local:dev` and `local:trigger` select
+the latest preparation; `--directory /absolute/path/to/prepared-run` selects an
+older one explicitly. Stop dev before preparing another revision. `--work-root`
+changes the scratch root for all three commands. Remove an unused preparation
+directory to discard its local Workflow/R2 state; Docker images remain subject
+to your usual local Docker cleanup.
+
+The Workflow checks both the source SHA and preparation ID before starting a
+runner, so an old dev session rejects a newly prepared pipeline even at the same
+Git revision. Preparation clears inherited Git repository selectors, including
+hook-local `GIT_DIR`, `GIT_WORK_TREE` and `GIT_INDEX_FILE`, before reading source.
+
+The generated config omits Artifacts and cloud credentials, uses local R2 and
+loopback listening, and disables Wrangler telemetry. The launcher always passes
+`--local`, accepts no extra Wrangler flags, and has no cloud fallback. Source is
+read from an archive baked into the image, so checkout needs no network service.
+The local Sandbox class forces `localBucket: true` for backups, including on
+Docker hosts with FUSE; no presigned remote R2 URLs are used. The SDK's public
+provider discriminator remains `cloudflare-artifacts`, but the local source
+adapter accepts only `local/workspace` and performs no Artifacts operations.
+
+This avoids Cloudflare runtime and storage charges for these checks. It does not
+prevent commands from calling paid APIs, using remote bindings in nested tools,
+or deploying resources. Image/package downloads need network access, and local
+CPU, disk and any Docker subscription still belong to your machine. Local runs
+are for trusted code and do not establish hosted billing or provider acceptance.
+
+Runtime/configuration evidence checked 2026-10-29:
+[Cloudflare CI 0.2.0](https://github.com/cloudflare/ci/releases/tag/v0.2.0),
+[local Containers](https://developers.cloudflare.com/containers/guides/local-dev/),
+[local Workflows](https://developers.cloudflare.com/workflows/build/local-development/),
+and [binding simulation](https://developers.cloudflare.com/workers/local-development/).
+The pinned SDK's Sandbox 0.x API is intentional; newer Sandbox 1.x examples are
+not interchangeable with it.
+
+TypeScript compiles both Worker entrypoints against the actual SDK. Local config
+snapshots and archive tests protect generated inputs, and the local-source Pact
+pins offline checkout, credential refusal and binding-backed backups. The
+pipeline/result protobuf and CUE constraints remain owned by `@hobo/ci`; this
+mode adds no parallel pipeline format or separate execution ledger.
+
+The development environment used for this change built the image and started
+the Worker with all bindings local, but could not complete a native runner:
+Cloudflare's proxy container failed with `iptables ... RULE_APPEND failed`
+because the host lacked the required kernel module. Use a Docker host that
+supports Cloudflare's local container networking. The passing contract tests
+do not substitute for that native acceptance run.
+
+## Use an existing cloud CI context
+
 ```ts
 import { createCloudflareBackend } from "@hobo/ci-cf";
 import { executePipeline, parsePipeline } from "@hobo/ci/execution";

@@ -533,3 +533,11 @@ no external account/repository resources were created.
 - Review: ambiguous registration, cleanup/status, repository-name grammar, test typing and long-idle watchdog findings resolved with executable regressions; independent review clean.
 - Validation: 674 CI/Actions tests, 11 PR-base relevant checks, generated contracts/schema checks, touched script/test typecheck, 50 actual act jobs, base-image and nonroot official-runner smoke checks.
 - Closeout: user authorized squash merge; developer-experience consensus and remote review/check reconciliation recorded on the PR before merge. Live GitHub assignment remains an explicit unverified boundary.
+
+## 2026-10-29 — Cloudflare CI local execution (#1610)
+
+- **Outcome:** squash-merged [#1610](https://github.com/Tyler-R-Kendrick/HoBo/pull/1610), `147e351edf6dd9ada52e14158f1f03e472b24acc`. Existing `@hobo/ci-cf` now includes opt-in local preparation, Wrangler/Docker execution and local R2 snapshots.
+- **Review repairs:** clear inherited Git repository selectors, reject stale preparations at the same source SHA, describe committed-file inclusion accurately, and name asynchronous submission `local:trigger`.
+- **Validation:** 15 staged/PR-base gates, 35 package tests and 290 root tests; clean-checkout package rerun passed 35/35. Exact-six synthetic review was unanimous yay with a current-head assertion immediately before merge.
+- **PR state:** no unresolved threads or requested changes; CodeRabbit automatic review skipped by repository-star policy. No billing or code-check exception used.
+- **Release boundary:** native command execution remains unverified because this host lacks the iptables socket module required by the Cloudflare proxy container. The local mode is explicitly experimental; no cloud deployment or hosted billing acceptance is claimed.

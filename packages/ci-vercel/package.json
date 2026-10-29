@@ -12,6 +12,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./turbo-ci": {
+      "types": "./dist/turbo-ci.d.ts",
+      "default": "./dist/turbo-ci.js"
     }
   },
   "dependencies": {
@@ -32,6 +36,7 @@
   },
   "scripts": {
     "build": "node --import tsx scripts/generate-assets.mts && node --import tsx scripts/generate-proxy-bundle.mts && tsc -p tsconfig.json",
+    "ci:local": "node dist/turbo-ci-cli.js",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "lint": "biome check .",
     "test": "node --import tsx scripts/generate-proxy-bundle.mts --check && vitest run"

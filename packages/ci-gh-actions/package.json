@@ -36,6 +36,10 @@
     "act:install": "node --import tsx scripts/act-install.ts",
     "local:runner": "node --import tsx scripts/local-runner.ts",
     "test:acceptance": "node --import tsx scripts/acceptance.ts",
+    "test:pact": "vitest run contracts/local-runner.pact.test.ts contracts/local-github.pact.test.ts",
+    "test:pact:broker": "node --import tsx scripts/pact-broker.ts",
+    "pact:can-deploy": "node --import tsx scripts/pact-broker.ts --gate",
+    "pact:up": "docker compose --project-name hobo-ci-pact -f contracts/compose.pact.yml up --detach --wait",
     "deploy:check": "node --import tsx scripts/check-deployment.ts",
     "ops": "node dist/ops.js",
     "project": "node dist/project-cli.js",
@@ -45,17 +49,18 @@
     "schema:check": "node --import tsx scripts/project-schema.ts --check"
   },
   "dependencies": {
-    "@hobo/ci": "workspace:*",
     "@bufbuild/protobuf": "2.12.1",
-    "zod": "^4.1.13",
-    "pg": "8.22.0"
+    "@hobo/ci": "workspace:*",
+    "pg": "8.22.0",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@hobo/ci-dagger": "workspace:*",
-    "@hobo/ci-cf": "workspace:*",
-    "@dagger.io/dagger": "0.21.11",
     "@cloudflare/workers-types": "5.20260730.1",
-    "yaml": "2.9.0",
-    "@types/pg": "8.15.5"
+    "@dagger.io/dagger": "0.21.11",
+    "@hobo/ci-cf": "workspace:*",
+    "@hobo/ci-dagger": "workspace:*",
+    "@pact-foundation/pact": "17.1.4",
+    "@types/pg": "8.15.5",
+    "yaml": "2.9.0"
   }
 }

@@ -1,5 +1,10 @@
 # HoBo CI GitHub Actions contract coverage
 
+The [local runner Pact Broker lane](LOCAL-RUNNER-PACT.md) adds generated Pact
+consumer contracts, native provider verification, real broker publication and
+version-matrix gates for local CI. It explicitly retains unverified GitHub
+provider status. The legacy artifacts below have their existing local coverage.
+
 The Pact artifacts in this directory are hand-authored boundary expectations.
 Consumer tests exercise shipped code with strict injected remote responses;
 provider tests exercise the relay over real loopback HTTP. They do not claim

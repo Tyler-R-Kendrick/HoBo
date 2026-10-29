@@ -7,6 +7,31 @@ tags: [ci, delivery, state]
 
 # HoBo.CI delivery state
 
+## Local runner Pact Broker validation — 2026-10-29
+
+- Implemented sequentially on `test/ci-local-pact-broker`, without delegation.
+  The lane uses Pact JS 17.1.4, its native mock server/verifier and a real
+  digest-pinned PostgreSQL-backed Pact Broker bound to loopback.
+- Generated consumer contracts cover 31 relay interactions and 16 GitHub CLI
+  interactions. The runner host's shipped JIT HTTP consumer is exercised directly;
+  the actual relay request handler verifies every owned-provider interaction.
+- Broker publication records branch and source version. Exact-version matrix
+  checks approve verified pairs and reject missing verification, failed provider
+  verification, skew and replacement of immutable consumer contracts. An
+  intentionally broken provider publishes a real failure under a separate
+  negative-control version/branch.
+- GitHub's provider-version selector is independent of HoBo's consumer/source
+  version. It defaults to an explicit unverified sentinel and can use an
+  independently verified upstream version from the shared broker.
+- Before publication, native process/socket/lifecycle tests, all 50 act corpus
+  jobs, two zero-budget connected local executions, capacity withdrawal/replay
+  and three rejecting acceptance faults must pass. Validation also passed 573
+  Actions tests, 247 Vercel tests and direct touched-script/test typechecks.
+- GitHub consumer expectations are published, but no local simulator is labelled
+  a verified GitHub provider. The broker reports that external boundary unknown;
+  `pact:can-deploy` exits nonzero. Successful local validation is not full live
+  production approval. See the [broker scenario inventory](../../../packages/ci-gh-actions/contracts/LOCAL-RUNNER-PACT.md).
+
 ## Local runner end-to-end hardening — 2026-10-29
 
 - Follow-up to merged #1612, implemented and reviewed sequentially in this

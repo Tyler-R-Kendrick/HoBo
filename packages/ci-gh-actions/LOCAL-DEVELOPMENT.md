@@ -1,5 +1,10 @@
 # Run HoBo CI on a development machine
 
+The [Pact Broker validation lane](contracts/LOCAL-RUNNER-PACT.md) runs the local
+scenario corpus, publishes generated integration contracts, verifies HoBo's
+provider and enforces version compatibility. Unverified GitHub provider results
+block its deployment gate.
+
 HoBo can dispatch its existing companion workflow to an owned Linux x64 dev
 machine. The machine hosts one job at a time. The persistent service registers
 disposable official GitHub runners with **`hobo-local-host`**; the companion

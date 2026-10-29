@@ -1,5 +1,10 @@
 # GitHub Actions boundary inventory
 
+The [local runner broker inventory](LOCAL-RUNNER-PACT.md) covers the generated
+31-interaction relay Pact and 16-interaction GitHub CLI consumer Pact, including
+real broker publication, provider verification and failure/version gates. The
+legacy GitHub App artifact described below remains a separate local fixture.
+
 `github-app-boundary.pact.json` contains **hand-authored consumer expectations**.
 It is neither captured provider traffic nor a GitHub-verified contract. Its
 participant names and request/response envelopes follow Pact specification

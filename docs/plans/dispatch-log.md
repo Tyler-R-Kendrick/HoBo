@@ -549,3 +549,12 @@ no external account/repository resources were created.
 - Executable acceptance: two zero-budget local runs through the shipped relay and host launcher; capacity withdrawal and durable replay; three rejecting fault runs. The existing seven-provider-sequence acceptance and 50-job act corpus also passed.
 - Validation: 556 Actions and 247 Vercel tests, package and touched-script/test TypeScript checks; generated embedded bootstrap refreshed from source.
 - Verification boundary: GitHub integration refused creation of a disposable private acceptance repository. No unrelated repository or hosted runner was used. The full layered feature build exceeded the managed environment's disk capacity; nonroot Corepack execution passed in the base runtime. Live GitHub assignment and full feature-image validation are not claimed.
+
+## 2026-10-29 — Local runner Pact Broker validation
+
+- Backend: sequential parent implementation and review; no delegation.
+- Replaced the local runner lane's Pact-shaped-only evidence with generated Pact consumer contracts, native provider verification and a real local PostgreSQL-backed Pact Broker.
+- Coverage: 31 owned-relay interactions, 16 GitHub CLI consumer interactions, native lifecycle prerequisites, 50 act corpus jobs, two connected zero-budget local executions and three rejecting fault cases.
+- Broker evidence: published source/branch versions; verified exact pair allowed; missing, failed, skewed and immutable-version mutation cases blocked. Deliberately broken verification is isolated under a negative-control version and branch.
+- Validation: 573 Actions and 247 Vercel tests passed, plus touched-script/test TypeScript checks. The embedded Vercel bootstrap was regenerated after extracting the shipped JIT consumer boundary. Regression tests prove that upstream provider versions are selected independently of HoBo source versions.
+- Release boundary: GitHub provider verification remains unknown in the broker. The explicit deployment command exits nonzero; the successful validation lane does not fabricate external provider approval.

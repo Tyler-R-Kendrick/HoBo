@@ -27,7 +27,7 @@
 
 ## Production native acceptance follow-up
 
-- Phase: implementation and native verification complete; review/delivery in progress.
+- Phase: closed; production implementation squash-merged in [#1621](https://github.com/Tyler-R-Kendrick/HoBo/pull/1621).
 - Branch: `feat/ci-cf-native-acceptance`; user requires all work here, no delegation.
 - Managed native execution now covers terminal verdicts, immutable source/config/
   Worker bundles, chunked binary artifacts, OS-backed ownership, daemon-bound cleanup
@@ -43,5 +43,22 @@
   and release attributes no longer hide or rewrite committed CI inputs.
 - Validation: 47 package tests, Worker type checks, protobuf/CUE and all 12 staged
   gates passed. A separate clean checkout passed the same 47 tests/types/proof.
-- PR-base checks, current-head design consensus and squash merge are the final
-  delivery steps; GitHub is authoritative for merge status.
+- Final PR-base validation: all 12 relevant checks passed after rebase. The full
+  native suite also passed again against the rebased shared parser.
+- Merge: `038fd1ff5ea2aa0d87cc3dd2050f067fff62f2d8`; reviewed head:
+  `7d9d4f9bd384bf2b57e5a6679ca6e179c7669fc8`.
+- No unresolved review threads or requested changes; no billing/check exception.
+  CodeRabbit automatic review was skipped by its fewer-than-10-stars policy.
+- All work was implemented and reviewed here; no delegated or deferred follow-up.
+
+```yaml
+designerConsensus:
+  required: true
+  reviewId: pr-1621-7d9d4f9bd384
+  cycle: 0
+  result: yay
+  consensusEntryId: pr-1621-7d9d4f9bd384-cycle-0-consensus
+  proposalDigest: dd83bfbfdb7d2fc1b98f1639babaaf46ac2ca9840932415a7d72350c54daaba9
+  reviewedHeadSha: 7d9d4f9bd384bf2b57e5a6679ca6e179c7669fc8
+  assertedAt: 2026-10-29T22:33:18.816Z
+```

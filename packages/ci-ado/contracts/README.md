@@ -28,6 +28,8 @@ and downloads the execution bundle, then verifies collected bytes and hashes.
 
 After building the package, run `pnpm --filter @hobo/ci-ado test:contracts` for
 the connection lane, including command execution and artifact acceptance.
+The package `typecheck` command also compiles these tests and broker helpers
+under the production TypeScript strictness settings.
 No Azure account, agent or credential is needed for this lane. See the inventory
 for evidence boundaries. These are consumer tests against simulated providers;
 remote Azure provider verification and external Pact Broker publication are not

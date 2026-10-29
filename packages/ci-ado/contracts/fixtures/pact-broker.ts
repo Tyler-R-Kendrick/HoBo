@@ -69,9 +69,11 @@ export function createAdoPactBroker(sequence: readonly string[]) {
 			interactions: [expected],
 		});
 		const result = await provider.handle(actual);
+		const responseInit: ResponseInit = { status: result.status };
+		if (result.headers) responseInit.headers = result.headers;
 		return new Response(
 			result.body === undefined ? null : JSON.stringify(result.body),
-			{ status: result.status, headers: result.headers },
+			responseInit,
 		);
 	};
 	return {

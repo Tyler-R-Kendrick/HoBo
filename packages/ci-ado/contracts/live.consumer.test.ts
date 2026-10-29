@@ -143,7 +143,8 @@ it.each([
 	const interaction = adoPact.interactions.find(
 		(row) => row.description === "queue pinned pipeline once",
 	);
-	if (!interaction) throw new Error("missing queue Pact");
+	if (!interaction?.request.headers)
+		throw new Error("missing queue Pact headers");
 	let path = interaction.request.path;
 	let body = JSON.stringify(interaction.request.body);
 	if (mutation === "query")

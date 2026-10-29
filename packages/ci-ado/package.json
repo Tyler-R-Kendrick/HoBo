@@ -20,7 +20,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc -p tsconfig.contracts.json",
     "test": "vitest run",
     "test:contracts": "vitest run contracts test/live.test.ts test/production.test.ts",
     "project": "node dist/cli.js",

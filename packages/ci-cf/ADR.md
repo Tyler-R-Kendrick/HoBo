@@ -3,6 +3,37 @@
 Status: implemented SDK adapter, locally contract-tested. No Cloudflare resources
 are created or deployed by this change.
 
+Local execution uses this same adapter and SDK in a separate Worker entrypoint,
+with Wrangler-emulated Workflows/R2 and Docker Sandbox instances. A prepared Git
+archive lives in the image at `/opt/hobo-ci/source.tar.gz`; the SDK source adapter
+returns a file URL rather than reading Artifacts. Each preparation gets fresh
+local state and an immutable source SHA. The pipeline checks that SHA and the
+preparation ID before
+executing commands. We retain the public SDK 0.2.0 source discriminator because
+its `getProvider()` signature fixes the generic provider to CloudflareArtifacts;
+this is local metadata, not a remote Artifacts binding.
+
+The local Sandbox subclass forces binding-backed `createBackup` even when the
+SDK detects FUSE, preventing an accidental presigned remote R2 path on macOS/WSL.
+It preserves native snapshot handles and restore semantics. Config and launcher
+contain no deployment operation, remote binding or fallback. Cross-run cache and
+source credentials are disabled. No extra HTTP command endpoint is introduced:
+Wrangler's local Workflow commands own triggering, status and termination.
+
+The package reuses the generated `@hobo/ci` pipeline/result boundary and its
+protobuf/CUE constraints. Local source is an implementation of the real upstream
+adapter types, protected by a consumer Pact; config is checked against Wrangler's
+types and a committed characterization snapshot. Archive preparation is tested
+against a real temporary Git repository. These are local contract expectations,
+not Cloudflare provider verification.
+
+Self-review found that Git hooks can export repository selectors which override
+`git -C`, and that an old dev session can have the same source SHA but a different
+pipeline. Preparation clears Git's local repository selectors; trigger metadata
+binds the unique preparation ID and the Worker rejects mismatches before starting
+a runner. The local tests reproduce both failures. This opt-in mode remains
+experimental until a compatible Docker host completes native acceptance.
+
 The adapter implements the shared `PipelineBackend`/`PipelineSession` ports and
 consumes the generated shared pipeline, step-result and artifact records. It imports
 actual `CiContext` and `CiRunnerResult` types from pinned `@cloudflare/ci` 0.2.0.

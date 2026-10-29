@@ -179,7 +179,7 @@ package ci
 #PipelineStepResult: {id: string & !="", exitCode: int & >=0 & <=255, stdout: string, stderr: string}
 #PipelineArtifact: {path: string & !="", data: string, sha256: string & =~"^[a-f0-9]{64}$"}
 #PipelineResult: {
- id: string & !="", backend: "" | "gh-actions" | "dagger" | "cf"
+ id: string & !="", backend: "" | "gh-actions" | "dagger" | "cf" | "ado"
  status: "succeeded" | "failed" | "cancelled" | "timed_out" | "uncertain" | "blocked"
  steps: [...#PipelineStepResult], artifacts: [...#PipelineArtifact], error: string
 }

@@ -214,5 +214,6 @@ When a draft package, validation script, workflow, or public contract changes, u
 ## HoBo.CI SDK family
 
 [HoBo.CI contracts and routing](../../packages/ci/README.md),
-[GitHub Actions hosted relay](../../packages/ci-gh-actions/README.md), and
+[GitHub Actions hosted relay](../../packages/ci-gh-actions/README.md),
+[Azure Pipelines self-hosted integration](../../packages/ci-ado/README.md), and
 [implementation plan with live acceptance gates](../plans/hobo-ci/README.md).

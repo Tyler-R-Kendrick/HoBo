@@ -10,7 +10,7 @@ import {
 	type PipelineStepResult,
 } from "./_generated/ci_pb.js";
 
-export type BackendKind = "gh-actions" | "dagger" | "cf";
+export type BackendKind = "gh-actions" | "dagger" | "cf" | "ado";
 export type PipelineCapability = "commands" | "artifacts" | "cancellation";
 export type CloseReason = "completed" | "failed" | "cancelled" | "timed_out";
 declare const parsedPipeline: unique symbol;

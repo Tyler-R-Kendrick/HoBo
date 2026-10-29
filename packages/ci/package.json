@@ -28,6 +28,10 @@
     "./postgres": {
       "types": "./dist/postgres-store.d.ts",
       "default": "./dist/postgres-store.js"
+    },
+    "./workspace-backend": {
+      "types": "./dist/workspace-backend.d.ts",
+      "default": "./dist/workspace-backend.js"
     }
   },
   "scripts": {

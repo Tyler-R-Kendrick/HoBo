@@ -127,7 +127,8 @@ pagination cursor, or single-task follow protocol; `--level`, `--next`, and
 ## Contracts and checks
 
 `test/ci-command.test.ts` and `test/ci-runs.test.ts` cover setup, target selection,
-unattended consent, run selection and failure behavior. The CLI-to-relay consumer
+unattended consent, account continuity for equivalent saved relay origins, run
+selection and failure behavior. The CLI-to-relay consumer
 contract pins method, account authentication, protobuf body and revision header;
 the existing relay provider contracts protect isolated onboarding. The durable
 link is generated from `data-models/composition.proto` with CUE constraints in

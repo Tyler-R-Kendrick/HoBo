@@ -413,6 +413,34 @@ describe("hobo ci setup", () => {
 		expect(JSON.parse(renamed.stdout).code).toBe("HOBO_CI_ACCOUNT_MISMATCH");
 		expect(mutations).toBe(1);
 	});
+	it("checks saved account continuity for an equivalent noncanonical relay origin", async () => {
+		const { cli, home, requests } = await fixture();
+		expect(
+			(
+				await cli.run(
+					["ci", "enable", "--relay", "https://relay.example", ...consent],
+					{ cwd: home },
+				)
+			).exitCode,
+		).toBe(0);
+		const [file] = await readdir(join(home, "ci/links"));
+		await writeFile(
+			join(home, "ci/links", file ?? ""),
+			JSON.stringify({
+				relayOrigin: "https://RELAY.example:443/",
+				accountId: "previous-account",
+				repository: "example/project",
+			}),
+		);
+		const result = await cli.run(["ci", "enable", ...consent, "--json"], {
+			cwd: home,
+		});
+		expect(result.exitCode).toBe(1);
+		expect(JSON.parse(result.stdout).code).toBe("HOBO_CI_ACCOUNT_MISMATCH");
+		expect(
+			requests.filter((path) => path.includes("isolated-connect")),
+		).toHaveLength(1);
+	});
 	it("prints the App installation page when the account has no installation", async () => {
 		const { cli, home } = await fixture({
 			fetch: async (url) =>

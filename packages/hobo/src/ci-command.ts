@@ -96,7 +96,7 @@ async function readLink(path: string): Promise<CiLink | undefined> {
 			CiRepositoryLinkSchema,
 			await boundedText(path, 8192),
 		);
-		trustedOrigin(link.relayOrigin);
+		link.relayOrigin = trustedOrigin(link.relayOrigin);
 		if (
 			!/^[A-Za-z0-9_-]{1,80}$/.test(link.accountId) ||
 			!validRepository(link.repository)

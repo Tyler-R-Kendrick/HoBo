@@ -6,6 +6,7 @@ HoBo CI is a sibling SDK family in the HoBo monorepo:
 | --- | --- |
 | `@hobo/ci` | Portable pipelines, allocation routing and durable budget reservations |
 | [`@hobo/ci-gh-actions`](../ci-gh-actions/README.md) | Hosted relay, tenant API, repository installer and JIT-runner host |
+| [`@hobo/ci-vercel`](../ci-vercel/README.md) | Vercel relay hosting and local execution of Vercel CI-tagged Turbo checks |
 | [`@hobo/ci-dagger`](../ci-dagger/README.md) | Native Dagger CI checks on local/self-hosted engines and portable SDK adapter |
 | [`@hobo/ci-cf`](../ci-cf/README.md) | Implemented native Cloudflare CI adapter |
 | [`@hobo/ci-ado`](../ci-ado/README.md) | Local command checks and self-hosted Azure Pipelines configuration |

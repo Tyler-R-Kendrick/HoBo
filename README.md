@@ -18,6 +18,9 @@ and operator-owned hosts share allocation-first budget routing. Dagger and Cloud
 CI implement the same portable pipeline contract. Connected `act` acceptance and an
 actual container lifecycle test verify local execution and deployment; the manual
 HoBo workflow separately verifies real GitHub runner assignment.
+The [Vercel package](./packages/ci-vercel/README.md) also runs Vercel CI-tagged
+Turbo checks locally with `pnpm ci:local`; keep hosted CI disabled to avoid
+Vercel CI compute charges.
 
 ## Why HoBo exists
 

@@ -44,7 +44,7 @@ package ci
 }
 #Offer: {
  id: string & !=""
- provider: "github" | "blacksmith" | "depot" | "warpbuild" | "kubernetes" | "local" | "dagger" | "cloudflare" | "vercel"
+ provider: "github" | "blacksmith" | "depot" | "warpbuild" | "kubernetes" | "local" | "dagger" | "cloudflare" | "vercel" | "azure-devops"
  providerAccountId: string & !=""
  enabled: bool
  runsOn: string & !=""
@@ -57,7 +57,9 @@ package ci
  validUntil: string & !=""
  sourceUrl: string & =~"^https://"
  bridgeAcknowledged: bool
- backend?: "" | "gh-actions" | "dagger" | "cf" | "sandbox"
+ backend?: "" | "gh-actions" | "dagger" | "cf" | "sandbox" | "ado"
+ if provider == "azure-devops" {backend: "ado"}
+ if backend != _|_ {if backend == "ado" {provider: "azure-devops"}}
  sandboxPricing?: #SandboxPricing
  sandboxAllowance?: #SandboxAllowance
  if provider == "local" {
@@ -211,7 +213,7 @@ package ci
 // Desired policy does not contain runtime-owned balances, observations or leases.
 #CiPolicyProvider: {
  id: string & =~"^[A-Za-z0-9_-]{1,80}$"
- kind: "github" | "blacksmith" | "depot" | "warpbuild" | "kubernetes" | "local" | "vercel"
+ kind: "github" | "blacksmith" | "depot" | "warpbuild" | "kubernetes" | "local" | "vercel" | "azure-devops"
  connectionRef: string & !=""
  runsOn: string & =~"^[A-Za-z0-9_.-]{1,100}$"
  enabled?: bool

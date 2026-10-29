@@ -31,8 +31,8 @@
             },
             "task": "PublishPipelineArtifact@1",
             "inputs": {
-              "targetPath": "$(Build.SourcesDirectory)/hobo-ci-result.txt",
-              "artifact": "hobo-1",
+              "targetPath": "$(Agent.TempDirectory)/hobo-ci-$(System.JobId)-$(System.JobAttempt)",
+              "artifact": "hobo-$(System.JobId)-$(System.JobAttempt)",
               "publishLocation": "pipeline"
             }
           }

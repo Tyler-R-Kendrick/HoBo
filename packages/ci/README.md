@@ -363,10 +363,15 @@ repository and pull request jobs currently require an isolated Sandbox offer.
 
 [`@hobo/ci-ado`](../ci-ado/README.md) provides local command preflight and generates
 Azure DevOps Services YAML for an explicitly named self-hosted Linux agent pool,
-with native Pipeline Artifact publication. It uses the same portable Pipeline
+with native Pipeline Artifact publication and downstream download/hash verification.
+It uses the same portable Pipeline
 contract. Full Azure YAML execution remains with Microsoft's official agent.
-Direct ADO execution is not registered as a scheduler offer; account routing and
-budget policy vocabulary remain unchanged.
+Scheduler hosts can bind `createAdoBackend({ workspace })` as backend `ado` with
+an authorized `provider: "azure-devops"` offer. Provider/backend pairing is checked
+at the configuration boundary; desired policies accept `kind: "azure-devops"`.
+The binding executes its host workspace directly and retains the scheduler's
+durable lease/result replay. It does not install agents or queue remote pipelines.
+Account prices and entitlements require authorized observations.
 
 The Node-only `@hobo/ci/workspace-backend` entrypoint owns shared POSIX process,
 path, cancellation and bounded-file artifact handling for Actions and ADO. It

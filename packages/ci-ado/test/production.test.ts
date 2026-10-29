@@ -22,6 +22,9 @@ import { PipelineScheduler } from "@hobo/ci/scheduler";
 import { LeaseStore } from "@hobo/ci/store";
 import { afterEach, describe, expect, it } from "vitest";
 import { parse } from "yaml";
+import artifactPact from "../contracts/pipeline.pact.json" with {
+	type: "json",
+};
 import { artifactReportDigest } from "../src/artifacts.js";
 import {
 	adoPlanDigest,
@@ -403,9 +406,26 @@ describe("deployable YAML", () => {
 	});
 });
 
-it("executes both generated jobs against the hand-authored artifact-service boundary", async () => {
+it("executes both generated jobs through Pact-checked native artifact task connections", async () => {
 	const f = await fixture();
-	const document = parse(renderAzurePipeline(f.project, f.pipeline, "ci.json"));
+	f.config.artifactPrefix = "hobo";
+	await writeFile(join(f.root, "ci.json"), JSON.stringify(f.config));
+	const { project, pipeline } = await loadAdoProject(f.root, "ci.json");
+	const document = parse(renderAzurePipeline(project, pipeline, "ci.json"));
+	const matched = new Set<string>();
+	function taskContract(step: {
+		task: string;
+		inputs: Record<string, string>;
+	}) {
+		const interaction = artifactPact.interactions.find(
+			(row) => row.response[0]?.contents.task === step.task,
+		);
+		if (!interaction) throw new Error(`unbrokered native task: ${step.task}`);
+		const expected = interaction.response[0]?.contents;
+		if (!expected) throw new Error("missing native task Pact response");
+		expect(step.inputs).toEqual(expected.inputs);
+		matched.add(interaction.description);
+	}
 	const temporary = await directory();
 	const service = await directory();
 	const variables = new Map([
@@ -460,6 +480,7 @@ it("executes both generated jobs against the hand-authored artifact-service boun
 					"mutation before publication",
 				);
 		} else if (step.task) {
+			taskContract(step);
 			expect(step.task).toBe("PublishPipelineArtifact@1");
 			expect(variables.get("HOBO_CI_BUNDLE_READY")).toBe("true");
 			const name = expand(step.inputs.artifact);
@@ -481,6 +502,7 @@ it("executes both generated jobs against the hand-authored artifact-service boun
 	for (const step of document.jobs[1].steps) {
 		if (step.bash) verification = await script(step);
 		else if (step.task) {
+			taskContract(step);
 			expect(step.task).toBe("DownloadPipelineArtifact@2");
 			expect(step.inputs.buildType).toBe("current");
 			await cp(
@@ -491,6 +513,7 @@ it("executes both generated jobs against the hand-authored artifact-service boun
 		}
 	}
 	expect(verification).toContain("Verified 1 artifacts");
+	expect(matched.size).toBe(artifactPact.interactions.length);
 	expect([
 		...(await readFile(
 			join(

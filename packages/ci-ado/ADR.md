@@ -28,7 +28,14 @@ The live acceptance client uses an existing pipeline, a pinned definition revisi
 and an exact commit. It previews before queueing, checks pool/source provenance
 and native timeline tasks, and never retries ambiguous run creation. Known
 unfinished runs are cancelled and reconciled on failure or interruption.
-Hand-authored Pacts and injected HTTP tests do not constitute live Azure evidence.
+The default connection broker uses the shared `@hobo/contract-harness` parser
+and mock provider with recorded Pact interactions. Scenario ordering selects
+responses without manufacturing API payloads in test code. Exact request-body,
+header and query checks plus an independent completion assertion prevent an
+expected client rejection from hiding contract drift. Loopback HTTP tests exercise
+the shipped transport, redirects and cancellation. Native artifact task inputs
+are also checked against their Pact during the generated-script acceptance test.
+Hand-authored consumer contracts remain distinct from remote Azure evidence.
 
 An explicit `ado` backend binding also integrates with the existing SQLite
 scheduler. Provider/backend pairing prevents accidental binding to a different

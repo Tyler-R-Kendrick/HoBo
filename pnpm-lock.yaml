@@ -585,6 +585,10 @@ importers:
       yaml:
         specifier: 2.9.0
         version: 2.9.0
+    devDependencies:
+      '@hobo/contract-harness':
+        specifier: workspace:*
+        version: link:../contract-harness
 
   packages/ci-cf:
     dependencies:

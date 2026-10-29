@@ -14,6 +14,8 @@ the native runner dependencies, GitHub CLI and Docker in Docker, and installs
 checksum-pinned act v0.2.89 into `.tools/ci` on PATH. Each container start calls
 the local runner service automatically. No GitHub credential is needed to open
 the container or run the offline conformance workflow.
+Corepack's pnpm shims also live in `.tools/ci`, so creation runs as the nonroot
+`node` user without writing to `/usr/local/bin`.
 
 For real GitHub jobs, supply these **non-secret** host environment variables
 before opening the container, or export them in its terminal before starting
@@ -59,6 +61,8 @@ runner's actual GitHub connection. An OS lock makes repeated/concurrent starts
 idempotent. Control uses a private Unix socket, not an unauthenticated TCP port.
 Stop forwards cancellation to the process group and waits for cleanup before
 returning `stopped`; unconfirmed cleanup returns a failure.
+The same drain applies to programmatic abort signals. A retained registration
+keeps both the saved status and `stop` result blocked until cleanup succeeds.
 Runner names are unique; this service never replaces another developer's runner.
 An idle listener has no age-based execution deadline: a job accepted after a
 long idle period receives its full companion-workflow/lease timeout. Explicit
@@ -117,6 +121,19 @@ GitHub login, Docker image pulls or a public tunnel:
 pnpm exec turbo run build --filter=@hobo/ci-gh-actions --concurrency=100%
 node --import tsx packages/ci-gh-actions/scripts/act-harness.ts --act .tools/ci/act
 ```
+
+Exercise the shipped relay service and local-provider lifecycle end to end:
+
+```sh
+node --import tsx packages/ci-gh-actions/scripts/acceptance.ts --local --act .tools/ci/act
+```
+
+This executes two original workflow jobs through admission, the dispatch outbox,
+signed OIDC/JIT claims, process execution, cleanup and zero-price settlement. It
+then disables local capacity, proves that no further host launches, and reopens
+the durable store to check replay. GitHub APIs and identity issuance use strict
+local fixtures; this does not establish live GitHub assignment. `--fault skip-job`,
+`--fault wrong-provider` and `--fault missing-jit` must each fail acceptance.
 
 The dev container performs that filtered build during creation; an ordinary
 checkout needs it before first use so the workspace dependency exports exist.

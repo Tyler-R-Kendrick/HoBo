@@ -170,6 +170,7 @@ export async function runAcceptance(options: {
 	actBinary: string;
 	evidenceDirectory?: string | undefined;
 	fault?: "missing-jit" | "wrong-provider" | "skip-job" | undefined;
+	local?: boolean | undefined;
 }): Promise<AcceptanceReport> {
 	const base = options.evidenceDirectory
 		? resolve(options.evidenceDirectory)
@@ -205,6 +206,24 @@ export async function runAcceptance(options: {
 			bridgeAcknowledged: true,
 		}),
 	);
+	const hostProviders = options.local ? ["local"] : [...providers];
+	const hostLabels = options.local ? ["hobo-local-host"] : labels;
+	if (options.local) {
+		account.budgetMicros = 0;
+		account.offers = [
+			create(OfferSchema, {
+				...account.offers[0],
+				id: "local",
+				provider: "local",
+				providerAccountId: "owned-dev-machine",
+				backend: "gh-actions",
+				runsOn: "hobo-local-host",
+				freeMinutes: 0,
+				priceMicrosPerMinute: 0,
+				budgetMicros: 0,
+			}),
+		];
+	}
 	let now = NOW;
 	let currentJob = 1;
 	let originalStatus = "queued";
@@ -337,12 +356,12 @@ export async function runAcceptance(options: {
 				path === "/repos/org/repo/actions/workflows/host.yml/dispatches"
 			) {
 				const dispatch = dispatchSchema.parse(body);
-				const index = labels.indexOf(dispatch.inputs.runs_on);
+				const index = hostLabels.indexOf(dispatch.inputs.runs_on);
 				invariant(index >= 0, "unknown physical host label");
 				invariant(!hosts.has(dispatch.inputs.lease_id), "duplicate dispatch");
 				const identity: LaunchIdentity = {
 					leaseId: dispatch.inputs.lease_id,
-					provider: providers[index] ?? "",
+					provider: hostProviders[index] ?? "",
 					executionId: randomUUID(),
 					jobId: currentJob,
 					workflowSha256,
@@ -532,7 +551,9 @@ export async function runAcceptance(options: {
 			],
 			root,
 		);
-		const expectedProviders = [...providers, "warpbuild", "depot"];
+		const expectedProviders = options.local
+			? ["local", "local"]
+			: [...providers, "warpbuild", "depot"];
 		for (const expectedProvider of expectedProviders) {
 			originalStatus = "queued";
 			const payload = {
@@ -682,12 +703,16 @@ export async function runAcceptance(options: {
 				"runner cleanup or durable settlement missing",
 			);
 			invariant(
-				settled.billedFreeMinutes === (currentJob <= 5 ? 2 : 0),
+				settled.billedFreeMinutes ===
+					(!options.local && currentJob <= 5 ? 2 : 0),
 				"free allocation settlement incorrect",
 			);
 			currentJob++;
 		}
 		const before = launches;
+		// A free local machine is not exhausted by spending. Simulate it going away.
+		if (options.local)
+			for (const offer of account.offers) offer.enabled = false;
 		originalStatus = "queued";
 		invariant(
 			(await webhook({
@@ -702,7 +727,7 @@ export async function runAcceptance(options: {
 					runner_name: null,
 				},
 			})) === "waiting-for-budget-or-capacity",
-			"exhausted account admitted paid work",
+			"unavailable capacity or exhausted account admitted work",
 		);
 		const deniedAtTick = ticks;
 		await waitFor(
@@ -782,7 +807,8 @@ export async function runAcceptance(options: {
 			.all()
 			.reduce((sum, lease) => sum + lease.paidMicros, 0);
 		invariant(
-			freeMinutesConsumed === 10 && paidMicros === 6000,
+			freeMinutesConsumed === (options.local ? 0 : 10) &&
+				paidMicros === (options.local ? 0 : 6000),
 			"final budget accounting incorrect",
 		);
 		invariant((await service.stop()).drained, "reopened service did not drain");
@@ -872,6 +898,7 @@ if (entry && import.meta.url === pathToFileURL(entry).href) {
 			act: { type: "string" },
 			evidence: { type: "string" },
 			fault: { type: "string" },
+			local: { type: "boolean" },
 			"live-verify": { type: "boolean" },
 			repository: { type: "string", default: "Tyler-R-Kendrick/HoBo" },
 		},
@@ -883,6 +910,7 @@ if (entry && import.meta.url === pathToFileURL(entry).href) {
 			}))
 		: runAcceptance({
 				actBinary: args.values.act ?? "act",
+				local: args.values.local,
 				evidenceDirectory: args.values.evidence,
 				fault:
 					args.values.fault === undefined

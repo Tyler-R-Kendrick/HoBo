@@ -541,3 +541,11 @@ no external account/repository resources were created.
 - **Validation:** 15 staged/PR-base gates, 35 package tests and 290 root tests; clean-checkout package rerun passed 35/35. Exact-six synthetic review was unanimous yay with a current-head assertion immediately before merge.
 - **PR state:** no unresolved threads or requested changes; CodeRabbit automatic review skipped by repository-star policy. No billing or code-check exception used.
 - **Release boundary:** native command execution remains unverified because this host lacks the iptables socket module required by the Cloudflare proxy container. The local mode is explicitly experimental; no cloud deployment or hosted billing acceptance is claimed.
+
+## 2026-10-29 — HoBo CI local runner end-to-end hardening
+
+- Backend: sequential parent implementation and review; no delegation.
+- Repairs: nonroot Corepack bootstrap, active-session AbortSignal drain, retained cleanup status, unreadable recovery-state reporting, and singleton-lock release before stop acknowledgment.
+- Executable acceptance: two zero-budget local runs through the shipped relay and host launcher; capacity withdrawal and durable replay; three rejecting fault runs. The existing seven-provider-sequence acceptance and 50-job act corpus also passed.
+- Validation: 556 Actions and 247 Vercel tests, package and touched-script/test TypeScript checks; generated embedded bootstrap refreshed from source.
+- Verification boundary: GitHub integration refused creation of a disposable private acceptance repository. No unrelated repository or hosted runner was used. The full layered feature build exceeded the managed environment's disk capacity; nonroot Corepack execution passed in the base runtime. Live GitHub assignment and full feature-image validation are not claimed.

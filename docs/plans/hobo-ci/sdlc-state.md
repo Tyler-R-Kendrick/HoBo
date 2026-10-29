@@ -7,6 +7,32 @@ tags: [ci, delivery, state]
 
 # HoBo.CI delivery state
 
+## Local runner end-to-end hardening — 2026-10-29
+
+- Follow-up to merged #1612, implemented and reviewed sequentially in this
+  session at the user's request; no work delegated.
+- Fixed clean-container bootstrap under the actual nonroot user: Corepack
+  installs workspace-local shims instead of failing to write `/usr/local/bin`.
+- AbortSignal cancellation now drains an active host process group before
+  deleting its registration/workspace. Stop retains blocked recovery status for
+  unfinished cleanup, waits for singleton-lock release, and reports unknown
+  when recovery state cannot be inspected.
+- Added executable `test:acceptance --local`: two zero-budget local jobs through
+  the shipped relay/outbox/OIDC/JIT/host/settlement path, capacity withdrawal,
+  durable restart and completion replay. Missing JIT, wrong provider and skipped
+  job fault runs all fail. GitHub and identity issuance are strict local fixtures.
+- Validation: 556 Actions tests and 247 Vercel tests, 50 real act corpus jobs,
+  seven existing-provider and two local-provider connected acceptance executions,
+  and direct touched-script/test TypeScript checks passed. The generated Vercel
+  bootstrap snapshot was regenerated from source.
+- Live acceptance was attempted: the current GitHub integration rejected creation
+  of a disposable private repository (`Resource not accessible by integration`).
+  No unrelated private repository was used, no runner registered, and live GitHub
+  assignment is not claimed. The complete layered devcontainer build hit this
+  environment's 32 GB disk limit; the nonroot shim path was independently executed
+  successfully in the base runtime. These are verification limits, not delegated
+  follow-up implementation tasks.
+
 ## Local development runner closeout — 2026-10-29
 
 - Delivery: [PR #1612](https://github.com/Tyler-R-Kendrick/HoBo/pull/1612),

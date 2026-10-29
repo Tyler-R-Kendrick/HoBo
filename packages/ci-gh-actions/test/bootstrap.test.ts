@@ -44,6 +44,38 @@ it("allows a persistent listener without timing out based on registration age", 
 		),
 	).resolves.toBeUndefined();
 });
+it("cancels a running host through its abort signal before its execution deadline", async () => {
+	const controller = new AbortController();
+	const started = Date.now();
+	const abort = setTimeout(() => controller.abort(), 50);
+	try {
+		await expect(
+			runHostProcess(
+				process.execPath,
+				["-e", "setInterval(()=>{},1000)"],
+				process.cwd(),
+				runnerEnvironment(process.env),
+				2000,
+				controller.signal,
+			),
+		).rejects.toThrow();
+		expect(Date.now() - started).toBeLessThan(1500);
+	} finally {
+		clearTimeout(abort);
+	}
+});
+it("does not launch a host when its signal is already aborted", async () => {
+	await expect(
+		runHostProcess(
+			"/hobo-missing-command",
+			[],
+			process.cwd(),
+			{},
+			undefined,
+			AbortSignal.abort(new Error("cancelled before launch")),
+		),
+	).rejects.toThrow("cancelled before launch");
+});
 it("forwards parent cancellation to the detached child and waits for shutdown", async () => {
 	const child = spawn(
 		process.execPath,

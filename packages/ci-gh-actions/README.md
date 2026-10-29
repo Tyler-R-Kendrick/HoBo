@@ -21,6 +21,7 @@ Run from the monorepo root with Node 24, Linux x64, bash and git:
 pnpm exec turbo run build --filter=@hobo/ci-gh-actions --concurrency=100%
 pnpm --filter @hobo/ci-gh-actions act:install --directory /tmp/hobo-ci-tools
 pnpm --filter @hobo/ci-gh-actions test:acceptance --act /tmp/hobo-ci-tools/act --evidence /tmp/hobo-ci-acceptance
+pnpm --filter @hobo/ci-gh-actions test:acceptance --local --act /tmp/hobo-ci-tools/act --evidence /tmp/hobo-ci-local-acceptance
 ```
 
 This is a connected test of signed HTTP intake, durable reservations, dispatch,

@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { createServer } from "node:net";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -65,6 +65,29 @@ describe("local runner controller lifecycle", () => {
 		expect(JSON.parse((await command("status")).stdout)).toEqual(blocked);
 		await expect(command("stop")).rejects.toThrow();
 	});
+	it("fails stop when a registration still needs cleanup instead of claiming successful drain", async () => {
+		const { state, command } = controller();
+		const registration = { repository: "owner/repo", id: 41, uncertain: false };
+		writeFileSync(
+			join(state, "registration.json"),
+			JSON.stringify(registration),
+		);
+		try {
+			await command("start");
+			await expect(command("stop")).rejects.toThrow();
+			expect(JSON.parse((await command("status")).stdout).status).toBe(
+				"blocked",
+			);
+			expect(
+				JSON.parse(readFileSync(join(state, "status.json"), "utf8")).status,
+			).toBe("blocked");
+			expect(
+				JSON.parse(readFileSync(join(state, "registration.json"), "utf8")),
+			).toEqual(registration);
+		} finally {
+			await command("stop").catch(() => {});
+		}
+	});
 	it("does not claim shutdown when an existing controller returns an invalid response", async () => {
 		const { command, socket } = controller();
 		const server = createServer({ allowHalfOpen: true }, (client) => {
@@ -80,5 +103,12 @@ describe("local runner controller lifecycle", () => {
 		} finally {
 			await new Promise<void>((done) => server.close(() => done()));
 		}
+	});
+	it("does not claim shutdown when the recovery state cannot be inspected", async () => {
+		const { state, command } = controller();
+		rmSync(state, { recursive: true });
+		writeFileSync(state, "invalid state directory");
+		expect(JSON.parse((await command("status")).stdout).status).toBe("unknown");
+		await expect(command("stop")).rejects.toThrow();
 	});
 });

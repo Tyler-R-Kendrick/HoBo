@@ -39,7 +39,7 @@ if (process.argv[2] === "transport-child") {
 				`version:     v${process.env.FIXTURE_VERSION ?? "1.0.0-beta.21"}\ncommit:      fixture\nplatform:    linux/amd64\n`,
 		);
 	} else if (process.env.FIXTURE_CHILD) {
-		spawn(
+		const child = spawn(
 			process.execPath,
 			[
 				"--experimental-strip-types",
@@ -48,7 +48,14 @@ if (process.argv[2] === "transport-child") {
 			],
 			{ stdio: "ignore" },
 		);
-		setInterval(() => {}, 100);
+		if (process.env.FIXTURE_CHILD_PARENT_EXIT) {
+			if (child.pid)
+				writeFileSync(join(process.cwd(), "child.pid"), String(child.pid));
+			child.unref();
+			process.exitCode = 0;
+		} else {
+			setInterval(() => {}, 100);
+		}
 	} else if (process.env.FIXTURE_WAIT) {
 		setInterval(() => {}, 100);
 	} else {

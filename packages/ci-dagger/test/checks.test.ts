@@ -395,6 +395,50 @@ it.skipIf(process.platform === "win32")(
 	},
 );
 
+it.skipIf(process.platform !== "linux")(
+	"cleans up a background transport after a successful CLI exit",
+	async () => {
+		const root = await mkdtemp(join(tmpdir(), "hobo-dagger-success-group-"));
+		let pid = 0;
+		try {
+			const executable = await prepareCli(root);
+			expect(
+				await runDaggerChecks(config, {
+					cwd: root,
+					executable,
+					env: {
+						...process.env,
+						FIXTURE_CHILD: "1",
+						FIXTURE_CHILD_PARENT_EXIT: "1",
+					},
+				}),
+			).toBe(0);
+			pid = Number(await readFile(join(root, "child.pid"), "utf8"));
+			expect(pid).toBeGreaterThan(0);
+			await expect
+				.poll(
+					async () => {
+						const state = await readFile(`/proc/${pid}/stat`, "utf8").catch(
+							() => "",
+						);
+						return state !== "" && !/\)\s+Z\s/.test(state);
+					},
+					{ timeout: 1000 },
+				)
+				.toBe(false);
+		} finally {
+			if (pid) {
+				try {
+					process.kill(pid, "SIGKILL");
+				} catch {
+					/* child already reaped */
+				}
+			}
+			await rm(root, { recursive: true, force: true });
+		}
+	},
+);
+
 it("bounds abort cleanup even when the CLI ignores SIGTERM", async () => {
 	const root = await mkdtemp(join(tmpdir(), "hobo-dagger-abort-"));
 	const controller = new AbortController();

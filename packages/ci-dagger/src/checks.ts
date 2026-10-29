@@ -189,8 +189,8 @@ export async function runDaggerChecks(
 				failure = error;
 			});
 			child.once("close", (code, exitSignal) => {
-				// A CLI can exit on SIGTERM while a transport child ignores it.
-				if (signal.aborted) stop("SIGKILL");
+				// Transport children belong to this invocation, including on success.
+				stop("SIGKILL");
 				clearTimeout(escalation);
 				signal.removeEventListener("abort", abort);
 				if (signal.aborted) reject(signal.reason);

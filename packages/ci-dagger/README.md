@@ -101,7 +101,8 @@ process.exitCode = await runDaggerChecks(config);
 `runDaggerChecks` accepts a host-selected executable, environment, working
 directory, and abort signal. Aborting sends SIGTERM, escalates to SIGKILL after
 five seconds, and awaits CLI exit. On POSIX, transport subprocesses in the owned
-process group are terminated too. The CLI preserves conventional SIGINT/SIGTERM
+process group are terminated too, and background transports are cleaned up after
+successful completion as well. The CLI preserves conventional SIGINT/SIGTERM
 exit codes 130/143. The programmatic API rejects with `DaggerCheckTimeoutError`
 on a deadline, and propagates caller abort reasons. Neither is an acknowledgment
 that a remote engine terminated every operation. This direct check runner does

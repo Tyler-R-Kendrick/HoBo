@@ -2,6 +2,12 @@
 
 HoBo CI is a sibling SDK family in the HoBo monorepo:
 
+The product CLI exposes repository setup and run commands through `hobo ci`;
+see [CLI setup and Vercel command parity](../hobo/CI.md). This package and the
+Actions client package include public package metadata and MIT licenses so the
+published CLI can resolve its CI dependencies. No registry publication follows
+from changing that metadata.
+
 | SDK | State |
 | --- | --- |
 | `@hobo/ci` | Portable pipelines, allocation routing and durable budget reservations |

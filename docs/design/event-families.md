@@ -26,9 +26,11 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `budget.*` | `budget.ThresholdCrossed`, `budget.Recovered`, `budget.CreditApplied` |
 | `capability.*` | `capability.Denied`, `capability.GrantDenied` |
 | `chaos.*` | `chaos.ExperimentStarted`, `chaos.FaultInjected`, `chaos.FaultRemoved`, `chaos.SteadyStateChecked`, `chaos.ExperimentCompleted`, `chaos.Aborted` |
+| `ci.*` | `ci.ConfigurationChanged`, `ci.RateReattested`, `ci.BudgetOverrun` — account CI configuration, pricing evidence and settlement facts in `packages/ci` |
 | `component.*` | `component.Loaded`, `component.Invoked`, `component.Trapped`, `component.TornDown` |
 | `compat.*` | `compat.GatePassed`, `compat.GateFailed` |
 | `config.*` | `config.Resolved` |
+| `conformance.*` | `conformance.RunStarted`, `conformance.CaseChecked`, `conformance.RunCompleted` — replayable port-suite verification in `packages/conformance` |
 | `code.*` | `code.HarnessEnabled`, `code.EvidenceCaptured`, `code.DispatchStarted`, `code.DispatchCompleted` (OpenFeature keys `code.harness.enabled`, `code.evidence.visual`, `code.monetization.surface`, `code.isolation.rift`, `code.distributed` are flag keys; durable facts use past-tense `code.*` events when emitted) |
 | `connector.*` | `connector.Registered`, `connector.Disabled` |
 | `contract.*` | `contract.Observed`, `contract.Verified`, `contract.EffectDeclared`, `contract.EffectInvoked` |

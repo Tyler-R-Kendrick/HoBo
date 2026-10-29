@@ -89,6 +89,34 @@ function encode<Desc extends DescMessage>(
 	}
 }
 
+async function responseText(response: Response): Promise<string> {
+	const reader = response.body?.getReader();
+	if (!reader) return "";
+	const chunks: Uint8Array[] = [];
+	let bytes = 0;
+	try {
+		for (;;) {
+			const chunk = await reader.read();
+			if (chunk.done) break;
+			bytes += chunk.value.byteLength;
+			if (bytes > 2 * 1024 * 1024) {
+				await reader.cancel();
+				throw new Error("Relay response is too large");
+			}
+			chunks.push(chunk.value);
+		}
+		const combined = new Uint8Array(bytes);
+		let offset = 0;
+		for (const chunk of chunks) {
+			combined.set(chunk, offset);
+			offset += chunk.byteLength;
+		}
+		return new TextDecoder("utf-8", { fatal: true }).decode(combined);
+	} finally {
+		reader.releaseLock();
+	}
+}
+
 /** Account tokens are obtained per operation; tenant routing always uses /self. */
 export function createCiRelayClient(
 	options: {
@@ -143,27 +171,26 @@ export function createCiRelayClient(
 				"relay transport failed; operation outcome may be unconfirmed",
 			);
 		}
+		async function refuseResponse(message: string): Promise<never> {
+			try {
+				await response.body?.cancel();
+			} catch {
+				// Failed disposal must not replace the sanitized request refusal.
+			}
+			throw new CiRelayClientError(response.status, message);
+		}
 		let responseOrigin = base;
 		try {
 			if (response.url) responseOrigin = new URL(response.url).origin;
 		} catch {
-			throw new CiRelayClientError(
-				response.status,
-				"invalid relay response origin",
-			);
+			return refuseResponse("invalid relay response origin");
 		}
 		if (response.redirected || responseOrigin !== base)
-			throw new CiRelayClientError(
-				response.status,
-				"relay response crossed origin or redirected",
-			);
+			return refuseResponse("relay response crossed origin or redirected");
 		if (!response.ok)
-			throw new CiRelayClientError(
-				response.status,
-				`relay request failed (${response.status})`,
-			);
+			return refuseResponse(`relay request failed (${response.status})`);
 		try {
-			return fromJsonString(schema, await response.text());
+			return fromJsonString(schema, await responseText(response));
 		} catch {
 			throw new CiRelayClientError(
 				response.status,

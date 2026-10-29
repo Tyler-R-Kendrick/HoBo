@@ -132,11 +132,43 @@ export function parseArgv(
 		}
 
 		if (token === "--") {
+			if (verb === "ci") args.push("--");
 			args.push(...argv.slice(index + 1));
 			break;
 		}
 
 		if (token.startsWith("-")) {
+			if (verb === "ci" && token.startsWith("--cwd=")) {
+				const value = token.slice("--cwd=".length);
+				if (!value) throw new UsageError("--cwd requires a directory.");
+				flags.cwd = path.resolve(value);
+				continue;
+			}
+			if (
+				verb === "ci" &&
+				(token === "--format" ||
+					token === "-F" ||
+					token.startsWith("--format="))
+			) {
+				const format = token.startsWith("--format=")
+					? token.slice("--format=".length)
+					: takeValue(argv, index, token);
+				if (format !== "json") {
+					throw new UsageError('CI output format must be "json".');
+				}
+				flags.json = true;
+				if (!token.startsWith("--format=")) index += 1;
+				continue;
+			}
+			// CI owns its strict subcommand parser. Keep its options intact while
+			// the shell continues to own output, working directory, and help.
+			if (
+				verb === "ci" &&
+				!["--json", "--cwd", "--verbose", "-q", "--help", "-h"].includes(token)
+			) {
+				args.push(token);
+				continue;
+			}
 			index = parseOption(argv, index, flags, verb);
 			continue;
 		}

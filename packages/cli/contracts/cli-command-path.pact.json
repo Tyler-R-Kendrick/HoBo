@@ -14,7 +14,7 @@
 			"response": {
 				"status": 200,
 				"body": {
-					"requiredCommands": ["new", "dev", "plan", "up", "inspect", "logs", "doctor"],
+					"requiredCommands": ["new", "dev", "plan", "up", "inspect", "logs", "doctor", "ci"],
 					"parity": "ok"
 				}
 			}

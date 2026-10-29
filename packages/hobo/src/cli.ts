@@ -29,6 +29,7 @@ import { createBrokerCommand } from "./broker-command.js";
 import { createBrokerAwareUpCommand } from "./broker-up-command.js";
 import { createCanDeployCommand } from "./can-deploy-command.js";
 import { createClaimCommand } from "./claim-command.js";
+import { createCiCommand } from "./ci-command.js";
 import {
 	createDefaultYardRuntime,
 	resolveProjectCollectionTarget,
@@ -173,6 +174,7 @@ export function createComposedHoboCli(
 
 	return createHoboCli({
 		commands: {
+			ci: createCiCommand(),
 			build: createBuildCommand({ requireRealComponentize: true }),
 			// Local loop: open the Yard, place the Bindle into a Camp, run the Camp's
 			// component host (services__* + bindle env + external-only TCP).

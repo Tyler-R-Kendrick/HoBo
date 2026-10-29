@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file composition.proto.
  */
 export const file_composition: GenFile = /*@__PURE__*/
-  fileDesc("ChFjb21wb3NpdGlvbi5wcm90bxIMaG9iby5ob2JvLnYxIpkBChdDb21wb3NlZFJ1bnRpbWVNYW5pZmVzdBIMCgRsYW5lGAEgASgJEhMKC2V2ZW50X3N0b3JlGAIgASgJEhIKCmFjdG9yX2hvc3QYAyABKAkSEAoIZXhlY3V0b3IYBCABKAkSEwoLaWFjX2JhY2tlbmQYBSABKAkSEQoJcHJvdmlkZXJzGAYgAygJEg0KBXZlcmJzGAcgAygJIvACChZMb2NhbERlcGxveW1lbnRSZWNlaXB0EhYKDnNjaGVtYV92ZXJzaW9uGAEgASgJEhMKC3Byb2plY3RfZGlyGAIgASgJEhEKCWhvYm9faG9tZRgDIAEoCRILCgNwaWQYBCABKAUSEwoLcHJpbWFyeV91cmwYBSABKAkSEwoLY29udHJvbF91cmwYBiABKAkSEAoIbGVhc2VfaWQYByABKAkSEgoKc3RhcnRlZF9hdBgIIAEoCRITCgtiaW5kbGVfbmFtZRgJIAEoCRIWCg5jb21wb25lbnRfaG9zdBgKIAEoCRIRCglicm9rZXJfaWQYCyABKAkSDwoHY2FtcF9pZBgMIAEoCRITCgtwcm92aWRlcl9pZBgNIAEoCRIMCgRwb3J0GA4gASgNEhQKDHByb2JlX3N0YXR1cxgPIAEoBRISCgpleHBpcmVzX2F0GBAgASgJEhsKE2NvbnRlbnRfZmluZ2VycHJpbnQYESABKAki9wEKFUxvY2FsRGVwbG95bWVudExhdW5jaBITCgtwcm9qZWN0X2RpchgBIAEoCRIRCglob2JvX2hvbWUYAiABKAkSFgoOY29tcG9uZW50X2hvc3QYAyABKAkSEAoIbGVhc2VfaWQYBCABKAkSEwoLYmluZGxlX25hbWUYBSABKAkSEQoJYnJva2VyX2lkGAYgASgJEg8KB2NhbXBfaWQYByABKAkSEwoLcHJvdmlkZXJfaWQYCCABKAkSDAoEcG9ydBgJIAEoDRITCgt0dGxfc2Vjb25kcxgKIAEoDRIbChNjb250ZW50X2ZpbmdlcnByaW50GAsgASgJImYKHUxvY2FsRGVwbG95bWVudExpZmVjeWNsZUV2ZW50EjUKB3JlY2VpcHQYASABKAsyJC5ob2JvLmhvYm8udjEuTG9jYWxEZXBsb3ltZW50UmVjZWlwdBIOCgZyZWFzb24YAiABKAliBnByb3RvMw");
+  fileDesc("ChFjb21wb3NpdGlvbi5wcm90bxIMaG9iby5ob2JvLnYxIpkBChdDb21wb3NlZFJ1bnRpbWVNYW5pZmVzdBIMCgRsYW5lGAEgASgJEhMKC2V2ZW50X3N0b3JlGAIgASgJEhIKCmFjdG9yX2hvc3QYAyABKAkSEAoIZXhlY3V0b3IYBCABKAkSEwoLaWFjX2JhY2tlbmQYBSABKAkSEQoJcHJvdmlkZXJzGAYgAygJEg0KBXZlcmJzGAcgAygJIvACChZMb2NhbERlcGxveW1lbnRSZWNlaXB0EhYKDnNjaGVtYV92ZXJzaW9uGAEgASgJEhMKC3Byb2plY3RfZGlyGAIgASgJEhEKCWhvYm9faG9tZRgDIAEoCRILCgNwaWQYBCABKAUSEwoLcHJpbWFyeV91cmwYBSABKAkSEwoLY29udHJvbF91cmwYBiABKAkSEAoIbGVhc2VfaWQYByABKAkSEgoKc3RhcnRlZF9hdBgIIAEoCRITCgtiaW5kbGVfbmFtZRgJIAEoCRIWCg5jb21wb25lbnRfaG9zdBgKIAEoCRIRCglicm9rZXJfaWQYCyABKAkSDwoHY2FtcF9pZBgMIAEoCRITCgtwcm92aWRlcl9pZBgNIAEoCRIMCgRwb3J0GA4gASgNEhQKDHByb2JlX3N0YXR1cxgPIAEoBRISCgpleHBpcmVzX2F0GBAgASgJEhsKE2NvbnRlbnRfZmluZ2VycHJpbnQYESABKAki9wEKFUxvY2FsRGVwbG95bWVudExhdW5jaBITCgtwcm9qZWN0X2RpchgBIAEoCRIRCglob2JvX2hvbWUYAiABKAkSFgoOY29tcG9uZW50X2hvc3QYAyABKAkSEAoIbGVhc2VfaWQYBCABKAkSEwoLYmluZGxlX25hbWUYBSABKAkSEQoJYnJva2VyX2lkGAYgASgJEg8KB2NhbXBfaWQYByABKAkSEwoLcHJvdmlkZXJfaWQYCCABKAkSDAoEcG9ydBgJIAEoDRITCgt0dGxfc2Vjb25kcxgKIAEoDRIbChNjb250ZW50X2ZpbmdlcnByaW50GAsgASgJImYKHUxvY2FsRGVwbG95bWVudExpZmVjeWNsZUV2ZW50EjUKB3JlY2VpcHQYASABKAsyJC5ob2JvLmhvYm8udjEuTG9jYWxEZXBsb3ltZW50UmVjZWlwdBIOCgZyZWFzb24YAiABKAkiUAoQQ2lSZXBvc2l0b3J5TGluaxIUCgxyZWxheV9vcmlnaW4YASABKAkSEgoKYWNjb3VudF9pZBgCIAEoCRISCgpyZXBvc2l0b3J5GAMgASgJYgZwcm90bzM");
 
 /**
  * Explicit fixture composition evidence and product local-deployment contracts.
@@ -264,4 +264,33 @@ export type LocalDeploymentLifecycleEvent = Message<"hobo.hobo.v1.LocalDeploymen
  */
 export const LocalDeploymentLifecycleEventSchema: GenMessage<LocalDeploymentLifecycleEvent> = /*@__PURE__*/
   messageDesc(file_composition, 3);
+
+/**
+ * User-owned CLI link. Credentials never enter this record or the repository.
+ *
+ * @generated from message hobo.hobo.v1.CiRepositoryLink
+ */
+export type CiRepositoryLink = Message<"hobo.hobo.v1.CiRepositoryLink"> & {
+  /**
+   * @generated from field: string relay_origin = 1;
+   */
+  relayOrigin: string;
+
+  /**
+   * @generated from field: string account_id = 2;
+   */
+  accountId: string;
+
+  /**
+   * @generated from field: string repository = 3;
+   */
+  repository: string;
+};
+
+/**
+ * Describes the message hobo.hobo.v1.CiRepositoryLink.
+ * Use `create(CiRepositoryLinkSchema)` to create a new message.
+ */
+export const CiRepositoryLinkSchema: GenMessage<CiRepositoryLink> = /*@__PURE__*/
+  messageDesc(file_composition, 4);
 

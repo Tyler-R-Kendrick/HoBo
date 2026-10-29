@@ -93,6 +93,13 @@ Product: hobo
 - MCP tool: `deploy`
 - Capability: { port: hobo:mcp, resource: tool:deploy, verb: call }
 
+### ci
+- Role: delivery
+- Summary: Connect a repository and inspect CI runs (connect/list/inspect)
+- CLI: `hobo ci`
+- MCP tool: `ci`
+- Capability: { port: hobo:mcp, resource: tool:ci, verb: call }
+
 ### incident
 - Role: delivery
 - Summary: CD failure disposition: A2H handoff or sandboxed self-heal

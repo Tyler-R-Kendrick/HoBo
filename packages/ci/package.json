@@ -4,8 +4,9 @@
   "description": "HoBo CI account-scoped allocation routing and durable lease contracts",
   "license": "MIT",
   "type": "module",
-  "private": true,
+  "publishConfig": { "access": "public" },
   "files": [
+    "LICENSE",
     "dist"
   ],
   "exports": {

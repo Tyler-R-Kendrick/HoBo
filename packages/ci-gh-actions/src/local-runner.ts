@@ -281,6 +281,7 @@ export async function runLocalRunnerSession(options: {
 					TMPDIR: temp,
 				},
 				undefined,
+				options.signal,
 			);
 		} catch (error) {
 			if (

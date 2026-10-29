@@ -1,19 +1,20 @@
 import { execFileSync } from "node:child_process";
 import {
 	existsSync,
-	mkdtempSync,
 	mkdirSync,
-	readFileSync,
+	mkdtempSync,
 	readdirSync,
+	readFileSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setTimeout as pause } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-	type LocalRunnerJitRequest,
 	LocalRunnerApiRejectedError,
+	type LocalRunnerJitRequest,
 	parseLocalRunnerEnvironment,
 	runLocalRunnerSession,
 } from "../src/local-runner.js";
@@ -60,7 +61,7 @@ exit ${exitCode}
 			return { runner: { id: 41 }, encoded_jit_config: "c2VjcmV0" };
 		return null;
 	};
-	return { directory, state, archive, proof, calls, api };
+	return { directory, source, state, archive, proof, calls, api };
 }
 afterEach(() => {
 	for (const path of scratch.splice(0))
@@ -144,6 +145,56 @@ describe("local runner lifecycle contract", () => {
 		).rejects.toThrow(/failed/);
 		expect(f.calls.at(-1)?.method).toBe("DELETE");
 		expect(readdirSync(f.state)).toEqual([]);
+	});
+	it("aborts an active session and confirms process exit before deleting its registration", async () => {
+		const f = fixture();
+		writeFileSync(
+			join(f.source, "run.sh"),
+			`#!/bin/sh\necho $$ > '${f.proof}'\nwhile :; do sleep 1; done\n`,
+			{ mode: 0o755 },
+		);
+		execFileSync("tar", ["czf", f.archive, "-C", f.source, "run.sh"]);
+		const controller = new AbortController();
+		let pid = 0;
+		const api: typeof f.api = async (...args) => {
+			if (args[0] === "DELETE" && pid) {
+				const status = existsSync(`/proc/${pid}/stat`)
+					? readFileSync(`/proc/${pid}/stat`, "utf8")
+					: undefined;
+				if (status)
+					expect(status.slice(status.lastIndexOf(")") + 2)).toMatch(/^[ZX] /);
+			}
+			return f.api(...args);
+		};
+		const session = runLocalRunnerSession({
+			...f,
+			api,
+			repository: "owner/repo",
+			signal: controller.signal,
+		});
+		const result = expect(session).rejects.toThrow();
+		try {
+			const deadline = Date.now() + 3000;
+			while (!existsSync(f.proof)) {
+				if (Date.now() > deadline) throw new Error("runner never started");
+				await pause(10);
+			}
+			pid = Number(readFileSync(f.proof, "utf8"));
+			controller.abort();
+			await result;
+			expect(f.calls.at(-1)?.method).toBe("DELETE");
+			expect(readdirSync(f.state)).toEqual([]);
+		} finally {
+			controller.abort();
+			if (pid) {
+				try {
+					process.kill(-pid, "SIGKILL");
+				} catch {
+					/* Already stopped. */
+				}
+			}
+			await session.catch(() => {});
+		}
 	});
 	it.each([
 		"public",

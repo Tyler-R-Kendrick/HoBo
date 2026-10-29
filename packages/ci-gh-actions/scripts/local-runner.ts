@@ -12,8 +12,8 @@ import {
 import { createConnection, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { setTimeout as pause } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import {
 	installLocalRunnerArchive,
@@ -90,8 +90,14 @@ async function status() {
 				detail:
 					"Controller is stopped with an unfinished registration; start for cleanup/recovery",
 			};
-		} catch {
-			return { status: "stopped", detail: "Local runner is not running" };
+		} catch (error) {
+			if (error instanceof Error && "code" in error && error.code === "ENOENT")
+				return { status: "stopped", detail: "Local runner is not running" };
+			return {
+				status: "unknown",
+				detail:
+					"Local runner recovery state is unavailable; shutdown has not been confirmed",
+			};
 		}
 	}
 }
@@ -183,11 +189,25 @@ async function daemon() {
 				);
 		}
 	} finally {
+		// Keep control available until the singleton lock has actually drained.
+		await lock.release();
 		server.close();
 		await rm(socket, { force: true });
-		if (current.status !== "blocked")
-			await update("stopped", "Local runner stopped");
-		await lock.release();
+		if (current.status !== "blocked") {
+			const pending = await access(join(state, "registration.json")).then(
+				() => true,
+				(error: NodeJS.ErrnoException) => {
+					if (error.code === "ENOENT") return false;
+					throw error;
+				},
+			);
+			if (pending)
+				await update(
+					"blocked",
+					"Local runner stopped with an unfinished registration; start with the original repository and credentials for cleanup/recovery",
+				);
+			else await update("stopped", "Local runner stopped");
+		}
 		process.off("SIGTERM", stop);
 		process.off("SIGINT", stop);
 	}

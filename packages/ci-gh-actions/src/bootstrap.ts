@@ -48,7 +48,9 @@ export function runHostProcess(
 	cwd: string,
 	env: NodeJS.ProcessEnv,
 	timeout: number | undefined,
+	abortSignal?: AbortSignal,
 ): Promise<void> {
+	if (abortSignal?.aborted) return Promise.reject(abortSignal.reason);
 	return new Promise((resolve, reject) => {
 		const child = spawn(command, args, {
 			cwd,
@@ -122,6 +124,7 @@ export function runHostProcess(
 			clearInterval(poll);
 			process.off("SIGTERM", stop);
 			process.off("SIGINT", stop);
+			abortSignal?.removeEventListener("abort", stop);
 			if (error) reject(error);
 			else resolve();
 		};
@@ -165,6 +168,7 @@ export function runHostProcess(
 		const timer = timeout === undefined ? undefined : setTimeout(stop, timeout);
 		process.on("SIGTERM", stop);
 		process.on("SIGINT", stop);
+		abortSignal?.addEventListener("abort", stop, { once: true });
 		child.once("error", (error) => {
 			if (!child.pid) finish(error);
 			else {

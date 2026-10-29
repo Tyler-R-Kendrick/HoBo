@@ -558,3 +558,14 @@ no external account/repository resources were created.
 - Broker evidence: published source/branch versions; verified exact pair allowed; missing, failed, skewed and immutable-version mutation cases blocked. Deliberately broken verification is isolated under a negative-control version and branch.
 - Validation: 573 Actions and 247 Vercel tests passed, plus touched-script/test TypeScript checks. The embedded Vercel bootstrap was regenerated after extracting the shipped JIT consumer boundary. Regression tests prove that upstream provider versions are selected independently of HoBo source versions.
 - Release boundary: GitHub provider verification remains unknown in the broker. The explicit deployment command exits nonzero; the successful validation lane does not fabricate external provider approval.
+
+
+## 2026-10-29 — Cloudflare CI native local production execution (#1621)
+
+- **Outcome:** squash-merged [#1621](https://github.com/Tyler-R-Kendrick/HoBo/pull/1621), `038fd1ff5ea2aa0d87cc3dd2050f067fff62f2d8`. Parent implementation and clean-checkout review; no delegation.
+- **Delivered:** managed native Worker/Workflow/Sandbox/local-R2 runs with verified terminal verdicts, frozen inputs, chunked binary artifacts, exclusive ownership, Docker-daemon-bound cleanup and conservative crash recovery.
+- **Repairs:** output serialization, native journal names, case-sensitive ownership, submodules/release attributes, stale-lock races, context drift, process verification, hot reload and timestamp-driven vfs cache growth. Mandatory TPROXY interception remains enabled.
+- **Proof:** complete finite production-state graph, 278 states and 3,224 transitions; independent clean checkout passed 47 tests/types/proof. All 12 staged and PR-base checks passed.
+- **Native acceptance:** offline dependency install/restore; committed-source isolation; edits/deletions; shared-package rebuild without reload; 120 KB stdout and separate stderr; one MiB binary artifact and SHA; failure short-circuit, deadline, cancellation, forced crash with no repeated side effect, concurrent admission refusal, changed Docker context, overflow failure and confirmed cleanup. The complete suite passed again after rebase; six preparations reused one archive/image.
+- **Review/merge:** exact-six unanimous current-head design consensus, final assertion immediately before merge; no unresolved review threads or requested changes. CodeRabbit auto-review skipped its repository-star policy; no CI/billing exception used.
+- **Boundary:** production local execution is supported on Linux/WSL with a local Unix Docker engine. The formal proof covers controller safety under typed event assumptions; native execution supplies real integration evidence, not a proof of third-party internals or hosted billing. No Cloudflare account/resources were created.

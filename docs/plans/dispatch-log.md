@@ -524,3 +524,12 @@ container lifecycle checks. Exact-six current-head review and PR-base gates are
 required before squash merge. Actual GitHub/vendor execution remains unverified:
 runner access was HTTP403 and automatic review rejected an extra optional probe;
 no external account/repository resources were created.
+
+## 2026-10-29 — HoBo CI local development runners (#1612)
+
+- PR: https://github.com/Tyler-R-Kendrick/HoBo/pull/1612
+- Backend: parent implementation plus independent read-only review; one coherent delivery branch.
+- Scope: zero-price local provider, dedicated host label, automatic dev-container runner controller, pinned act and lifecycle/recovery contracts.
+- Review: ambiguous registration, cleanup/status, repository-name grammar, test typing and long-idle watchdog findings resolved with executable regressions; independent review clean.
+- Validation: 674 CI/Actions tests, 11 PR-base relevant checks, generated contracts/schema checks, touched script/test typecheck, 50 actual act jobs, base-image and nonroot official-runner smoke checks.
+- Closeout: user authorized squash merge; developer-experience consensus and remote review/check reconciliation recorded on the PR before merge. Live GitHub assignment remains an explicit unverified boundary.

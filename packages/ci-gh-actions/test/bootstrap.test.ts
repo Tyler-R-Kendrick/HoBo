@@ -33,6 +33,17 @@ it("terminates a timed-out process group and removes cancellation listeners", as
 	).rejects.toThrow(/timed out/);
 	expect(process.listenerCount("SIGTERM")).toBe(term);
 });
+it("allows a persistent listener without timing out based on registration age", async () => {
+	await expect(
+		runHostProcess(
+			process.execPath,
+			["-e", "setTimeout(() => {}, 75)"],
+			process.cwd(),
+			runnerEnvironment(process.env),
+			undefined,
+		),
+	).resolves.toBeUndefined();
+});
 it("forwards parent cancellation to the detached child and waits for shutdown", async () => {
 	const child = spawn(
 		process.execPath,

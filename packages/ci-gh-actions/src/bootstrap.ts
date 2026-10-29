@@ -5,12 +5,15 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-
+// Keep this source standalone: the relay copies it into connected repositories.
 // Official actions/runner release asset SHA-256, retrieved 2026-10-26.
-// Re-pin this file and the companion workflow commit together for upgrades.
-const RUNNER_VERSION = "2.338.2";
-const RUNNER_SHA256 =
+// public-contract: one pinned official release shared by standalone bridge and local installer.
+export const RUNNER_VERSION = "2.338.2";
+// public-contract: verify the same archive for hosted and local runners.
+export const RUNNER_SHA256 =
 	"baebf204307bac6193480852732f0aba2ae97b6c5597c244f4d5558390147c40";
+// public-contract: the checksum-pinned download endpoint used by both execution paths.
+export const RUNNER_URL = `https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz`;
 
 /** Deliberate allowlist: never pass outer job context, tokens or cloud credentials. */
 export function runnerEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
@@ -44,7 +47,7 @@ export function runHostProcess(
 	args: string[],
 	cwd: string,
 	env: NodeJS.ProcessEnv,
-	timeout: number,
+	timeout: number | undefined,
 ): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const child = spawn(command, args, {
@@ -157,7 +160,9 @@ export function runHostProcess(
 			cancelled = true;
 			shutdown();
 		};
-		const timer = setTimeout(stop, timeout);
+		// A persistent local listener has no registration-age deadline. Bridge hosts
+		// still pass their explicit lease timeout, and shutdown itself stays bounded.
+		const timer = timeout === undefined ? undefined : setTimeout(stop, timeout);
 		process.on("SIGTERM", stop);
 		process.on("SIGINT", stop);
 		child.once("error", (error) => {
@@ -211,8 +216,7 @@ export async function bootstrap(): Promise<void> {
 		throw new Error("invalid host timeout");
 	const work = await mkdtemp(join(tmpdir(), "hobo-ci-runner-"));
 	try {
-		const assetUrl = `https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz`;
-		const archiveResponse = await fetch(assetUrl, {
+		const archiveResponse = await fetch(RUNNER_URL, {
 			signal: AbortSignal.timeout(120000),
 		});
 		if (!archiveResponse.ok) throw new Error("runner download failed");

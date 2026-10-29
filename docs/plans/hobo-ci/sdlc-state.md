@@ -1,4 +1,38 @@
+---
+type: Delivery State
+title: "HoBo CI delivery state"
+description: "Durable delivery history and coordination state for the HoBo CI implementation."
+tags: [ci, delivery, state]
+---
+
 # HoBo.CI delivery state
+
+## Local development runner closeout — 2026-10-29
+
+- Delivery: [PR #1612](https://github.com/Tyler-R-Kendrick/HoBo/pull/1612),
+  branch `feat/ci-local-runners`; local implementation and review complete,
+  squash-merge authorized after final review/check reconciliation. The PR records
+  the authoritative merge outcome.
+- `local` offers preserve the existing lease/OIDC/JIT bridge, use the separate
+  `hobo-local-host` host label, permit one zero-price job, and retain fresh
+  availability requirements. Dev containers install the needed runtime/Docker/
+  GitHub/act tooling and start the controller automatically.
+- Self-review and independent review resolved ambiguous registration retries,
+  malformed-response cleanup, false stopped status, an invalid test type import,
+  valid dotted/dashed repository names, and the listener-age watchdog cutting
+  short a job accepted after a long idle period. Regressions cover each repair.
+- Validation: 674 CI/Actions package tests, all 11 PR-base relevant checks,
+  touched scripts/tests typechecked, generated schema/Protobuf/CUE checks, and
+  50 executed act jobs across 11 scenarios. The base image and nonroot official
+  runner/startup/drain paths were exercised locally.
+- Developer-experience consensus is required for the CLI/configuration/docs;
+  its current-head decision and final assertion are recorded with the PR review.
+- Boundary: real GitHub assignment remains unverified. The live bridge needs
+  a private trusted Linux x64 repository, authenticated GitHub runner authority,
+  an active relay connection and fresh local offer evidence. Offline act does
+  not require those credentials. See [local development](../../../packages/ci-gh-actions/LOCAL-DEVELOPMENT.md).
+
+## Earlier delivery state
 
 - Current phase: lowest-cost routing implementation and managed Vercel hosting planning
 - Current branch: `feat/ci-cheapest-routing`.

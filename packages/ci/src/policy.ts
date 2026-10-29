@@ -19,6 +19,7 @@ const providers = new Set([
 	"depot",
 	"warpbuild",
 	"kubernetes",
+	"local",
 	"vercel",
 ]);
 
@@ -58,7 +59,8 @@ export function parseCiPolicy(json: string): ParsedCiPolicy {
 			!providers.has(provider.kind) ||
 			!connectionPattern.test(provider.connectionRef) ||
 			!labelPattern.test(provider.runsOn) ||
-			provider.runsOn.toLowerCase() === "hobo"
+			provider.runsOn.toLowerCase() === "hobo" ||
+			(provider.kind === "local" && provider.runsOn !== "hobo-local-host")
 		)
 			throw new Error("invalid CI provider declaration");
 		ids.add(provider.id);

@@ -51,6 +51,7 @@ const provider = z
 			"depot",
 			"warpbuild",
 			"kubernetes",
+			"local",
 			"vercel",
 		]),
 		connectionRef: z.string().regex(/^[A-Za-z0-9_.:/-]{1,200}$/),

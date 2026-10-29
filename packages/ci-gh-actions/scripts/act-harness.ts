@@ -18,6 +18,7 @@ const Provider = z.enum([
 	"depot",
 	"warpbuild",
 	"kubernetes",
+	"local",
 ]);
 const Scenario = z.object({
 	name: z.string().regex(/^[a-z-]+$/),
@@ -60,6 +61,7 @@ const labels = {
 	depot: "depot-ubuntu-24.04",
 	warpbuild: "warp-ubuntu-latest-x64-2x",
 	kubernetes: "hobo-ci-isolated-k8s-host",
+	local: "hobo-local-host",
 };
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -211,6 +213,7 @@ export async function runActHarness(options: {
 						validUntil: "2026-10-27T00:00:00Z",
 						sourceUrl: "https://example.test/local-contract-evidence",
 						bridgeAcknowledged: true,
+						backend: offer.provider === "local" ? "gh-actions" : "",
 					}),
 				);
 				const listening = once(server, "listening");

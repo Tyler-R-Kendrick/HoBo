@@ -1,4 +1,15 @@
+---
+type: Delivery Plan
+title: "HoBo CI production delivery"
+description: "Delivery history and entry points for the HoBo CI relay, managed hosting and local development."
+tags: [ci, delivery, local-development]
+---
+
 # HoBo.CI production delivery
+
+Local development now includes a zero-price `local` provider and an automatically
+started dev-container runner controller. See the [local development guide](../../../packages/ci-gh-actions/LOCAL-DEVELOPMENT.md)
+for offline act execution, private-repository setup, trust and recovery.
 
 The original SDK delivery (#1594, closed by #1595) established the routing and
 portable execution contracts. The production continuation (#1596) added the

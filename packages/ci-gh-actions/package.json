@@ -34,6 +34,7 @@
     "start": "node dist/main.js",
     "test:act": "node --import tsx scripts/act-harness.ts",
     "act:install": "node --import tsx scripts/act-install.ts",
+    "local:runner": "node --import tsx scripts/local-runner.ts",
     "test:acceptance": "node --import tsx scripts/acceptance.ts",
     "deploy:check": "node --import tsx scripts/check-deployment.ts",
     "ops": "node dist/ops.js",

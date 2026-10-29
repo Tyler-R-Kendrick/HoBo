@@ -255,3 +255,10 @@ lookup holds the reservation because the original request could still finish;
 there is no automated operator resolution for that case yet. A VM whose create response was lost is
 looked up by deterministic name and stopped; the reservation stays held until
 its identity, termination and usage are proven.
+
+The managed relay embeds the reviewed Actions host workflow and standalone
+bootstrap from `@hobo/ci-gh-actions`. Its build regenerates
+`src/_generated/relay-assets.ts`; commit that snapshot whenever the shared host
+source changes. `test/relay-assets.test.ts` checks byte equality with the source.
+The local persistent listener can wait without an age-based deadline; the
+embedded hosted bridge still supplies and enforces its lease timeout.

@@ -182,6 +182,37 @@ Validation: `pnpm --filter @hobo/ci build`, `pnpm --filter @hobo/ci test`,
 `pnpm codegen:check --filter packages/ci`.
 
 
+## Local development machines
+
+An account can offer its own development machine with `provider: "local"`,
+`backend: "gh-actions"`, `runsOn: "hobo-local-host"`, and `concurrency: 1`.
+The workstation has zero provider runner-minute price and zero free-minute
+credits; its explicit `observedAt`, `validUntil`, HTTPS `sourceUrl`, and
+`bridgeAcknowledged` evidence remain mandatory. Do not invent an allocation
+balance to make an offline workstation eligible. Disable the offer when the
+machine is unavailable and refresh its observation before expiry.
+
+This uses the existing trusted-private-repository workflow bridge on Linux x64.
+The persistent dev runner hosts the bridge on `hobo-local-host`; the bridge
+claims a single-use ephemeral `hobo` runner for the reserved original job.
+Giving the persistent runner the `hobo` label would bypass lease admission and
+is unsupported. Public repositories, fork jobs and untrusted pull requests
+retain the bridge's existing refusal. The developer machine is shared execution
+with access to its files and Docker; it is not an isolated runner offer.
+
+A local-only account can run with a zero monetary budget. Cloud offers still
+follow the documented free-allocation-first ordering; enable only the local
+offer in a dev policy when execution must stay on the workstation. One active
+or uncertain lease occupies the workstation slot; additional jobs stay queued
+until verified host completion and runner cleanup release it.
+
+The existing protobuf Offer/Policy strings carry this provider without a wire
+format change. CUE local-offer fixtures, `test/local-provider.test.ts`, and the
+relay's local-provider bridge contract cover dependent constraints, budget-free
+admission, queuing, OIDC/JIT attribution and cleanup. The connected `act` corpus
+also executes the original workflow for a local-provider reservation; live
+GitHub assignment remains separate evidence.
+
 ## Swap execution backends
 
 `parsePipeline` constructs a deeply frozen command plan. `executePipeline` accepts

@@ -15,4 +15,8 @@ message CheckConfig {
   // Zero means unlimited, as in dagger check --parallel=0.
   uint32 parallel = 6;
   bool fail_fast = 7;
+  // Overall wall-clock deadline, including CLI startup. Zero uses 900 seconds.
+  uint32 timeout_seconds = 8;
+  // Optional named overlay from dagger.toml (for example, ci).
+  string environment = 9;
 }

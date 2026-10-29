@@ -26,3 +26,8 @@ keep schema rejection aligned with the runtime parser. The existing fixtures
 continue to pin SDK readiness. Runtime-dependent executable
 version matching and child environment isolation are protected by the subprocess
 Pact, not by CUE. There are no new persisted commands, events or read models.
+
+`timeoutSeconds` is an overall native execution deadline (zero/omitted selects
+900 seconds, maximum 86400); `environment` names an optional workspace overlay.
+The Podman/CI fixture exercises explicit container-runtime transport selection
+and both fields, with invalid deadline/environment fixtures protecting the bounds.

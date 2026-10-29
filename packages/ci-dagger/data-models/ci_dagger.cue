@@ -5,7 +5,7 @@ import "strings"
 #CiDagger: #Readiness | #CheckConfig
 
 #CheckConfig: {
- engine?: "" | "local" | =~"^(image|container|unix|tcp|tls|ssh|kube-pod)://[^[:space:]\\x00]+$"
+ engine?: "" | "local" | =~"^((image|container)(\\+(docker|podman|apple|finch|nerdctl))?|unix|tcp|tls|ssh|kube-pod)://[^[:space:]\\x00]+$"
  cliVersion: =~"^1\\.[0-9]+\\.[0-9]+(-beta\\.[0-9]+)?$"
  workspace?: string & strings.MaxRunes(500)
  if workspace != _|_ {
@@ -21,6 +21,8 @@ import "strings"
  skip?: [...string & =~"^[^-[:space:]\\x00][^[:space:]\\x00]*$"]
  parallel?: int & >=0 & <=256
  failFast?: bool
+ timeoutSeconds?: int & >=0 & <=86400
+ environment?: "" | =~"^[A-Za-z0-9_][A-Za-z0-9_.-]*$"
 }
 
 #Readiness: {

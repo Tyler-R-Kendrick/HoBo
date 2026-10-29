@@ -8,7 +8,11 @@ import { expect, it } from "vitest";
 import pipelineJson from "../examples/local/pipeline.json" with {
 	type: "json",
 };
-import { localConfig, localParams } from "../src/local-config.js";
+import {
+	localConfig,
+	localParams,
+	localWorkerName,
+} from "../src/local-config.js";
 import { assertLocalPreparation } from "../src/local-source.js";
 
 const pipeline = parsePipeline(JSON.stringify(pipelineJson));
@@ -128,8 +132,17 @@ it("prepares a frozen Git revision without uncommitted or ignored host files", (
 			readFileSync(join(prepared, "wrangler.jsonc"), "utf8"),
 		);
 		expect(parsePipeline(config.vars.HOBO_PIPELINE_JSON)).toEqual(pipeline);
+		expect(config.no_bundle).toBe(true);
+		expect(config.main).toBe(join(prepared, "worker/index.js"));
+		expect(readFileSync(config.main, "utf8").length).toBeGreaterThan(1000);
 	} finally {
 		rmSync(source, { recursive: true, force: true });
 		if (prepared) rmSync(prepared, { recursive: true, force: true });
 	}
+}, 30000);
+
+it("preserves case-sensitive preparation ownership in lowercase Worker names", () => {
+	expect(localWorkerName("local-AbCdEf")).not.toBe(
+		localWorkerName("local-abcdef"),
+	);
 });

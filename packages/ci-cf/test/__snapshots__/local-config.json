@@ -1,5 +1,5 @@
 {
-  "name": "hobo-ci-cf-local",
+  "name": "hobo-ci-6c6f63616c2d726576696577",
   "main": "<package>/examples/local/index.ts",
   "compatibility_date": "2026-07-29",
   "compatibility_flags": [

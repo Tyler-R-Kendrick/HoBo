@@ -24,3 +24,24 @@
 - No unresolved review threads or requested changes remained. CodeRabbit
   automatic review was skipped by its repository-star policy; no CI exception was used.
 - No cloud deployment, provider resources or outbound messages are part of this change.
+
+## Production native acceptance follow-up
+
+- Phase: implementation and native verification complete; review/delivery in progress.
+- Branch: `feat/ci-cf-native-acceptance`; user requires all work here, no delegation.
+- Managed native execution now covers terminal verdicts, immutable source/config/
+  Worker bundles, chunked binary artifacts, OS-backed ownership, daemon-bound cleanup
+  and explicit conservative crash recovery. No Cloudflare account/resources required.
+- Proof: complete finite production graph, 278 states and 3,224 transitions.
+- Native evidence: all success/failure/deadline/cancel/crash/output controls passed;
+  shared-package rebuild did not reload the frozen Worker; external crash counter
+  stayed one. The final complete native suite passed after deterministic archive preparation.
+  All six preparations reused one archive/image on the native vfs host.
+- Self-review fixed output serialization overflow, journal-key collisions,
+  case-sensitive ownership, submodule index handling, stale-lock races, Docker
+  context drift, unverifiable process acknowledgment and live Worker hot reload. Deterministic archives also fixed vfs cache growth
+  and release attributes no longer hide or rewrite committed CI inputs.
+- Validation: 47 package tests, Worker type checks, protobuf/CUE and all 12 staged
+  gates passed. A separate clean checkout passed the same 47 tests/types/proof.
+- PR-base checks, current-head design consensus and squash merge are the final
+  delivery steps; GitHub is authoritative for merge status.

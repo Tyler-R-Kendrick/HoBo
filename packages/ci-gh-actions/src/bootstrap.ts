@@ -199,6 +199,25 @@ async function responseField(
 		throw new Error("invalid bootstrap response field");
 	return String(value);
 }
+/** The runner host's HTTP consumer boundary, shared with executable Pact tests. */
+export async function claimRunnerJit(
+	relay: URL,
+	id: string,
+	identity: string,
+): Promise<string> {
+	const jit = await responseField(
+		await fetch(`${relay.origin}/v1/leases/${id}/jit`, {
+			method: "POST",
+			headers: { Authorization: `Bearer ${identity}` },
+			redirect: "error",
+			signal: AbortSignal.timeout(30000),
+		}),
+		"encodedJitConfig",
+	);
+	if (!/^[A-Za-z0-9+/=]+$/.test(jit))
+		throw new Error("invalid runner configuration");
+	return jit;
+}
 export async function bootstrap(): Promise<void> {
 	const started = Date.now();
 	if (process.platform !== "linux" || process.arch !== "x64")
@@ -253,17 +272,7 @@ export async function bootstrap(): Promise<void> {
 			"value",
 		);
 		if (identity.includes("\n")) throw new Error("missing identity token");
-		const jit = await responseField(
-			await fetch(`${relay.origin}/v1/leases/${id}/jit`, {
-				method: "POST",
-				headers: { Authorization: `Bearer ${identity}` },
-				redirect: "error",
-				signal: AbortSignal.timeout(30000),
-			}),
-			"encodedJitConfig",
-		);
-		if (!jit || !/^[A-Za-z0-9+/=]+$/.test(jit))
-			throw new Error("invalid runner configuration");
+		const jit = await claimRunnerJit(relay, id, identity);
 		process.stdout.write(`::add-mask::${jit}\n`);
 		const remaining = minutes * 60000 - (Date.now() - started) - 60000;
 		if (remaining <= 0) throw new Error("startup exhausted host timeout");

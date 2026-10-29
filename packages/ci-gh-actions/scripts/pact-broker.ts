@@ -153,6 +153,7 @@ async function main() {
 			pact: { type: "string" },
 			fault: { type: "boolean" },
 			gate: { type: "boolean" },
+			"github-version": { type: "string" },
 			act: { type: "string" },
 		},
 	});
@@ -198,14 +199,21 @@ async function main() {
 			"Pass --version with the reviewed source version (letters, digits, dot, underscore or hyphen)",
 		);
 	const version = parsedVersion.data;
+	const githubVersion = versionName.parse(
+		values["github-version"] ??
+			process.env.HOBO_CI_GITHUB_PACT_VERSION ??
+			"unverified",
+	);
 	const broker = pactBrokerClient(address, process.env.PACT_BROKER_TOKEN);
 	if (values.gate) {
 		const local = await broker.matrix(version, version);
-		const github = await broker.matrix(version, version, {
+		const github = await broker.matrix(version, githubVersion, {
 			consumer: githubConsumer,
 			provider: githubProvider,
 		});
-		process.stdout.write(`${JSON.stringify({ local, github })}\n`);
+		process.stdout.write(
+			`${JSON.stringify({ local, github, githubProviderVersion: githubVersion })}\n`,
+		);
 		if (
 			![local, github].every(
 				(result) =>
@@ -260,6 +268,7 @@ async function main() {
 		"test/bootstrap.test.ts",
 		"test/local-provider.test.ts",
 		"contracts/local-runner-api.test.ts",
+		"test/pact-broker.test.ts",
 	];
 	await record(
 		"native-scenarios",
@@ -429,15 +438,18 @@ async function main() {
 		broken.failed > 0 && broken.unknown === 0,
 		"a published failed verification must block deployment (unknown is insufficient)",
 	);
-	const githubDecision = await broker.matrix(version, version, {
+	const unknownGithub = await broker.matrix(version, `${version}-unverified`, {
 		consumer: githubConsumer,
 		provider: githubProvider,
 	});
-	assert.notEqual(
-		githubDecision.deployable,
-		true,
-		"unverified GitHub provider must not receive fabricated approval",
+	assert.ok(
+		unknownGithub.deployable !== true && unknownGithub.unknown > 0,
+		"an unverified external provider version must be blocked",
 	);
+	const githubDecision = await broker.matrix(version, githubVersion, {
+		consumer: githubConsumer,
+		provider: githubProvider,
+	});
 	const report = {
 		broker: broker.origin,
 		consumer,
@@ -464,6 +476,7 @@ async function main() {
 		failedVerificationBlocked: true,
 		contractMutationBlocked: true,
 		githubDecision,
+		githubProviderVersion: githubVersion,
 		liveGithubVerified: false,
 	};
 	await writeFile(

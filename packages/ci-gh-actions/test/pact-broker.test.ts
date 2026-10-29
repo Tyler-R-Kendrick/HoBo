@@ -1,8 +1,71 @@
+import { execFile } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:http";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { expect, it } from "vitest";
 import { z } from "zod";
 import { pactBrokerClient } from "../scripts/pact-broker.js";
+
+const execute = promisify(execFile);
+
+it.each([
+	true,
+	false,
+])("uses an independent upstream provider version in the deployment CLI (configured=%s)", async (configured) => {
+	const selected: string[][] = [];
+	const server = createServer((request, response) => {
+		const query = new URL(request.url ?? "", "http://localhost").searchParams;
+		const versions = query.getAll("q[][version]");
+		selected.push(versions);
+		const isGithub = query
+			.getAll("q[][pacticipant]")
+			.includes("GitHubActionsRest");
+		const verified = !isGithub || versions[1] === "upstream-build";
+		response.setHeader("Content-Type", "application/json");
+		response.end(
+			JSON.stringify({
+				summary: {
+					deployable: verified,
+					success: verified ? 1 : 0,
+					failed: 0,
+					unknown: verified ? 0 : 1,
+				},
+			}),
+		);
+	});
+	server.listen(0, "127.0.0.1");
+	await once(server, "listening");
+	try {
+		const { port } = z.object({ port: z.number() }).parse(server.address());
+		const args = [
+			"--import",
+			"tsx",
+			fileURLToPath(new URL("../scripts/pact-broker.ts", import.meta.url)),
+			"--gate",
+			"--broker-url",
+			`http://127.0.0.1:${port}`,
+			"--version",
+			"hobo-build",
+		];
+		if (configured) args.push("--github-version", "upstream-build");
+		const env: NodeJS.ProcessEnv = {
+			...process.env,
+			PACT_BROKER_TOKEN: "",
+			NO_PROXY: `127.0.0.1,localhost,${process.env.NO_PROXY ?? ""}`,
+		};
+		delete env.HOBO_CI_GITHUB_PACT_VERSION;
+		const operation = execute(process.execPath, args, { env, timeout: 15000 });
+		if (configured) await expect(operation).resolves.toHaveProperty("stdout");
+		else await expect(operation).rejects.toThrow(/Pact deployment blocked/);
+		expect(selected).toEqual([
+			["hobo-build", "hobo-build"],
+			["hobo-build", configured ? "upstream-build" : "unverified"],
+		]);
+	} finally {
+		await new Promise<void>((done) => server.close(() => done()));
+	}
+});
 
 it.each([
 	"http://broker.example",

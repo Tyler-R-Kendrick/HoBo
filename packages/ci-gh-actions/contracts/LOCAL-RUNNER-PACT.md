@@ -33,6 +33,11 @@ An existing shared broker can replace the local broker through
 remote brokers, redirects, malformed responses and missing verification fail
 closed. Use a reviewed source commit as `--version`. A published version cannot
 be replaced with a different contract; publish the new source version instead.
+GitHub's provider version is independent of HoBo's source commit. Select a
+broker-verified upstream version with `--github-version <provider-version>` or
+`HOBO_CI_GITHUB_PACT_VERSION`. Without one, the explicit `unverified` sentinel
+keeps the release gate blocked. A legitimate independently published upstream
+verification is honored; the validation lane never fabricates it.
 
 ## Scenario coverage
 
@@ -50,7 +55,8 @@ be replaced with a different contract; publish the new source version instead.
 | Matrix/needs/outputs/artifacts/continued failures and provider swapping | Actual act corpus prerequisite | All 11 corpus scenarios execute; expected budget refusal launches no jobs |
 | Two local jobs, capacity withdrawal, zero settlement and durable restart/replay | Connected acceptance prerequisite | Shipped relay/outbox/OIDC/JIT/host path with strict local remote fixtures |
 | Missing JIT, wrong provider and skipped original job | Acceptance fault prerequisites | All three executions must fail |
-| Missing/failed verification, version skew and changed contract under the same version | Real broker matrix | Missing/failed/skewed pairs block; immutable-version replacement is refused |
+| Missing/failed verification, version skew and changed contract under the same version | Real broker matrix and publication client | Missing/failed/skewed pairs block; immutable-version replacement is refused |
+| Broker URL/credential/response guards and independent upstream version selection | Broker-client prerequisites | Real loopback client/CLI tests run before publication, including a mocked verified upstream version without publishing a fake GitHub result |
 
 The relay contract contains 31 separately generated interactions; the GitHub
 consumer contract contains 16. Tests assert exact scenario inventories, so a

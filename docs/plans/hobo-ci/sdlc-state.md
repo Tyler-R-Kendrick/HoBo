@@ -20,9 +20,12 @@ tags: [ci, delivery, state]
   verification, skew and replacement of immutable consumer contracts. An
   intentionally broken provider publishes a real failure under a separate
   negative-control version/branch.
+- GitHub's provider-version selector is independent of HoBo's consumer/source
+  version. It defaults to an explicit unverified sentinel and can use an
+  independently verified upstream version from the shared broker.
 - Before publication, native process/socket/lifecycle tests, all 50 act corpus
   jobs, two zero-budget connected local executions, capacity withdrawal/replay
-  and three rejecting acceptance faults must pass. Validation also passed 571
+  and three rejecting acceptance faults must pass. Validation also passed 573
   Actions tests, 247 Vercel tests and direct touched-script/test typechecks.
 - GitHub consumer expectations are published, but no local simulator is labelled
   a verified GitHub provider. The broker reports that external boundary unknown;

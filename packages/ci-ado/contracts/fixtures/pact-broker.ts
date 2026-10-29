@@ -5,15 +5,18 @@ import {
 	parsePactDocument,
 } from "@hobo/contract-harness";
 import document from "../live.pact.json" with { type: "json" };
+import edgeDocument from "../live-edge.pact.json" with { type: "json" };
 
 export const adoPact = parsePactDocument(document);
+export const adoEdgePact = parsePactDocument(edgeDocument);
+const allInteractions = [...adoPact.interactions, ...adoEdgePact.interactions];
 export const adoTarget = document.metadata.consumerFixtures.target;
 export const adoExpectedPlan = document.metadata.consumerFixtures.planDigest;
 
 /** Local scenario ordering over recorded interactions; never invents response payloads. */
 export function createAdoPactBroker(sequence: readonly string[]) {
 	const interactions = sequence.map((description) => {
-		const interaction = adoPact.interactions.find(
+		const interaction = allInteractions.find(
 			(row) => row.description === description,
 		);
 		if (!interaction)

@@ -22,7 +22,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc -p tsconfig.contracts.json",
     "test": "vitest run",
-    "test:contracts": "vitest run contracts test/live.test.ts test/production.test.ts",
+    "test:contracts": "vitest run contracts test/live.test.ts test/production.test.ts test/edges",
+    "test:coverage": "vitest run --coverage",
     "project": "node dist/cli.js",
     "pretest": "node --experimental-strip-types ../../scripts/ensure-built.mts"
   },
@@ -32,6 +33,8 @@
     "yaml": "2.9.0"
   },
   "devDependencies": {
-    "@hobo/contract-harness": "workspace:*"
+    "@hobo/contract-harness": "workspace:*",
+    "@vitest/coverage-v8": "4.1.9",
+    "vitest": "4.1.9"
   }
 }

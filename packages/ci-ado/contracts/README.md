@@ -7,6 +7,11 @@ and terminal status, timeline, retained artifacts, cancellation and reconciliati
 Hosted/stale/extra-job previews, malformed responses, authorization failures and
 credential redirects are declared provider states.
 
+`live-edge.pact.json` adds malformed/ambiguous identities, admission variants,
+non-success lifecycle states, individual timeline failures, artifact mismatches
+and encoded names. The [edge-case matrix](../test/edges/README.md) identifies the
+tests and transport-framing faults that consume them.
+
 `fixtures/pact-broker.ts` parses the Pact with `@hobo/contract-harness` and serves
 responses through its shared mock provider. Scenarios select recorded interactions
 in order. The broker independently enforces method, complete query, authorization,

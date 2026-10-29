@@ -1,4 +1,4 @@
-import { create, fromJsonString } from "@bufbuild/protobuf";
+import { create, fromJson } from "@bufbuild/protobuf";
 import {
 	type Pipeline,
 	type PipelineArtifact,
@@ -36,7 +36,14 @@ export class BackendUnavailableError extends Error {
 }
 
 export function parsePipeline(json: string): ParsedPipeline {
-	const pipeline = fromJsonString(PipelineSchema, json);
+	const pipeline = fromJson(
+		PipelineSchema,
+		JSON.parse(json, (key, value) => {
+			if (key === "__proto__")
+				throw new Error("prototype keys are not allowed in command plans");
+			return value;
+		}),
+	);
 	if (
 		!/^[A-Za-z0-9_-]{1,100}$/.test(pipeline.id) ||
 		!/^[A-Za-z0-9_-]{1,80}$/.test(pipeline.accountId)

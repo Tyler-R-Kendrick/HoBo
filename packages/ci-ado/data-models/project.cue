@@ -12,7 +12,7 @@ import (
  demands?: [...#Demand] & list.MaxItems(16) & list.UniqueItems()
  pipelinePath: string & =~"^[A-Za-z0-9_.-][A-Za-z0-9_./-]{0,499}$" & !~"(^|/)[.]{1,2}(/|$)" & !~"//|/$"
  artifactPrefix: string & =~"^[A-Za-z0-9_-]{1,64}$"
- environmentRefs?: {[#EnvironmentName & !~"^HOBO_CI_"]: #EnvironmentName & !~"^HOBO_CI_"} & struct.MaxFields(64)
+ environmentRefs?: {[#EnvironmentName & !="__proto__" & !~"^HOBO_CI_"]: #EnvironmentName & !~"^HOBO_CI_"} & struct.MaxFields(64)
  runnerArgv?: [...#Argument] & list.MaxItems(256)
  bootstrapArgv?: [...#Argument] & list.MaxItems(256)
  verifyArtifacts?: bool
@@ -43,7 +43,7 @@ import (
  organizationUrl: string & =~"^https://dev[.]azure[.]com/[A-Za-z0-9][A-Za-z0-9-]{0,99}/?$"
  project: string & =~"^[A-Za-z0-9]([A-Za-z0-9_. -]{0,198}[A-Za-z0-9_.-])?$"
  pipelineId: int & >0
- refName: string & =~"^refs/heads/[A-Za-z0-9_./-]+$" & !~"[.][.]"
+ refName: string & =~"^refs/heads/[A-Za-z0-9_./-]+$" & !~"[.][.]|//|/$|[.]$|(^|/)[.]|[.]lock(/|$)"
  sourceVersion: string & =~"^[a-f0-9]{40}$"
  tokenEnv: #EnvironmentName
  authentication: "pat" | "bearer"

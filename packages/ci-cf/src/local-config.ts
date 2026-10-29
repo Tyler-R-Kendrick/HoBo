@@ -4,23 +4,28 @@ import type { CiParams, CloudflareArtifacts } from "@cloudflare/ci";
 import { type ParsedPipeline, PipelineSchema } from "@hobo/ci/execution";
 import type { Unstable_RawConfig } from "wrangler";
 
+export function localWorkerName(preparationId: string): string {
+	return `hobo-ci-${Buffer.from(preparationId, "utf8").toString("hex")}`;
+}
+
 /** Configuration only; building, executing and deploying remain explicit actions. */
 export function localConfig(
 	pipeline: ParsedPipeline,
 	sha: string,
 	preparationId: string,
+	port = 8787,
 ) {
 	if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(sha))
 		throw new Error("local source must be a resolved Git commit");
 	return {
-		name: "hobo-ci-cf-local",
+		name: localWorkerName(preparationId),
 		main: fileURLToPath(new URL("../examples/local/index.ts", import.meta.url)),
 		// Wrangler 4.114.0's bundled workerd supports dates through July 29.
 		compatibility_date: "2026-07-29",
 		compatibility_flags: ["nodejs_compat"],
 		workers_dev: false,
 		send_metrics: false,
-		dev: { ip: "127.0.0.1", port: 8787, enable_containers: true },
+		dev: { ip: "127.0.0.1", port, enable_containers: true },
 		containers: [
 			{
 				class_name: "LocalCiSandbox",

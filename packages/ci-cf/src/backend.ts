@@ -28,7 +28,9 @@ const CAPABILITIES: readonly PipelineCapability[] = Object.freeze([
 	"artifacts",
 	"cancellation",
 ]);
-const MAX_LOG_BYTES = 3 * 1024 * 1024;
+const MAX_LOG_BYTES = 300000;
+const MAX_TOTAL_LOG_BYTES = 2 * 1024 * 1024;
+const ARTIFACT_CHUNK_BYTES = 131072;
 
 async function text(
 	log: string | ReadableStream<Uint8Array>,
@@ -84,7 +86,7 @@ function bytes(encoded: string): Uint8Array {
  */
 export function cloudflareCommand(argv: readonly string[]): string {
 	const command = argv.map(shellQuote).join(" ");
-	return `set +e\nhobo_tmp=$(mktemp -d) || exit 70\n${command} >"$hobo_tmp/stdout" 2>"$hobo_tmp/stderr"\nhobo_status=$?\nprintf '{"exitCode":%s,"stdoutBase64":"' "$hobo_status"\nbase64 <"$hobo_tmp/stdout" | tr -d '\\n'\nprintf '","stderrBase64":"'\nbase64 <"$hobo_tmp/stderr" | tr -d '\\n'\nprintf '"}\\n'\nrm -rf "$hobo_tmp"\n`;
+	return `set +e\nhobo_tmp=$(mktemp -d) || exit 70\n${command} >"$hobo_tmp/stdout" 2>"$hobo_tmp/stderr"\nhobo_status=$?\nhobo_bytes=$(wc -c <"$hobo_tmp/stdout")\nhobo_errors=$(wc -c <"$hobo_tmp/stderr")\nif [ "$((hobo_bytes + hobo_errors))" -gt 196608 ]; then : >"$hobo_tmp/stdout"; echo "Cloudflare command output exceeds 192 KiB" >"$hobo_tmp/stderr"; hobo_status=75; fi\nprintf '{"exitCode":%s,"stdoutBase64":"' "$hobo_status"\nbase64 <"$hobo_tmp/stdout" | tr -d '\\n'\nprintf '","stderrBase64":"'\nbase64 <"$hobo_tmp/stderr" | tr -d '\\n'\nprintf '"}\\n'\nrm -rf "$hobo_tmp"\n`;
 }
 
 /** Binds the native SDK context supplied by a Cloudflare CIWorkflow. */
@@ -102,6 +104,8 @@ export function createCloudflareBackend(
 			let busy = false;
 			let stopRequired = false;
 			let artifactIndex = 0;
+			let totalLogs = 0;
+			let totalArtifacts = 0;
 			const deadline = Date.now() + pipeline.timeoutSeconds * 1000;
 			const privateRoot = `.hobo-ci-workspaces/${pipeline.id}`;
 			function workspaceCommand(
@@ -197,7 +201,7 @@ exec env ${environment} ${argv.map(shellQuote).join(" ")}`;
 			return {
 				async run(step, signal) {
 					const result = await invoke(
-						`hobo-${pipeline.id}-${step.id}`,
+						`hobo-${pipeline.id}-step-${step.id}`,
 						workspaceCommand(step.argv, step.cwd, {
 							...step.env,
 							HOBO_CI_EXECUTION_ID: pipeline.id,
@@ -206,6 +210,11 @@ exec env ${environment} ${argv.map(shellQuote).join(" ")}`;
 						{},
 						signal,
 					);
+					totalLogs +=
+						new TextEncoder().encode(result.stdout).byteLength +
+						new TextEncoder().encode(result.stderr).byteLength;
+					if (totalLogs > MAX_TOTAL_LOG_BYTES)
+						throw new Error("Cloudflare pipeline output exceeds two MiB total");
 					return create(PipelineStepResultSchema, { id: step.id, ...result });
 				},
 				async artifact(path, signal) {
@@ -217,20 +226,57 @@ exec env ${environment} ${argv.map(shellQuote).join(" ")}`;
 						)
 						.join(" ");
 					const safe = shellQuote(path);
-					const script = `for hobo_part in ${prefixes}; do test ! -L "$hobo_part" || exit 65; done\ntest -f ${safe} || exit 66\nhobo_size=$(wc -c < ${safe}) || exit 70\ntest "$hobo_size" -le 1048576 || exit 75\nbase64 < ${safe}`;
-					const result = await invoke(
-						`hobo-${pipeline.id}-artifact-${artifactIndex++}`,
-						workspaceCommand(["sh", "-c", script], ".", {}),
-						".",
-						{},
-						signal,
-					);
-					if (result.exitCode !== 0)
-						throw new Error("Cloudflare artifact unavailable");
-					return createArtifact(
-						path,
-						bytes(result.stdout.replaceAll(/\s/g, "")),
-					);
+					const chunks: Uint8Array[] = [];
+					let size = -1;
+					const index = artifactIndex++;
+					for (
+						let part = 0;
+						part === 0 || part * ARTIFACT_CHUNK_BYTES < size;
+						part++
+					) {
+						const script = `for hobo_part in ${prefixes}; do test ! -L "$hobo_part" || exit 65; done
+ test -f ${safe} || exit 66
+ hobo_size=$(wc -c < ${safe}) || exit 70
+ test "$hobo_size" -le 1048576 || exit 75
+ printf '%s\\n' "$hobo_size"
+ dd if=${safe} bs=${ARTIFACT_CHUNK_BYTES} skip=${part} count=1 2>/dev/null | base64`;
+						const result = await invoke(
+							`hobo-${pipeline.id}-artifact-${index}${part ? `-chunk-${part}` : ""}`,
+							workspaceCommand(["sh", "-c", script], ".", {}),
+							".",
+							{},
+							signal,
+						);
+						if (result.exitCode !== 0)
+							throw new Error("Cloudflare artifact unavailable");
+						const newline = result.stdout.indexOf("\n");
+						const reported = result.stdout.slice(0, newline);
+						if (newline < 1 || !/^[0-9]+$/.test(reported))
+							throw new Error("invalid artifact size");
+						const currentSize = Number(reported);
+						if (currentSize > 1048576 || (size !== -1 && size !== currentSize))
+							throw new Error("artifact changed while reading");
+						size = currentSize;
+						const chunk = bytes(
+							result.stdout.slice(newline + 1).replaceAll(/\s/g, ""),
+						);
+						if (
+							chunk.byteLength !==
+							Math.min(ARTIFACT_CHUNK_BYTES, size - part * ARTIFACT_CHUNK_BYTES)
+						)
+							throw new Error("incomplete artifact chunk");
+						chunks.push(chunk);
+					}
+					totalArtifacts += size;
+					if (totalArtifacts > 4 * 1024 * 1024)
+						throw new Error("Cloudflare artifacts exceed four MiB total");
+					const data = new Uint8Array(size);
+					let offset = 0;
+					for (const chunk of chunks) {
+						data.set(chunk, offset);
+						offset += chunk.byteLength;
+					}
+					return createArtifact(path, data);
 				},
 				close(reason) {
 					if (closeTask) return closeTask;

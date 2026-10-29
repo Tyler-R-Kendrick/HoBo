@@ -469,6 +469,92 @@ describe("Cloudflare native CI backend", () => {
 			}),
 		).not.toThrow();
 	});
+	it("chunks binary artifact boundaries below the real SDK inline-log limit", async () => {
+		const native = new NativeContext(directory());
+		const backend = createCloudflareBackend({
+			context: native.context,
+			terminate: native.terminate,
+			verifyShutdown: native.verifyShutdown,
+		});
+		const result = await executePipeline(
+			backend,
+			pipeline(
+				[
+					{
+						id: "binary",
+						argv: [
+							process.execPath,
+							"-e",
+							'require("fs").writeFileSync("binary.dat",Buffer.alloc(1048576,173))',
+						],
+						cwd: ".",
+						env: {},
+					},
+				],
+				["binary.dat"],
+			),
+		);
+		expect(result.status).toBe("succeeded");
+		expect(result.artifacts[0]?.data).toEqual(
+			new Uint8Array(1048576).fill(173),
+		);
+		expect(native.requests).toHaveLength(9);
+		expect(native.requests.at(-1)?.name).toBe(
+			"hobo-cf-contract-artifact-0-chunk-7",
+		);
+	}, 30000);
+	it("reports output overflow as a small persisted command failure", async () => {
+		const native = new NativeContext(directory());
+		const result = await executePipeline(
+			createCloudflareBackend({
+				context: native.context,
+				terminate: native.terminate,
+				verifyShutdown: native.verifyShutdown,
+			}),
+			pipeline(
+				[
+					{
+						id: "large",
+						argv: [
+							process.execPath,
+							"-e",
+							'process.stdout.write("x".repeat(196609))',
+						],
+						cwd: ".",
+						env: {},
+					},
+				],
+				[],
+			),
+		);
+		expect(result.status).toBe("failed");
+		expect(result.steps[0]?.exitCode).toBe(75);
+		expect(result.steps[0]?.stderr).toContain("exceeds 192 KiB");
+		expect(native.requests).toHaveLength(1);
+	});
+
+	it("keeps command names disjoint from native artifact journal keys", async () => {
+		const native = new NativeContext(directory());
+		const result = await executePipeline(
+			createCloudflareBackend({
+				context: native.context,
+				terminate: native.terminate,
+			}),
+			pipeline([
+				{
+					id: "artifact-0",
+					argv: ["sh", "-c", "printf actual > result.txt"],
+					cwd: ".",
+					env: {},
+				},
+			]),
+		);
+		expect(result.status).toBe("succeeded");
+		expect(new Set(native.requests.map((request) => request.name)).size).toBe(
+			2,
+		);
+	});
+
 	it("quotes hostile arguments without interpolating their contents", () => {
 		expect(cloudflareCommand(["printf", "' $HOME"])).toContain(
 			`'printf' ''"'"' $HOME'`,

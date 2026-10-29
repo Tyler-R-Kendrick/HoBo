@@ -1,4 +1,4 @@
-# HoBo CI Cf
+# HoBo CI Cloudflare
 
 `@hobo/ci-cf` implements the shared HoBo pipeline backend using
 [`@cloudflare/ci` 0.2.0](https://github.com/cloudflare/ci). The same parsed pipeline
@@ -8,93 +8,126 @@ Source selection and account authorization belong to the caller's existing
 
 ## Run checks locally
 
-The experimental local mode runs the native Cloudflare CI engine on your machine: Wrangler
-emulates the Worker/Workflow and R2, and Docker runs the Sandbox containers.
-This path needs Git, Node 22+, and a running Docker-compatible engine. No
-Cloudflare account, Artifacts repository, R2 bucket or API token is needed.
-It does not register a hosted runner or send jobs to Cloudflare Workers Builds.
+Local mode runs the real pinned Cloudflare CI SDK, Worker/Workflow engine and
+Sandbox containers on Linux (including WSL) with a local Unix Docker socket.
+Git, Node 22+, pnpm, util-linux `flock` and Docker are required. No Cloudflare account, token,
+Artifacts repository, deployed Worker or remote R2 bucket is needed.
 
-Supply the same portable pipeline JSON consumed by `@hobo/ci/execution`. For
-example, replace the smoke command in [`examples/local/pipeline.json`](examples/local/pipeline.json)
-with install/lint/test steps for your project, then run from the HoBo checkout:
+Use the same pipeline JSON as other HoBo CI packages. From the HoBo checkout:
+
+```sh
+pnpm --filter @hobo/ci-cf local:run \
+  --source /absolute/path/to/git-repo \
+  --pipeline /absolute/path/to/checks.json --ref HEAD
+```
+
+[`examples/local/pipeline.json`](examples/local/pipeline.json) shows the format.
+Put dependency installation and your checks in ordered steps. The default image
+includes Node/npm; pass `--dockerfile /absolute/path/to/Dockerfile` to extend the
+pinned Sandbox image with your project's toolchain **before preparation**.
+
+`local:run` prepares committed source, starts its private local runtime, submits
+one native Workflow, waits for its actual terminal result, verifies artifact
+hashes, exports artifacts and stops its Worker/process group and all owned Docker
+containers, including proxy containers. Exit codes are:
+
+| Code | Meaning |
+| --- | --- |
+| 0 | Every check passed, native Workflow completed, artifacts verified/exported, shutdown confirmed |
+| 1 | Checks failed; later steps were not admitted; shutdown confirmed |
+| 124 | Pipeline deadline exceeded; shutdown confirmed |
+| 130 | SIGINT/SIGTERM cancellation; shutdown confirmed |
+| 2 | Uncertain result, interrupted admission, input/preparation error or unconfirmed cleanup |
+
+The pipeline timeout begins at submission, includes Sandbox/snapshot overhead,
+and is enforced by the host controller as well as the SDK. Initial image building
+has a separate five-minute bound; local bundle generation is limited to two minutes; Worker startup is limited to three minutes.
+`--json` prints the protobuf JSON run receipt. Without it, the command prints the
+outcome, Workflow ID and receipt path. Logs and receipts stay under the printed
+preparation directory; artifacts are under `artifacts-<workflow-id>/`.
+
+For inspection or repeated runs of immutable inputs:
 
 ```sh
 pnpm --filter @hobo/ci-cf local:prepare \
-  --source /absolute/path/to/your/git-repo \
-  --pipeline /absolute/path/to/checks.json --ref HEAD
-pnpm --filter @hobo/ci-cf local:dev
+  --source /absolute/path/to/git-repo --pipeline /absolute/path/to/checks.json
+pnpm --filter @hobo/ci-cf local:run --directory /absolute/path/to/preparation
 ```
 
-In a second terminal:
+Each preparation has independent persisted Workflows/R2 state and a private
+access token. Input digests bind the source archive, pipeline, Dockerfile, config
+and controller implementation. Preparation uses Wrangler's local `deploy --dry-run`
+bundler (no deployment or cloud bindings), pins every emitted Worker asset by
+digest, and runs it with `no_bundle: true`. Rebuilding shared packages cannot
+hot-reload an in-flight Workflow. Mutating prepared inputs requires a new preparation.
+`--work-root PATH` selects the scratch root; `--port PORT` selects an explicit
+loopback port. An OS-backed lock prevents concurrent controllers from owning the same preparation;
+crashes release the lock, but an unfinished admission still requires explicit recovery. A port
+occupied by a different preparation cannot admit work.
+
+If the controller is killed, reconcile its recorded Workflow with:
 
 ```sh
-pnpm --filter @hobo/ci-cf local:trigger
-pnpm --filter @hobo/ci-cf exec wrangler workflows instances list hobo-ci-cf-local --local
-pnpm --filter @hobo/ci-cf exec wrangler workflows instances describe hobo-ci-cf-local INSTANCE_ID --local
+pnpm --filter @hobo/ci-cf local:run \
+  --directory /absolute/path/to/preparation --resume WORKFLOW_ID
 ```
 
-`local:trigger` starts a Workflow asynchronously; inspect its terminal status to learn
-whether checks passed. The dev terminal prints step results and artifact records.
-Stop the dev process with Ctrl-C. To terminate an individual run while dev is
-running, use `wrangler workflows instances terminate hobo-ci-cf-local INSTANCE_ID --local`.
-Cancellation retains the existing adapter's uncertain-shutdown semantics.
+A finished receipt is revalidated and returned. An interrupted admission is
+**uncertain**: recovery stops the verified old process group and owned containers
+and exits 2 without replaying commands. Start a new run explicitly after assessing
+side effects. A durable R2 admission marker inside each native step also refuses
+automatic repetition of an interrupted callback if the dev runtime restarts.
+This conservative behavior does not claim exactly-once external effects.
 
-Preparation resolves `--ref` to an immutable Git commit, creates a fresh directory
-under `packages/ci-cf/.hobo/work/`, and writes a reviewable `wrangler.jsonc`, trigger
-parameters and Docker build context there. Only that commit's tracked files enter
-the image, including any environment files or dependencies already committed to
-Git. Uncommitted/untracked host files are excluded; Git submodules and LFS payloads need separate
-materialization. Dependency installation belongs in the pipeline. The base image
-is the same pinned Sandbox 0.12.1 image as the cloud example. If your checks need
-other toolchains, extend the prepared Dockerfile before starting dev.
+For manual debugging, `local:dev --directory PATH` starts Wrangler; a second
+terminal can use `local:trigger --directory PATH`. Trigger means asynchronous
+submission, and its exit code is never a CI verdict. Manual dev/trigger is not the
+managed lifecycle used by `local:run`. Use Wrangler's local Workflow inspector
+with the preparation's `--config PATH/wrangler.jsonc` and `--port PORT`.
 
-Each preparation has independent local state. `local:dev` and `local:trigger` select
-the latest preparation; `--directory /absolute/path/to/prepared-run` selects an
-older one explicitly. Stop dev before preparing another revision. `--work-root`
-changes the scratch root for all three commands. Remove an unused preparation
-directory to discard its local Workflow/R2 state; Docker images remain subject
-to your usual local Docker cleanup.
+Preparation reads the selected Git commit, including recursively pinned,
+initialized submodules, without modifying the checkout. Uncommitted and untracked
+files are excluded. Git LFS pointer files are refused: materialize and commit the
+actual content first. Dependency installation belongs in the pipeline. Git
+repository selectors inherited from hooks cannot redirect source selection.
 
-The Workflow checks both the source SHA and preparation ID before starting a
-runner, so an old dev session rejects a newly prepared pipeline even at the same
-Git revision. Preparation clears inherited Git repository selectors, including
-hook-local `GIT_DIR`, `GIT_WORK_TREE` and `GIT_INDEX_FILE`, before reading source.
+The generated config uses `--local`, loopback and binding-backed local R2 backups
+(`localBucket: true` even with FUSE). Source checkout uses an image-baked file
+archive; no Artifacts operation or cloud fallback exists. The private health,
+status/result and cancellation endpoints require the preparation token and reject
+browser Origin requests. Triggering uses Wrangler's existing local Workflow API.
+The Docker context must point to a local Unix socket; remote engines are refused.
+Receipts pin that socket and daemon identity, so changing the default Docker
+context cannot redirect recovery or make cleanup falsely succeed.
 
-The generated config omits Artifacts and cloud credentials, uses local R2 and
-loopback listening, and disables Wrangler telemetry. The launcher always passes
-`--local`, accepts no extra Wrangler flags, and has no cloud fallback. Source is
-read from an archive baked into the image, so checkout needs no network service.
-The local Sandbox class forces `localBucket: true` for backups, including on
-Docker hosts with FUSE; no presigned remote R2 URLs are used. The SDK's public
-provider discriminator remains `cloudflare-artifacts`, but the local source
-adapter accepts only `local/workspace` and performs no Artifacts operations.
+Local networking preserves Cloudflare's pinned native egress proxy and mandatory
+TPROXY interception. A small compatibility image skips only the optional
+established-socket DIVERT fast path when the kernel explicitly lacks the socket
+matcher. All other iptables errors propagate; kernels without working TPROXY fail
+closed. The locally built content-addressed proxy image stays in your daemon;
+Wrangler's otherwise unconditional pull resolves only that image from local cache.
+Platform proxy and TLS settings remain in effect.
 
-This avoids Cloudflare runtime and storage charges for these checks. It does not
-prevent commands from calling paid APIs, using remote bindings in nested tools,
-or deploying resources. Image/package downloads need network access, and local
-CPU, disk and any Docker subscription still belong to your machine. Local runs
-are for trusted code and do not establish hosted billing or provider acceptance.
+This avoids Cloudflare runtime and R2 charges for these checks. Commands can still
+call paid APIs or deploy resources, and image/package downloads use the network.
+Local CPU, retained state/images and any Docker subscription remain your costs.
+Run trusted repositories; receipts/artifacts/logs contain command output and
+should follow your normal local retention policy. Remove an unused preparation
+after stopping its runtime; use your usual Docker image cleanup separately.
 
-Runtime/configuration evidence checked 2026-10-29:
-[Cloudflare CI 0.2.0](https://github.com/cloudflare/ci/releases/tag/v0.2.0),
-[local Containers](https://developers.cloudflare.com/containers/guides/local-dev/),
-[local Workflows](https://developers.cloudflare.com/workflows/build/local-development/),
-and [binding simulation](https://developers.cloudflare.com/workers/local-development/).
-The pinned SDK's Sandbox 0.x API is intentional; newer Sandbox 1.x examples are
-not interchangeable with it.
+The supported version set is `@cloudflare/ci` 0.2.0, Sandbox 0.12.1 and Wrangler
+4.114.0; these APIs are not interchangeable with Sandbox 1.x. Configuration was
+checked against current [CI source](https://github.com/cloudflare/ci/releases/tag/v0.2.0),
+[Containers local development](https://developers.cloudflare.com/containers/guides/local-dev/)
+and [Workflows local development](https://developers.cloudflare.com/workflows/build/local-development/).
 
-TypeScript compiles both Worker entrypoints against the actual SDK. Local config
-snapshots and archive tests protect generated inputs, and the local-source Pact
-pins offline checkout, credential refusal and binding-backed backups. The
-pipeline/result protobuf and CUE constraints remain owned by `@hobo/ci`; this
-mode adds no parallel pipeline format or separate execution ledger.
-
-The development environment used for this change built the image and started
-the Worker with all bindings local, but could not complete a native runner:
-Cloudflare's proxy container failed with `iptables ... RULE_APPEND failed`
-because the host lacked the required kernel module. Use a Docker host that
-supports Cloudflare's local container networking. The passing contract tests
-do not substitute for that native acceptance run.
+Run `pnpm --filter @hobo/ci-cf test:proof` for the exhaustive finite-state safety
+proof and `pnpm --filter @hobo/ci-cf test:acceptance` for real local Docker/Workers/
+Workflows/Sandbox/R2 acceptance. The latter uses an offline dependency fixture and
+a local bridge HTTP counter, retains receipts and native logs, and requires no paid
+resources. See [acceptance evidence](acceptance/README.md) for the executed cases
+and the precise scope of the formal claim. These checks do not assert deployed
+Cloudflare-account behavior or prove the third-party runtime implementation.
 
 ## Use an existing cloud CI context
 
@@ -146,7 +179,11 @@ retains exact exit code and both output streams even when a user command fails.
 
 The portable artifact subset is regular files of at most one MiB. Artifact reads
 reject symlinks in the path, use bounded base64 transport, and return the shared
-SHA-256 checked artifact type. SDK string and streamed logs are both supported.
+SHA-256 checked artifact type. Files are transferred in 128 KiB chunks so the
+native Workflow journal never receives a non-serializable log stream. Combined
+stdout/stderr per command is limited to 192 KiB; total pipeline logs are limited to two MiB and total
+artifacts to four MiB. Exceeding a bound fails the run, without
+silent truncation. The adapter also bounds SDK string/stream decoding.
 The SDK context already binds the source repository/revision. Arbitrary OCI image
 selection, provider-specific source adapters, secret injection and deploy credentials
 are not part of the portable pipeline contract.

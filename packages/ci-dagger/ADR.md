@@ -1,7 +1,28 @@
 # Dagger execution adapter
 
-Status: implemented SDK execution. Local contracts verify the portable pipeline
+Status: implemented SDK execution and native 1.x CLI checks. Local contracts verify the portable pipeline
 boundary; provider connectivity is a separate runtime binding.
+
+Native checks are a separate `@hobo/ci-dagger/checks` entrypoint. Dagger's 1.x
+workspace/check orchestration is delegated to the installed CLI rather than
+reimplemented through the pinned 0.21.11 SDK. `CheckConfig` is protobuf-owned,
+parsed into an immutable refinement, with CUE fixtures and a subprocess Pact.
+The required CLI version pin selects the local engine image and is checked before
+execution. `local` is translated to the documented `image://` transport. Explicit
+non-Cloud engine URIs support operator-owned shared infrastructure.
+
+The native runner owns only its CLI process. It streams logs and returns the exit
+code; it does not emit scheduler events, reserve a lease, settle costs, update a
+read model, or assert remote termination when interrupted. The existing portable
+pipeline actor continues to own those responsibilities below. Native check
+results are not replayed or automatically failed over.
+
+Cloud/session environment values are removed in a child-only copy. Temporary
+XDG/user configuration isolates saved Cloud credentials as well as per-user
+settings. Explicit engine selection prevents inherited Cloud engine defaults;
+no Cloud mode is exposed. Provider/API use inside an operator's modules remains
+outside this runner's cost boundary. Repository Cloud Checks are a separate
+trigger and require the documented `dagger cloud checks off` opt-out.
 
 The runtime record types come from shared `@hobo/ci` protobufs and this package's
 local Readiness protobuf. Parse, don't validate: `parsePipeline` establishes a parsed

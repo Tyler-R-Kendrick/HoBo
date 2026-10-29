@@ -1,5 +1,10 @@
 # Dagger SDK contracts
 
+- `checks-cli.pact.json`: native Dagger 1.x version/check subprocess boundary.
+  `../test/checks.test.ts` executes the Pact through a real local CLI fixture,
+  verifies version pinning, exact check argv, inherited Cloud/session removal,
+  saved-login isolation, preserved proxy/CA settings, nonzero exits and planning.
+  The fixture does not run a Dagger engine or contact external services.
 - `readiness.pact.json`: synchronous-message expectation for immutable implemented
   readiness; `readiness.consumer.test.ts` invokes the real SDK getter/parser.
 - `execution.pact.json`: synchronous-message command requests and output expectations

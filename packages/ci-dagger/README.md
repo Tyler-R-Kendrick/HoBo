@@ -1,9 +1,104 @@
 # HoBo CI Dagger
 
-`@hobo/ci-dagger` executes the same parsed `@hobo/ci` command pipeline used by the
+`@hobo/ci-dagger` runs native Dagger CI checks on local or self-hosted engines.
+It also executes the same parsed `@hobo/ci` command pipeline used by the
 GitHub Actions and Cloudflare CI adapters. `createDaggerBackend` binds the source
 workspace and a digest-pinned toolchain image to a Dagger SDK connection. The
 pinned upstream SDK is `@dagger.io/dagger` 0.21.11.
+
+## Native Dagger CI checks without Cloud execution
+
+The new Dagger 1.0 beta uses `dagger.toml`, `dagger.lock`, and `dagger check`.
+Checks can run on a laptop with a Linux container runtime or on an engine your
+team operates, without a Dagger Cloud account. HoBo uses the installed native
+CLI for this surface; the older SDK adapter below remains a separate API.
+
+Initialize/install your Dagger modules using the upstream CLI, then commit
+`dagger.toml`, `dagger.lock`, and local module sources. Create `.hobo/dagger.json`
+in the consuming repository from [`examples/local-checks.json`](examples/local-checks.json):
+
+```json
+{
+  "engine": "local",
+  "cliVersion": "1.0.0-beta.21",
+  "workspace": ".",
+  "filters": [],
+  "skip": [],
+  "parallel": 4,
+  "failFast": false
+}
+```
+
+Set `cliVersion` to the exact installed 1.x version from `dagger version`.
+The version above is an example from the upstream self-hosting documentation,
+not an assertion of the latest available release. HoBo checks the version before
+starting checks and never downloads or upgrades a CLI. Build the package once,
+then run from the repository containing `.hobo/dagger.json`:
+
+```sh
+pnpm --filter @hobo/ci-dagger build
+pnpm --filter @hobo/ci-dagger checks --plan
+pnpm --filter @hobo/ci-dagger checks
+```
+
+`--config path/to/config.json` selects another file. `--plan` prints the exact
+executable and argv without requiring Dagger, Docker, an account, or network
+access. The invocation directory (`INIT_CWD` under pnpm) is the repository root;
+`workspace` is relative to that root, independently of the config file location.
+
+`engine: "local"` becomes an explicit
+`--engine=image://registry.dagger.io/engine:v<cliVersion>`. Dagger starts/reuses
+that engine through the local container runtime and retains its local cache.
+There is no upstream engine value named `local`; HoBo translates it. The CLI
+streams check logs and preserves its exit code, including failed checks.
+`filters` selects check links, `skip` excludes links, `parallel: 0` removes the
+parallelism limit, and `failFast` cancels remaining checks on first failure.
+
+To use infrastructure you operate, change `engine` to an explicit URI, for example
+`unix:///run/dagger/engine.sock`, `kube-pod://checks-0?namespace=dagger`, or
+`tcp://engine.internal:1234`. `tls://`, `ssh://`, `container://`, and `image://`
+are also accepted. Keep the CLI and engine versions matched. Use private
+networking for unauthenticated TCP engines or an authenticated transport. Persistent
+engine disks preserve cache; ephemeral engines lose it between jobs.
+
+The native runner rejects Cloud selectors, removes inherited Cloud tokens,
+engine selectors and nested session credentials **in the child process**, and
+uses temporary empty user settings so a saved Dagger Cloud login cannot send
+Cloud traces. It preserves proxy, CA trust and container runtime environment
+settings. The parent environment, login, and user configuration stay intact.
+Per-user Dagger module settings are intentionally excluded; put required settings
+in the repository's `dagger.toml`. The selected engine and third-party modules
+remain operator-controlled: their infrastructure and any APIs they call can
+have their own costs. This runner does not enable Cloud Checks or publish results
+to GitHub; HoBo or another CI trigger must invoke it.
+
+If **Cloud Checks were already enabled** for the workspace, local configuration
+does not turn off their separate push/PR runs. Disable them once with
+`dagger cloud checks off` in that workspace to stop that source of Cloud usage.
+
+The same config is available programmatically:
+
+```ts
+import { readFile } from 'node:fs/promises';
+import { parseDaggerCheckConfig, runDaggerChecks } from '@hobo/ci-dagger/checks';
+
+const config = parseDaggerCheckConfig(await readFile('.hobo/dagger.json', 'utf8'));
+process.exitCode = await runDaggerChecks(config);
+```
+
+`runDaggerChecks` accepts a host-selected executable, environment, working
+directory, and abort signal. Aborting sends SIGTERM, escalates to SIGKILL after
+five seconds, and awaits CLI exit; it is not an acknowledgment
+that a remote engine terminated every operation. This direct check runner does
+not participate in HoBo's budget lease/scheduler lifecycle.
+
+Upstream references checked 2026-10-29:
+[self-hosting](https://docs.dagger.io/self-hosting/),
+[CLI/check options](https://docs.dagger.io/reference/cli/#dagger-check),
+[`dagger.toml`](https://docs.dagger.io/reference/config-files/dagger-toml/),
+[Cloud authentication](https://github.com/dagger/dagger/blob/main/internal/cloud/auth/auth.go).
+
+## Portable SDK command pipelines
 
 ```ts
 import { executePipeline, parsePipeline } from '@hobo/ci';
@@ -64,3 +159,9 @@ including authentication, source Directory IDs, command queries and results. No 
 these tests. A reusable `test/fixtures/local-engine.ts` contract fixture also runs
 real POSIX commands and files for the cross-backend conformance suite; it is not a
 Dagger engine or a security sandbox. Run package `build`, `typecheck`, `test`, `lint`, plus scoped codegen.
+
+Native checks use generated `CheckConfig` protobuf types and `ci_dagger.cue`
+constraints with valid/invalid fixtures. `contracts/checks-cli.pact.json` and
+`test/checks.test.ts` verify real subprocess argv, version pins, Cloud/session
+isolation, preserved toolchain settings, exit status, and side-effect-free plans.
+These are local consumer contracts; a live Dagger engine was not used as evidence.

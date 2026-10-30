@@ -7,6 +7,10 @@ export default mergeConfig(
 	defineConfig({
 		test: {
 			isolate: true,
+			// Native compiler and process acceptance must fit a bounded runner.
+			fileParallelism: false,
+			// Load each installed compiler natively, as the product CLI does.
+			server: { deps: { external: [/[/\\]node_modules[/\\]typescript[/\\]/] } },
 			include: ["test/**/*.test.ts"],
 			exclude: ["e2e/**"],
 		},

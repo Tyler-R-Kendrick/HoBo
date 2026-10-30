@@ -1,9 +1,14 @@
 import { toJsonString } from "@bufbuild/protobuf";
 import {
+	ciBudgetPolicyJson,
 	DesiredCiPolicySchema,
 	type ParsedCiPolicy,
 	parseCiPolicy,
 } from "@hobo/ci";
+import {
+	parseBudgetPolicyDocumentJson,
+	parseBudgetPolicyJson,
+} from "@hobo/core";
 import { z } from "zod";
 import { createCiRelayClient } from "./client.js";
 import {
@@ -129,7 +134,7 @@ function mergeTemplate(
 		const inherited = entries.get(key);
 		entries.set(
 			key,
-			inherited === undefined
+			inherited === undefined || key === "budgetPolicy"
 				? value
 				: mergeTemplate(inherited, value, depth + 1),
 		);
@@ -227,7 +232,9 @@ export function parseCiProjectConfig(
 			throw new Error("project configuration too large");
 		if (organization && !validatedConfigs.has(organization))
 			throw new Error("organization configuration is not validated");
-		const authored = CiProjectDocumentSchema.parse(JSON.parse(json));
+		const authored = CiProjectDocumentSchema.parse(
+			parseBudgetPolicyDocumentJson(json),
+		);
 		const input = ProjectInput.parse(resolveCiProjectReferences(authored));
 		const entries = Object.entries(input.environments ?? {});
 		const environments = Object.fromEntries(
@@ -289,9 +296,11 @@ export function defineCiProjectConfig(
 		// metadata is not part of the authored JSON schema. All other fields
 		// still pass through the strict policy parser below.
 		return parseCiProjectConfig(
-			JSON.stringify(input, (key, value) =>
-				key === "$typeName" ? undefined : value,
-			),
+			JSON.stringify(input, (key, value) => {
+				if (key === "budgetPolicy" && value !== undefined)
+					parseBudgetPolicyJson(JSON.stringify(value));
+				return key === "$typeName" ? undefined : value;
+			}),
 			organization,
 		);
 	} catch {
@@ -361,9 +370,14 @@ export async function ciEnvironmentPolicySha256(
 	if (!ExplicitEnvironment.safeParse(environment).success)
 		throw new Error("explicit CI environment required");
 	const selected = selectCiEnvironment(config, environment);
-	const bytes = new TextEncoder().encode(
-		toJsonString(DesiredCiPolicySchema, selected.policy),
+	const policy = JsonObject.parse(
+		JSON.parse(toJsonString(DesiredCiPolicySchema, selected.policy)),
 	);
+	if (selected.policy.budgetPolicy)
+		policy.budgetPolicy = JsonValue.parse(
+			JSON.parse(ciBudgetPolicyJson(selected.policy.budgetPolicy)),
+		);
+	const bytes = new TextEncoder().encode(JSON.stringify(policy));
 	const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
 	return Array.from(new Uint8Array(digest), (byte) =>
 		byte.toString(16).padStart(2, "0"),

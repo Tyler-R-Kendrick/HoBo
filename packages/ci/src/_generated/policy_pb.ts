@@ -4,13 +4,14 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Message } from "@bufbuild/protobuf";
+import { file_google_protobuf_struct } from "@bufbuild/protobuf/wkt";
+import type { JsonObject, Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file policy.proto.
  */
 export const file_policy: GenFile = /*@__PURE__*/
-  fileDesc("Cgxwb2xpY3kucHJvdG8SCmhvYm8uY2kudjEiZgoQQ2lQb2xpY3lQcm92aWRlchIKCgJpZBgBIAEoCRIMCgRraW5kGAIgASgJEhYKDmNvbm5lY3Rpb25fcmVmGAMgASgJEg8KB3J1bnNfb24YBCABKAkSDwoHZW5hYmxlZBgFIAEoCCI/CgxDaVBvbGljeVBvb2wSDQoFbGFiZWwYASABKAkSCgoCb3MYAiABKAkSFAoMYXJjaGl0ZWN0dXJlGAMgASgJImoKDkNpUG9saWN5QnVkZ2V0Eg0KBXNjb3BlGAEgASgJEhAKCGN1cnJlbmN5GAIgASgJEhQKDGxpbWl0X21pY3JvcxgDIAEoARIOCgZwZXJpb2QYBCABKAkSEQoJdGltZV96b25lGAUgASgJIjQKEUNpUG9saWN5VGhyZXNob2xkEhAKCGZyYWN0aW9uGAEgASgBEg0KBWFsbG93GAIgAygJIl0KD0NpUG9saWN5Um91dGluZxIQCghzdHJhdGVneRgBIAEoCRIcChRub19lbGlnaWJsZV9wcm92aWRlchgCIAEoCRIaChJ1bmtub3duX2FsbG9jYXRpb24YAyABKAkingIKD0Rlc2lyZWRDaVBvbGljeRISCgphY2NvdW50X2lkGAEgASgJEhEKCXRlbmFudF9pZBgCIAEoCRImCgRwb29sGAMgASgLMhguaG9iby5jaS52MS5DaVBvbGljeVBvb2wSLwoJcHJvdmlkZXJzGAQgAygLMhwuaG9iby5jaS52MS5DaVBvbGljeVByb3ZpZGVyEioKBmJ1ZGdldBgFIAEoCzIaLmhvYm8uY2kudjEuQ2lQb2xpY3lCdWRnZXQSLAoHcm91dGluZxgGIAEoCzIbLmhvYm8uY2kudjEuQ2lQb2xpY3lSb3V0aW5nEjEKCnRocmVzaG9sZHMYByADKAsyHS5ob2JvLmNpLnYxLkNpUG9saWN5VGhyZXNob2xkYgZwcm90bzM");
+  fileDesc("Cgxwb2xpY3kucHJvdG8SCmhvYm8uY2kudjEiZgoQQ2lQb2xpY3lQcm92aWRlchIKCgJpZBgBIAEoCRIMCgRraW5kGAIgASgJEhYKDmNvbm5lY3Rpb25fcmVmGAMgASgJEg8KB3J1bnNfb24YBCABKAkSDwoHZW5hYmxlZBgFIAEoCCI/CgxDaVBvbGljeVBvb2wSDQoFbGFiZWwYASABKAkSCgoCb3MYAiABKAkSFAoMYXJjaGl0ZWN0dXJlGAMgASgJImoKDkNpUG9saWN5QnVkZ2V0Eg0KBXNjb3BlGAEgASgJEhAKCGN1cnJlbmN5GAIgASgJEhQKDGxpbWl0X21pY3JvcxgDIAEoARIOCgZwZXJpb2QYBCABKAkSEQoJdGltZV96b25lGAUgASgJIjQKEUNpUG9saWN5VGhyZXNob2xkEhAKCGZyYWN0aW9uGAEgASgBEg0KBWFsbG93GAIgAygJIl0KD0NpUG9saWN5Um91dGluZxIQCghzdHJhdGVneRgBIAEoCRIcChRub19lbGlnaWJsZV9wcm92aWRlchgCIAEoCRIaChJ1bmtub3duX2FsbG9jYXRpb24YAyABKAkizgIKD0Rlc2lyZWRDaVBvbGljeRISCgphY2NvdW50X2lkGAEgASgJEhEKCXRlbmFudF9pZBgCIAEoCRImCgRwb29sGAMgASgLMhguaG9iby5jaS52MS5DaVBvbGljeVBvb2wSLwoJcHJvdmlkZXJzGAQgAygLMhwuaG9iby5jaS52MS5DaVBvbGljeVByb3ZpZGVyEioKBmJ1ZGdldBgFIAEoCzIaLmhvYm8uY2kudjEuQ2lQb2xpY3lCdWRnZXQSLAoHcm91dGluZxgGIAEoCzIbLmhvYm8uY2kudjEuQ2lQb2xpY3lSb3V0aW5nEjEKCnRocmVzaG9sZHMYByADKAsyHS5ob2JvLmNpLnYxLkNpUG9saWN5VGhyZXNob2xkEi4KDWJ1ZGdldF9wb2xpY3kYCCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0YgZwcm90bzM", [file_google_protobuf_struct]);
 
 /**
  * Authored intent only. Financial observations and leases live in separate records.
@@ -202,6 +203,13 @@ export type DesiredCiPolicy = Message<"hobo.ci.v1.DesiredCiPolicy"> & {
    * @generated from field: repeated hobo.ci.v1.CiPolicyThreshold thresholds = 7;
    */
   thresholds: CiPolicyThreshold[];
+
+  /**
+   * Shared hobo.budget-policy/v1 authoring JSON, parsed by @hobo/core.
+   *
+   * @generated from field: google.protobuf.Struct budget_policy = 8;
+   */
+  budgetPolicy?: JsonObject | undefined;
 };
 
 /**

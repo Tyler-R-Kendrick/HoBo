@@ -1,3 +1,4 @@
+import { parseBudgetPolicyJson } from "@hobo/core";
 import { z } from "zod";
 
 const name = z.string().regex(/^[A-Za-z][A-Za-z0-9_-]{0,63}$/);
@@ -26,7 +27,11 @@ const pool = z
 	.meta({ id: "Pool" });
 const routing = z
 	.object({
-		strategy: z.literal("lowest-total-incremental-cost"),
+		strategy: z.enum([
+			"lowest-total-incremental-cost",
+			"min-cost",
+			"maximize-credits",
+		]),
 		noEligibleProvider: z.literal("queue"),
 		unknownAllocation: z.literal("zero"),
 	})
@@ -42,6 +47,56 @@ const budget = z
 	})
 	.strict()
 	.meta({ id: "Budget" });
+const safeQuantity = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+// Both Unicode-aware and flagless JSON Schema engines must accept astral characters and exclude C0/C1.
+const controlFree = /^(?:[\u0020-\u007e\u00a0-\uffff]|[^\0-\uffff])*$/u;
+const scopeName = z.string().min(1).max(200).regex(controlFree);
+const commonBudget = z
+	.object({
+		schemaVersion: z.literal("hobo.budget-policy/v1"),
+		tenantId: scopeName,
+		budgetId: scopeName,
+		periodId: scopeName,
+		revision: scopeName,
+		workloads: z
+			.array(z.string().regex(/^[a-z][a-z0-9_.-]{0,79}$/u))
+			.min(1)
+			.max(32)
+			.meta({ uniqueItems: true }),
+		currency: z.literal("USD"),
+		limitMicros: safeQuantity,
+		objective: z.enum(["min-cost", "maximize-credits"]),
+		enforcement: z.enum(["strict", "conservative"]),
+		periodKind: z.enum(["manual", "fixed-window"]),
+		periodStartsAtMs: safeQuantity.optional(),
+		periodEndsAtMs: safeQuantity.optional(),
+		constraints: z
+			.array(
+				z
+					.object({
+						key: z.string().regex(/^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/u),
+						workload: z.string().regex(/^(?:\*|[a-z][a-z0-9_.-]{0,79})$/u),
+						unit: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:/-]{0,79}$/u),
+						maximum: safeQuantity,
+						target: z.string().max(200).regex(controlFree).optional(),
+					})
+					.strict(),
+			)
+			.max(128)
+			.optional(),
+	})
+	.strict()
+	.superRefine((value, context) => {
+		try {
+			parseBudgetPolicyJson(JSON.stringify(value));
+		} catch {
+			context.addIssue({
+				code: "custom",
+				message: "invalid common budget policy",
+			});
+		}
+	})
+	.meta({ id: "CommonBudgetPolicy" });
 const provider = z
 	.object({
 		id,
@@ -53,6 +108,8 @@ const provider = z
 			"kubernetes",
 			"local",
 			"vercel",
+			"dagger",
+			"cloudflare",
 		]),
 		connectionRef: z.string().regex(/^[A-Za-z0-9_.:/-]{1,200}$/),
 		runsOn: z.string().regex(/^(?![Hh][Oo][Bb][Oo]$)[A-Za-z0-9_.-]{1,100}$/),
@@ -80,6 +137,7 @@ const policy = z
 		pool: z.union([pool, reference("pools")]),
 		routing: z.union([routing, reference("routing")]),
 		budget: z.union([budget, reference("budgets")]),
+		budgetPolicy: commonBudget.optional(),
 		providers: z
 			.array(z.union([provider, reference("providers")]))
 			.min(1)

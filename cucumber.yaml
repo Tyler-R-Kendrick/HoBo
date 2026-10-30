@@ -11,9 +11,17 @@ default:
     # file on purpose: the other root features/*.feature files are design
     # specs with no step definitions yet, and a glob would fail the lane.
     - "features/control-yard-core-loop.feature"
-    - "features/examples-console-cloudflare-station.feature"
   import:
     - "src/draft/epic-proofs/*/features/steps/**/*.ts"
     - "src/draft/projects/*/features/steps/**/*.ts"
     - "features/steps/**/*.ts"
+  publishQuiet: true
+
+# Opt-in live acceptance provisions a public Cloudflare temporary worker.
+# Keep it available without requiring external services in the offline lane.
+live-cloudflare:
+  paths:
+    - "features/examples-console-cloudflare-station.feature"
+  import:
+    - "features/steps/examples-console-cloudflare-station.steps.ts"
   publishQuiet: true

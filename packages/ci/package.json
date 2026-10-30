@@ -43,6 +43,8 @@
   },
   "dependencies": {
     "@bufbuild/protobuf": "2.12.1",
+    "@hobo/core": "workspace:*",
+    "@hobo/broker": "workspace:*",
     "@hobo/dispatcher": "workspace:*",
     "pg": "8.22.0",
     "zod": "^4.1.13"

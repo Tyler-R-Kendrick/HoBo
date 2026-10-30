@@ -6,6 +6,11 @@ opts in by giving its `data-models/` a `buf.yaml` module marker; generated
 TypeScript lands in each package's checked-in `src/_generated/`, and
 `hobo-codegen --check` is the drift gate CI runs. See [`ADR.md`](./ADR.md).
 
+A package may declare `data-models/buf.gen.yaml` when its generated module format
+requires package-specific options, such as `import_extension=js` for cross-file
+Node ESM records. Generation and drift checking select the same local template;
+packages without one continue using the root template.
+
 ## Honest scope
 
 Implemented: workspace discovery (`packages/*/data-models` plus nested category
@@ -15,6 +20,16 @@ drift detection, and the JSON `CodegenReport` envelope with its exit-code
 mapping. Deliberately not here: no schema registry, no runtime validation
 service — this is a deterministic build-time tool; the drift gate only compares
 regenerated output against the checked-in tree.
+
+Packages with multiple independent CUE schemas can place a schema's corpus under
+`data-models/fixtures/<schema-basename>/{valid,invalid}/`. For example,
+`composition.cue` uses `fixtures/composition/valid/` and
+`fixtures/composition/invalid/`; these records are checked only against
+`#Composition`. Flat `fixtures/{valid,invalid}/` corpora keep their package-wide
+meaning and are still checked against every schema, even when scoped corpora
+exist. Every valid record must pass and every invalid record must fail. Real-CUE
+regressions in `test/cue-schema-scoped-fixtures.test.ts` pin both directions,
+cross-schema mismatches and legacy compatibility.
 
 ## Commands
 

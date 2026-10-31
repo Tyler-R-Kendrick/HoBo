@@ -114,7 +114,9 @@ export type VercelFetch = (
 // A refusal from the Vercel API: a non-2xx status. `code` and `apiMessage` are
 // Vercel's `error.code` and `error.message` when the body carried them; `message`
 // names the call, the status and the body. `message` and `apiMessage` are
-// refusal text (`refusalText`): redacted, and cut at 500 characters.
+// refusal text (`refusalText`): redacted, and cut at 500 characters. `code` is
+// kept only when it is a short identifier (`refusalCode`), and is otherwise
+// undefined.
 export class VercelApiError extends Error {
 	readonly status: number;
 	readonly code: string | undefined;
@@ -217,6 +219,18 @@ function refusalText(text: string, token: string): string {
 	);
 }
 
+// Vercel's `error.code` is an identifier (`not_found`, `forbidden`). One that
+// is not (longer than 64 characters, any other character, or text the
+// redaction would change, such as the token itself) is not kept anywhere on the
+// error; the body in `message` is refusal text either way.
+const REFUSAL_CODE = /^[A-Za-z0-9_.-]{1,64}$/u;
+
+function refusalCode(code: string, token: string): string | undefined {
+	return REFUSAL_CODE.test(code) && refusalText(code, token) === code
+		? code
+		: undefined;
+}
+
 async function failure(
 	what: string,
 	response: VercelFetchResponse,
@@ -225,7 +239,9 @@ async function failure(
 	const detail = await response.text().catch(() => "");
 	const error = parseJsonObject(detail).error;
 	const code =
-		isJsonObject(error) && isJsonString(error.code) ? error.code : undefined;
+		isJsonObject(error) && isJsonString(error.code)
+			? refusalCode(error.code, token)
+			: undefined;
 	const apiMessage =
 		isJsonObject(error) && isJsonString(error.message)
 			? refusalText(error.message, token)

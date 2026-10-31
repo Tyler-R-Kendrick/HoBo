@@ -546,6 +546,47 @@ describe("a refusal's text (scripted transport, no network)", () => {
 		);
 		expect(error.apiMessage).toBe("Not authorized");
 	});
+
+	it.each([
+		["bears the token", `Bearer ${TOKEN}`],
+		["is the token itself", TOKEN],
+		["is credential-shaped", OTHER_KEY],
+		["is 5000 characters", "x".repeat(5000)],
+		["is empty", ""],
+	])("drops a code that %s", async (_case, code) => {
+		const error = await refusedBy(() =>
+			reply(404, { error: { code, message: "Not found" } }),
+		);
+
+		expect(error.code).toBeUndefined();
+		expect(error).toMatchObject({ status: 404, apiMessage: "Not found" });
+		const printed = `${String(error)} ${JSON.stringify(error)} ${inspect(error, { depth: 10, showHidden: true })}`;
+		expect(printed).not.toContain(TOKEN);
+		expect(printed).not.toContain(OTHER_KEY);
+		expect(printed).not.toContain("x".repeat(501));
+	});
+
+	it.each([
+		"not_found",
+		"forbidden",
+		"internal_server_error",
+		"deployment.not-found",
+		"A".repeat(64),
+	])("keeps the short identifier %s as the code", async (code) => {
+		const error = await refusedBy(() =>
+			reply(404, { error: { code, message: "Not found" } }),
+		);
+
+		expect(error.code).toBe(code);
+	});
+
+	it("drops a 65-character code", async () => {
+		const error = await refusedBy(() =>
+			reply(404, { error: { code: "A".repeat(65), message: "Not found" } }),
+		);
+
+		expect(error.code).toBeUndefined();
+	});
 });
 
 describe("createVercelClient.createProject (scripted transport, no network)", () => {

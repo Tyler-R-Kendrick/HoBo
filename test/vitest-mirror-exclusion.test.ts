@@ -125,6 +125,11 @@ const READ = (() => {
 		return read;
 	};
 })();
+// Read while this file is collected, as `git ls-files` above is: the read is
+// the guard's fixed cost, paid once, not one test's. Its failure still fails
+// every test that awaits it; the no-op handler only keeps it from being
+// reported as unhandled before the first test does.
+READ().catch(() => undefined);
 
 async function loadUserConfig(config: string): Promise<UserConfig> {
 	const user = (await READ()).get(config);

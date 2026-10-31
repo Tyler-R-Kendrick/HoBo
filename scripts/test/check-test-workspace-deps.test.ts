@@ -13,7 +13,13 @@
  */
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
@@ -322,9 +328,94 @@ describe("catalogValues", () => {
 			["1.3.0 #not a comment", "npm:left-pad@1.3.0"],
 		);
 	});
+
+	it("stops on each YAML construct it does not read, naming it", () => {
+		const hostile: [string, string, RegExp][] = [
+			[
+				"an anchor",
+				"catalog: &c\n  left-pad: workspace:*\n",
+				/an anchor \(&c\)/u,
+			],
+			[
+				"an alias",
+				"defs: &d\n  left-pad: workspace:*\ncatalog: *d\n",
+				/an anchor \(&d\)/u,
+			],
+			["an alias alone", "catalog: *d\n", /an alias \(\*d\)/u],
+			[
+				"a merge key",
+				"catalog:\n  <<: *d\n  x: workspace:*\n",
+				/a merge key \(<<\)/u,
+			],
+			[
+				"a folded block scalar",
+				"catalog:\n  left-pad: >-\n    workspace:*\n",
+				/a block scalar \(>-\)/u,
+			],
+			[
+				"a literal block scalar",
+				"catalog:\n  left-pad: |\n    workspace:*\n",
+				/a block scalar \(\|\)/u,
+			],
+			[
+				"a plain value on the next line",
+				"catalog:\n  left-pad:\n    workspace:*\n",
+				/a value on the line after its key \(workspace:\*\)/u,
+			],
+			[
+				"a document in flow style",
+				'{ catalog: { left-pad: "workspace:*" } }\n',
+				/a document in flow style/u,
+			],
+			[
+				"an explicit key",
+				'? catalog\n: { left-pad: "workspace:*" }\n',
+				/an explicit key \(\?\)/u,
+			],
+			[
+				"a tag other than !!str",
+				"catalog:\n  left-pad: !custom workspace:*\n",
+				/a tag \(!custom\)/u,
+			],
+			["a directive", "%YAML 1.2\n---\ncatalog: {}\n", /a directive/u],
+			[
+				"a second document",
+				"catalog: {}\n---\ncatalog:\n  x: workspace:*\n",
+				/a second document/u,
+			],
+		];
+		for (const [label, text, construct] of hostile)
+			assert.throws(() => catalogValues(text), construct, label);
+	});
+
+	it("reads !!str, a double-quoted value over two lines, a leading ---, and this repository's file", () => {
+		assert.deepEqual(
+			catalogValues(
+				'---\ncatalog:\n  a: !!str workspace:*\n  b: "workspace:\n    ^"\npackages:\n  - "packages/*"\n',
+			),
+			["workspace:*", "workspace: ^"],
+		);
+		assert.deepEqual(
+			catalogValues(readFileSync(join(root, "pnpm-workspace.yaml"), "utf8")),
+			[],
+		);
+	});
 });
 
 describe("checkTestWorkspaceDeps", () => {
+	it("fails on a pnpm-workspace.yaml it cannot read, naming the construct", () => {
+		within(
+			{
+				...base,
+				"pnpm-workspace.yaml": `${base["pnpm-workspace.yaml"]}defs: &d\n  left-pad: workspace:*\ncatalog: *d\n`,
+			},
+			(dir) =>
+				assert.deepEqual(unmodelledIn(dir), [
+					"pnpm-workspace.yaml: uses an anchor (&d), which this check does not read, so it cannot tell whether a catalog names a workspace package",
+				]),
+		);
+	});
+
 	it("refuses a test that reaches an undeclared sibling by name or by a relative path into its build output", () => {
 		within(
 			{

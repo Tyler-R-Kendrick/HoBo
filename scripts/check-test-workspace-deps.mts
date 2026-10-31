@@ -110,6 +110,7 @@ import {
 	orderedDependency,
 	type TaskConfig,
 	TurboTaskGraph,
+	UnreadYaml,
 	type WorkspaceIndex,
 } from "./lib/turbo-task-graph.mts";
 
@@ -345,9 +346,18 @@ export function readWorkspace(
 	}
 	const workspaceYaml = readText(join(root, "pnpm-workspace.yaml")) ?? "";
 	// A catalog entry with a workspace: specifier can order a build under any key.
-	const catalogNamesWorkspace = catalogValues(workspaceYaml).some((value) =>
-		value.includes("workspace:"),
-	);
+	const unmodelled: Unmodelled[] = [];
+	let catalogNamesWorkspace: boolean;
+	try {
+		catalogNamesWorkspace = catalogValues(workspaceYaml).some((value) =>
+			value.includes("workspace:"),
+		);
+	} catch (error) {
+		if (!(error instanceof UnreadYaml)) throw error;
+		// It cannot tell, so it fails, and holds any catalog to it.
+		unmodelled.push({ file: "pnpm-workspace.yaml", reason: error.message });
+		catalogNamesWorkspace = true;
+	}
 	const link = linkWorkspacePackages({
 		packageManager: readJson<Manifest>(join(root, "package.json"))
 			?.packageManager,
@@ -359,7 +369,6 @@ export function readWorkspace(
 	const versions = new Map(
 		found.map((item) => [item.manifest.name!, item.manifest.version]),
 	);
-	const unmodelled: Unmodelled[] = [];
 	const packages = found.map(({ dir, manifest }): WorkspacePackage => {
 		const index: WorkspaceIndex = {
 			byName: (name) => (names.has(name) ? name : undefined),

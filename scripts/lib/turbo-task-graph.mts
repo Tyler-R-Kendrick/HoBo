@@ -91,20 +91,49 @@ export function linkWorkspacePackages(
 
 /** A token of the YAML subset pnpm-workspace.yaml is written in. */
 interface YamlToken {
-	readonly kind: "scalar" | "colon" | "open" | "close" | "comma" | "newline";
+	readonly kind:
+		| "scalar"
+		| "colon"
+		| "open"
+		| "close"
+		| "comma"
+		| "dash"
+		| "newline";
 	readonly text: string;
+	/** Whether a scalar was quoted, so no indicator in it means anything. */
+	readonly quoted: boolean;
 	/** Where it starts on its line. */
 	readonly column: number;
 }
 
-/** A quoted scalar from `start`, its text and the index after its closing quote. */
+/**
+ * A YAML construct `catalogValues` does not read: it stops rather than guess
+ * what a catalog says.
+ */
+export class UnreadYaml extends Error {
+	constructor(readonly construct: string) {
+		super(
+			`uses ${construct}, which this check does not read, so it cannot tell whether a catalog names a workspace package`,
+		);
+		this.name = "UnreadYaml";
+	}
+}
+
+/**
+ * A quoted scalar from `start`, its text and the index after its closing
+ * quote. A line break inside it folds, with the next line's indentation, to a
+ * space.
+ */
 function quoted(text: string, start: number): [string, number] {
 	const quote = text[start];
 	let value = "";
 	let i = start + 1;
-	while (i < text.length && text[i] !== "\n") {
+	while (i < text.length) {
 		const char = text[i]!;
-		if (quote === "'" && char === "'" && text[i + 1] === "'") {
+		if (char === "\n" || char === "\r") {
+			while (i < text.length && /\s/u.test(text[i]!)) i += 1;
+			value += " ";
+		} else if (quote === "'" && char === "'" && text[i + 1] === "'") {
 			value += "'";
 			i += 2;
 		} else if (quote === '"' && char === "\\" && i + 1 < text.length) {
@@ -121,10 +150,10 @@ function quoted(text: string, start: number): [string, number] {
 
 /**
  * The tokens of `text`: scalars (plain, or quoted with their quotes taken
- * off), a mapping's `:`, a flow collection's brackets and commas, and line
- * ends. A comment is a `#` at a line's start or after a space, outside
- * quotes; a `:` is a mapping's only before a space, a line's end or, in a
- * flow collection, `,`, `}` or `]`.
+ * off), a mapping's `:`, a flow collection's brackets and commas, a block
+ * sequence's `- `, and line ends. A comment is a `#` at a line's start or
+ * after a space, outside quotes; a `:` is a mapping's only before a space, a
+ * line's end or, in a flow collection, `,`, `}` or `]`.
  */
 function yamlTokens(text: string): YamlToken[] {
 	const tokens: YamlToken[] = [];
@@ -140,8 +169,18 @@ function yamlTokens(text: string): YamlToken[] {
 	const mapping = (at: number) =>
 		text[at] === ":" &&
 		(isSpace(text[at + 1]) || (flow > 0 && /[,}\]]/u.test(text[at + 1]!)));
-	const push = (kind: YamlToken["kind"], value: string, at: number) =>
-		tokens.push({ kind, text: value, column: at - lineStart });
+	const push = (
+		kind: YamlToken["kind"],
+		value: string,
+		at: number,
+		isQuoted = false,
+	) =>
+		tokens.push({
+			kind,
+			text: value,
+			quoted: isQuoted,
+			column: at - lineStart,
+		});
 	while (i < text.length) {
 		const char = text[i]!;
 		const start = i;
@@ -154,8 +193,9 @@ function yamlTokens(text: string): YamlToken[] {
 			while (i < text.length && text[i] !== "\n") i += 1;
 		else if (char === '"' || char === "'") {
 			const [value, end] = quoted(text, i);
-			push("scalar", value, start);
+			push("scalar", value, start, true);
 			i = end;
+			lineStart = text.lastIndexOf("\n", i - 1) + 1;
 		} else if (char === "{" || char === "[") {
 			flow += 1;
 			push("open", char, start);
@@ -169,6 +209,9 @@ function yamlTokens(text: string): YamlToken[] {
 			i += 1;
 		} else if (mapping(i)) {
 			push("colon", char, start);
+			i += 1;
+		} else if (char === "-" && flow === 0 && isSpace(text[i + 1])) {
+			push("dash", char, start);
 			i += 1;
 		} else {
 			while (
@@ -186,33 +229,69 @@ function yamlTokens(text: string): YamlToken[] {
 }
 
 /**
+ * The construct a plain scalar is, where this reader does not read it: an
+ * anchor, an alias, a tag other than `!!str`, an explicit key, a merge key, a
+ * block scalar, a directive or a second document marker.
+ */
+function unread(token: YamlToken, next: YamlToken | undefined, first: boolean) {
+	if (token.kind !== "scalar" || token.quoted) return undefined;
+	const word = token.text.split(/\s/u)[0]!;
+	if (word.startsWith("&")) return `an anchor (${word})`;
+	if (word.startsWith("*")) return `an alias (${word})`;
+	if (word.startsWith("!") && word !== "!!str") return `a tag (${word})`;
+	if (word === "?") return "an explicit key (?)";
+	if (word === "<<" && next?.kind === "colon") return "a merge key (<<)";
+	if (/^[|>][-+0-9]*$/u.test(token.text))
+		return `a block scalar (${token.text})`;
+	if (token.column === 0 && word.startsWith("%"))
+		return `a directive (${word})`;
+	if (token.column === 0 && (word === "---" || word === "...") && !first)
+		return `a second document (${word})`;
+	return undefined;
+}
+
+/**
  * The scalar values under pnpm-workspace.yaml's `catalog` and `catalogs`
- * keys, read as the YAML they are written in: a key quoted or not, entries
- * in block or flow form, a named catalog a level deeper, comments after a
- * `#` outside quotes. Nothing under any other key, such as pnpm 10's
- * `overrides`, is a catalog entry.
+ * keys, read in the subset of YAML the file is written in: a key quoted or
+ * not, entries in block or flow form, a named catalog a level deeper, a
+ * double-quoted value over several lines, `!!str`, a leading `---`, and
+ * comments after a `#` outside quotes. Nothing under any other key, such as
+ * pnpm 10's `overrides`, is a catalog entry. Any construct outside that subset
+ * (an anchor, an alias, a merge key, a block scalar, a value on the line
+ * after its key, a document in flow style, an explicit key, a tag other than
+ * `!!str`, a directive, a second document), wherever it is, throws
+ * `UnreadYaml` naming it.
  */
 export function catalogValues(text: string): string[] {
 	const tokens = yamlTokens(text);
 	const values: string[] = [];
+	const content = tokens.findIndex((token) => token.kind !== "newline");
+	const opening = tokens[content];
+	if (opening?.kind === "open" && opening.column === 0)
+		throw new UnreadYaml("a document in flow style");
 	let inCatalog = false;
 	let depth = 0;
 	tokens.forEach((token, i) => {
+		const construct = unread(token, tokens[i + 1], i === content);
+		if (construct !== undefined) throw new UnreadYaml(construct);
 		if (token.kind === "open") depth += 1;
 		else if (token.kind === "close") depth -= 1;
-		else if (
+		if (token.kind !== "scalar") return;
+		let before = i - 1;
+		while (tokens[before]?.kind === "newline") before -= 1;
+		if (
 			depth === 0 &&
-			token.kind === "scalar" &&
-			token.column === 0 &&
-			tokens[i + 1]?.kind === "colon"
+			before < i - 1 &&
+			tokens[before]?.kind === "colon" &&
+			tokens[i + 1]?.kind !== "colon"
 		)
-			inCatalog = token.text === "catalog" || token.text === "catalogs";
-		else if (
-			inCatalog &&
-			token.kind === "scalar" &&
-			tokens[i - 1]?.kind === "colon"
-		)
-			values.push(token.text);
+			throw new UnreadYaml(`a value on the line after its key (${token.text})`);
+		const value = token.quoted
+			? token.text
+			: token.text.replace(/^!!str\s+/u, "");
+		if (depth === 0 && token.column === 0 && tokens[i + 1]?.kind === "colon")
+			inCatalog = value === "catalog" || value === "catalogs";
+		else if (inCatalog && tokens[i - 1]?.kind === "colon") values.push(value);
 	});
 	return values;
 }

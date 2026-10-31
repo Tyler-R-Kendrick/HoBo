@@ -6,6 +6,8 @@
 // or the very directory that is now the home says nothing. And a home that
 // cannot be created (the account `nobody`, whose passwd home does not exist) fails
 // with a message naming HOBO_HOME rather than with EACCES from a later write.
+
+import { spawn } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -17,6 +19,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 
 import {
@@ -24,6 +27,9 @@ import {
 	LEGACY_NOTICE_MARKER,
 	prepareHoboHome,
 } from "../src/hobo-home.js";
+
+const SOURCE = fileURLToPath(new URL("../src/hobo-home.ts", import.meta.url));
+const PACKAGE = fileURLToPath(new URL("..", import.meta.url));
 
 const scratch = mkdtempSync(join(tmpdir(), "hobo-home-prepare-"));
 afterAll(() => {
@@ -81,6 +87,62 @@ describe("prepareHoboHome", () => {
 		// Nothing is read from, or moved out of, the legacy home.
 		expect(existsSync(join(legacy, "durable", "code", "chat.json"))).toBe(true);
 		expect(existsSync(join(user, ".hobo", "durable"))).toBe(false);
+	});
+
+	it("prints the notice exactly once when eight processes start together", async () => {
+		// Eight `hobo` invocations from one shell script, all on a fresh home.
+		const { user, legacy } = layout();
+		const go = join(user, "go");
+		const script = `
+const { existsSync } = await import("node:fs");
+const { prepareHoboHome } = await import(${JSON.stringify(SOURCE)});
+process.stdout.write("ready\\n");
+while (!existsSync(${JSON.stringify(go)})) {}
+prepareHoboHome({
+	env: { HOME: ${JSON.stringify(user)} },
+	legacyHomes: [${JSON.stringify(legacy)}],
+	uid: ${me},
+	warn: (line) => process.stdout.write(\`notice \${line}\\n\`),
+});
+`;
+		const children = Array.from({ length: 8 }, () =>
+			spawn(
+				process.execPath,
+				["--import", "tsx", "--input-type=module", "-e", script],
+				{
+					cwd: PACKAGE,
+				},
+			),
+		);
+		const outputs = children.map(
+			(child) =>
+				new Promise<string>((done) => {
+					let out = "";
+					child.stdout.on("data", (chunk) => {
+						out += String(chunk);
+					});
+					child.on("close", () => done(out));
+				}),
+		);
+		await Promise.all(
+			children.map(
+				(child) =>
+					new Promise<void>((ready) => {
+						const listen = (chunk: unknown) => {
+							if (String(chunk).includes("ready")) {
+								child.stdout.off("data", listen);
+								ready();
+							}
+						};
+						child.stdout.on("data", listen);
+					}),
+			),
+		);
+		writeFileSync(go, "");
+		const notices = (await Promise.all(outputs))
+			.flatMap((out) => out.split("\n"))
+			.filter((line) => line.startsWith("notice "));
+		expect(notices).toHaveLength(1);
 	});
 
 	it("says nothing about another uid's directory", () => {

@@ -214,6 +214,15 @@ function noticeLegacyHomes(home: string, options: PrepareHoboHomeOptions) {
 		isOwnLegacyHome(legacy, home, uid),
 	);
 	if (ours.length === 0) return;
+	// Claim the notice before printing it: of several processes starting on
+	// one fresh home, only the one whose exclusive create succeeds prints.
+	try {
+		writeFileSync(marker, `${ours.join("\n")}\n`, { mode: 0o600, flag: "wx" });
+	} catch (error) {
+		if (error instanceof Error && "code" in error && error.code === "EEXIST")
+			return;
+		throw error;
+	}
 	const warn =
 		options.warn ?? ((line: string) => process.stderr.write(`${line}\n`));
 	for (const legacy of ours) {
@@ -221,7 +230,6 @@ function noticeLegacyHomes(home: string, options: PrepareHoboHomeOptions) {
 			`hobo: HoBo state now lives in ${home}. ${legacy} holds state an earlier HoBo kept there when HOME was unset, and it is no longer read. To keep it, move its contents into ${home}, or set HOBO_HOME=${legacy} to go on using it (a temp directory is a riskier home).`,
 		);
 	}
-	writeFileSync(marker, `${ours.join("\n")}\n`, { mode: 0o600 });
 }
 
 function existsQuietly(path: string): boolean {

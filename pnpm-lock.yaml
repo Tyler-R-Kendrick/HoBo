@@ -651,6 +651,9 @@ importers:
       '@dagger.io/dagger':
         specifier: 0.21.11
         version: 0.21.11
+      '@hobo/broker':
+        specifier: workspace:*
+        version: link:../broker
       '@hobo/ci-cf':
         specifier: workspace:*
         version: link:../ci-cf
@@ -921,6 +924,9 @@ importers:
       '@flue/cli':
         specifier: 1.0.0-beta.9
         version: 1.0.0-beta.9(@cfworker/json-schema@4.1.1)(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@types/node@22.20.0)(effect@3.22.0)(esbuild@0.28.1)(hono@4.12.27)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typebox@1.3.7)(typescript@6.0.3)(wrangler@4.114.0(@cloudflare/workers-types@5.20260730.1))(ws@8.21.0)(yaml@2.9.0)(zod-to-json-schema@3.25.2(zod@4.4.3))(zod@4.4.3)
+      '@hobo/cli':
+        specifier: workspace:*
+        version: link:../cli
       '@types/node':
         specifier: ^22.15.29
         version: 22.20.0
@@ -1485,6 +1491,9 @@ importers:
       '@hobo/contract-harness':
         specifier: workspace:*
         version: link:../contract-harness
+      '@hobo/example-hello-bindle':
+        specifier: workspace:*
+        version: link:../../examples/hello-bindle
       '@hobo/testing':
         specifier: workspace:*
         version: link:../testing
@@ -2423,6 +2432,12 @@ importers:
         specifier: workspace:*
         version: link:../dispatcher
     devDependencies:
+      '@hobo/broker':
+        specifier: workspace:*
+        version: link:../broker
+      '@hobo/ci-gh-actions':
+        specifier: workspace:*
+        version: link:../ci-gh-actions
       '@types/node':
         specifier: ^22.15.29
         version: 22.20.0

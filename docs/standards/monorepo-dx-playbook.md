@@ -94,6 +94,8 @@ Four things make the cache both **correct** and **fast**:
 | `globalDependencies` includes the lockfile **and shared config** | a preset change correctly invalidates dependent caches | monorepo lists `packages/config/**` |
 | `envMode: "strict"` + `env`/`globalPassThroughEnv` allowlists | reproducible, no accidental env leakage into the hash | HoBo |
 
+`^build` knows only what `package.json` declares. A test that imports a sibling package, by name or by a relative path into its directory, must declare it (`"@hobo/x": "workspace:*"` in `devDependencies`), or the test passes only when something else built that sibling first and fails on a filtered run (`--filter=@hobo/runtime`) or a clean checkout. Where declaring it would make a package cycle (the sibling already reaches the package through its own dependencies), name its build on that package's task instead: `"@hobo/runtime#test": { "dependsOn": ["build", "@hobo/runtime-local#build"] }`. `pnpm run lint:test-deps` ([`scripts/check-test-workspace-deps.mts`](../../scripts/check-test-workspace-deps.mts)) lists every test under `packages/` that does neither, and `scripts/test/check-test-workspace-deps.test.ts` holds the repository to none.
+
 **Scope every run:** `turbo run build typecheck lint test --affected` (or `--filter=[HEAD^]`). Never run the whole graph when the affected sub-graph will do.
 
 **Caching tiers:**

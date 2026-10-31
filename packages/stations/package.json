@@ -25,6 +25,8 @@
 		"@hobo/dispatcher": "workspace:*"
 	},
 	"devDependencies": {
+		"@hobo/broker": "workspace:*",
+		"@hobo/ci-gh-actions": "workspace:*",
 		"@types/node": "^22.15.29",
 		"typescript": "^6.0.3",
 		"vitest": "^4.1.9"

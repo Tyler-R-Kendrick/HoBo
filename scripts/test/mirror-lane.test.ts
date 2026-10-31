@@ -10,6 +10,7 @@ import {
 	chmodSync,
 	existsSync,
 	mkdirSync,
+	readFileSync,
 	realpathSync,
 	writeFileSync,
 } from "node:fs";
@@ -18,6 +19,7 @@ import {
 	type IncomingMessage,
 	type ServerResponse,
 } from "node:http";
+import { get as httpsGet } from "node:https";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -43,18 +45,31 @@ import {
 
 const FAKE_MIRROR = `#!/usr/bin/env node
 const { createServer } = require("node:http");
-const { existsSync, writeFileSync } = require("node:fs");
+const { createServer: createTlsServer } = require("node:https");
+const { copyFileSync, existsSync, readFileSync, writeFileSync } = require("node:fs");
+const { join } = require("node:path");
 const args = process.argv.slice(2);
 const bind = args[args.indexOf("--bind") + 1];
 const [host, port] = bind.split(":");
 const mode = process.env.FAKE_MIRROR_MODE ?? "ok";
+if (process.env.FAKE_MIRROR_PIDFILE) writeFileSync(process.env.FAKE_MIRROR_PIDFILE, String(process.pid));
+// --tls-self-signed <dir>: like mirror, write the CA into <dir> and serve
+// HTTPS; the certificates are the test-only ones in FAKE_MIRROR_TLS_FIXTURES.
+const tlsAt = args.indexOf("--tls-self-signed");
+const tlsDir = tlsAt === -1 || mode === "plain" ? undefined : args[tlsAt + 1];
+const fixtures = process.env.FAKE_MIRROR_TLS_FIXTURES;
+if (tlsDir !== undefined) copyFileSync(join(fixtures, "ca.pem"), join(tlsDir, "ca.pem"));
+const scheme = tlsDir === undefined ? "http" : "https";
 if (mode === "exit") { console.error("mirror: cannot load specs"); process.exit(3); }
 if (mode === "busy-once" && !existsSync(process.env.FAKE_MIRROR_MARK)) {
 	writeFileSync(process.env.FAKE_MIRROR_MARK, "x");
 	console.error("listen tcp " + bind + ": bind: address already in use");
 	process.exit(1);
 }
-const server = createServer((request, response) => {
+const serve = (handler) => tlsDir === undefined
+	? createServer(handler)
+	: createTlsServer({ key: readFileSync(join(fixtures, "loopback.key")), cert: readFileSync(join(fixtures, "loopback.pem")) }, handler);
+const server = serve((request, response) => {
 	if (mode === "unhealthy") { response.writeHead(503); response.end("{}"); return; }
 	response.writeHead(200, { "content-type": "application/json" });
 	if (request.url === "/_mirror/health") { response.end('{"status":"ok","uptime_ms":0,"version":"fake"}'); return; }
@@ -66,10 +81,17 @@ server.on("error", (error) => {
 	process.exit(1);
 });
 // Like mirror: the banner first, then (a moment later) the bind.
-if (mode !== "no-banner") console.error("mirror fake listening on http://" + bind);
+if (mode !== "no-banner") console.error("mirror fake listening on " + scheme + "://" + bind);
+if (tlsDir !== undefined) console.error("tls ca: " + join(tlsDir, "ca.pem"));
 setTimeout(() => server.listen(Number(port), host), 50);
 process.on("SIGTERM", () => { console.log("mirror fake: SIGTERM"); process.exit(0); });
 `;
+
+/** The test-only certificates the stand-in serves TLS with (their README says what they are). */
+const TLS_FIXTURES = join(
+	REPO_ROOT,
+	"packages/contract-harness/test/fixtures/tls",
+);
 
 function fakeMirror(): string {
 	const dir = scratch("mirror-lane");
@@ -89,6 +111,26 @@ function getJson(url: string): Promise<{
 	readonly readsConfig: boolean;
 }> {
 	return fetch(url).then((response) => response.json());
+}
+
+/** GET over TLS, trusting only `ca`. */
+function getJsonTls(
+	url: string,
+	ca: string,
+): Promise<Awaited<ReturnType<typeof getJson>>> {
+	return new Promise((resolve, reject) => {
+		httpsGet(url, { ca, agent: false }, (response) => {
+			const chunks: Buffer[] = [];
+			response.on("data", (chunk: Buffer) => chunks.push(chunk));
+			response.on("end", () => {
+				try {
+					resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+				} catch (error) {
+					reject(error);
+				}
+			});
+		}).on("error", reject);
+	});
 }
 
 /**
@@ -289,16 +331,39 @@ describe("startMirror", () => {
 
 	it("passes --tls-self-signed and waits for the CA it writes", async () => {
 		const tlsDir = scratch("mirror-lane");
+		const mirror = await startMirror({
+			bin: fakeMirror(),
+			env: { ...process.env, FAKE_MIRROR_TLS_FIXTURES: TLS_FIXTURES },
+			tlsDir,
+		});
+		try {
+			assert.match(mirror.url, /^https:\/\/127\.0\.0\.1:\d+$/u);
+			assert.equal(mirror.caFile, join(tlsDir, "ca.pem"));
+			const flag = mirror.args.indexOf("--tls-self-signed");
+			assert.notEqual(flag, -1, mirror.args.join(" "));
+			assert.equal(mirror.args[flag + 1], tlsDir);
+			// What the emulator itself was started with, read over its TLS with its CA.
+			const seen = await getJsonTls(
+				`${mirror.url}/argv`,
+				readFileSync(join(tlsDir, "ca.pem"), "utf8"),
+			);
+			assert.deepEqual(seen.args.slice(-2), ["--tls-self-signed", tlsDir]);
+		} finally {
+			await mirror.stop();
+		}
+	});
+
+	it("does not report a TLS start healthy on the strength of a plain-HTTP banner", async () => {
+		const tlsDir = scratch("mirror-lane");
 		await refusedStart(
 			{
 				bin: fakeMirror(),
-				env: process.env,
+				// The stand-in ignores the flag: it announces http:// and writes no ca.pem.
+				env: { ...process.env, FAKE_MIRROR_MODE: "plain" },
 				tlsDir,
 				startTimeoutMs: 1_000,
 			},
-			// The stand-in serves plain HTTP and writes no ca.pem: a TLS start
-			// must not be reported healthy on the strength of an HTTP answer.
-			(error) => /MIRROR_UNHEALTHY/u.test(error.message),
+			(error) => /MIRROR_UNHEALTHY: .*listening on https:/u.test(error.message),
 		);
 	});
 
@@ -367,14 +432,24 @@ describe("startMirror", () => {
 	});
 
 	it("gives up with MIRROR_UNHEALTHY and stops the process when health never answers ok", async () => {
+		const pidFile = join(scratch("mirror-lane"), "pid");
 		await refusedStart(
 			{
 				bin: fakeMirror(),
-				env: { ...process.env, FAKE_MIRROR_MODE: "unhealthy" },
+				env: {
+					...process.env,
+					FAKE_MIRROR_MODE: "unhealthy",
+					FAKE_MIRROR_PIDFILE: pidFile,
+				},
 				startTimeoutMs: 1_000,
 			},
 			(error) => /MIRROR_UNHEALTHY/u.test(error.message),
 		);
+		// startMirror refuses only after the process it started has exited.
+		const pid = Number(readFileSync(pidFile, "utf8"));
+		const running = alive(pid);
+		if (running) process.kill(pid, "SIGKILL");
+		assert.equal(running, false, `mirror pid ${pid} still runs`);
 	});
 });
 

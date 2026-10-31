@@ -2,7 +2,8 @@
 
 **Test-only.** These certificates and keys exist so `test/http-provider.test.ts`
 can pin which name `exchangeHttp` verifies a TLS answer against, with no network
-and no clock. They protect nothing: the private keys are committed on purpose,
+and no clock, and so that the stand-in mirror in `scripts/test/mirror-lane.test.ts`
+can serve `--tls-self-signed` the way mirror does. They protect nothing: the private keys are committed on purpose,
 were made for this test alone, and are allowlisted for gitleaks by path in
 `.gitleaks.toml`. Never trust `ca.pem` anywhere else.
 

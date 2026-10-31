@@ -24,6 +24,7 @@ import {
 	scanTestWorkspaceDeps,
 } from "../check-test-workspace-deps.mts";
 import { importSpecifiersOf } from "../lib/test-import-specifiers.mts";
+import { catalogValues } from "../lib/turbo-task-graph.mts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -261,6 +262,64 @@ describe("importSpecifiersOf", () => {
 				"@s/export-type true",
 				"@s/import-type-node true",
 			],
+		);
+	});
+});
+
+describe("catalogValues", () => {
+	it("reads a block catalog, and named catalogs a level deeper", () => {
+		assert.deepEqual(
+			catalogValues(
+				"catalog:\n  left-pad: \"workspace:*\"\n  react: ^18.3.1\ncatalogs:\n  tools:\n    x: 'workspace:^' # named\n",
+			),
+			["workspace:*", "^18.3.1", "workspace:^"],
+		);
+		assert.deepEqual(catalogValues("catalog:\r\n  a: workspace:*\r\n"), [
+			"workspace:*",
+		]);
+	});
+
+	it("reads a flow catalog, on one line or several", () => {
+		assert.deepEqual(
+			catalogValues('catalog: { left-pad: "workspace:*", react: ^18.3.1 }\n'),
+			["workspace:*", "^18.3.1"],
+		);
+		assert.deepEqual(
+			catalogValues(
+				'catalog: {\n  left-pad: "workspace:*",\n  react: ^18.3.1\n}\nonlyBuiltDependencies:\n  - esbuild\n',
+			),
+			["workspace:*", "^18.3.1"],
+		);
+	});
+
+	it("reads named catalogs in flow form, whole or under a block key", () => {
+		assert.deepEqual(
+			catalogValues('catalogs: { tools: { left-pad: "workspace:*" } }\n'),
+			["workspace:*"],
+		);
+		assert.deepEqual(
+			catalogValues(
+				"catalogs:\n  tools: { left-pad: workspace:* }\n  web: { react: ^18.3.1 }\n",
+			),
+			["workspace:*", "^18.3.1"],
+		);
+	});
+
+	it("reads a quoted catalog or catalogs key", () => {
+		assert.deepEqual(
+			catalogValues(
+				'"catalog":\n  left-pad: workspace:*\n\'catalogs\':\n  tools:\n    "@s/x": "workspace:^"\n',
+			),
+			["workspace:*", "workspace:^"],
+		);
+	});
+
+	it("keeps a # inside quotes, and reads nothing under another key", () => {
+		assert.deepEqual(
+			catalogValues(
+				'overrides:\n  "@s/lib": "workspace:*"\npackages:\n  - "packages/*"\ncatalog:\n  left-pad: "1.3.0 #not a comment" # a comment\n  x: npm:left-pad@1.3.0\n',
+			),
+			["1.3.0 #not a comment", "npm:left-pad@1.3.0"],
 		);
 	});
 });

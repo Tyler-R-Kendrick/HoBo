@@ -89,30 +89,131 @@ export function linkWorkspacePackages(
 			};
 }
 
+/** A token of the YAML subset pnpm-workspace.yaml is written in. */
+interface YamlToken {
+	readonly kind: "scalar" | "colon" | "open" | "close" | "comma" | "newline";
+	readonly text: string;
+	/** Where it starts on its line. */
+	readonly column: number;
+}
+
+/** A quoted scalar from `start`, its text and the index after its closing quote. */
+function quoted(text: string, start: number): [string, number] {
+	const quote = text[start];
+	let value = "";
+	let i = start + 1;
+	while (i < text.length && text[i] !== "\n") {
+		const char = text[i]!;
+		if (quote === "'" && char === "'" && text[i + 1] === "'") {
+			value += "'";
+			i += 2;
+		} else if (quote === '"' && char === "\\" && i + 1 < text.length) {
+			value += text[i + 1];
+			i += 2;
+		} else if (char === quote) return [value, i + 1];
+		else {
+			value += char;
+			i += 1;
+		}
+	}
+	return [value, i];
+}
+
 /**
- * The values of pnpm-workspace.yaml's `catalog` and `catalogs` entries, read
- * as block-style YAML (a flow-style section is kept whole). Nothing under any
- * other key, such as pnpm 10's `overrides`, is a catalog entry.
+ * The tokens of `text`: scalars (plain, or quoted with their quotes taken
+ * off), a mapping's `:`, a flow collection's brackets and commas, and line
+ * ends. A comment is a `#` at a line's start or after a space, outside
+ * quotes; a `:` is a mapping's only before a space, a line's end or, in a
+ * flow collection, `,`, `}` or `]`.
+ */
+function yamlTokens(text: string): YamlToken[] {
+	const tokens: YamlToken[] = [];
+	let flow = 0;
+	let lineStart = 0;
+	let i = 0;
+	const isSpace = (char: string | undefined) =>
+		char === undefined ||
+		char === " " ||
+		char === "\t" ||
+		char === "\r" ||
+		char === "\n";
+	const mapping = (at: number) =>
+		text[at] === ":" &&
+		(isSpace(text[at + 1]) || (flow > 0 && /[,}\]]/u.test(text[at + 1]!)));
+	const push = (kind: YamlToken["kind"], value: string, at: number) =>
+		tokens.push({ kind, text: value, column: at - lineStart });
+	while (i < text.length) {
+		const char = text[i]!;
+		const start = i;
+		if (char === "\n") {
+			push("newline", "", i);
+			i += 1;
+			lineStart = i;
+		} else if (char === " " || char === "\t" || char === "\r") i += 1;
+		else if (char === "#" && (i === lineStart || isSpace(text[i - 1])))
+			while (i < text.length && text[i] !== "\n") i += 1;
+		else if (char === '"' || char === "'") {
+			const [value, end] = quoted(text, i);
+			push("scalar", value, start);
+			i = end;
+		} else if (char === "{" || char === "[") {
+			flow += 1;
+			push("open", char, start);
+			i += 1;
+		} else if (flow > 0 && (char === "}" || char === "]")) {
+			flow -= 1;
+			push("close", char, start);
+			i += 1;
+		} else if (flow > 0 && char === ",") {
+			push("comma", char, start);
+			i += 1;
+		} else if (mapping(i)) {
+			push("colon", char, start);
+			i += 1;
+		} else {
+			while (
+				i < text.length &&
+				text[i] !== "\n" &&
+				!mapping(i) &&
+				!(flow > 0 && /[,}\]]/u.test(text[i]!)) &&
+				!(text[i] === "#" && isSpace(text[i - 1]))
+			)
+				i += 1;
+			push("scalar", text.slice(start, i).trim(), start);
+		}
+	}
+	return tokens;
+}
+
+/**
+ * The scalar values under pnpm-workspace.yaml's `catalog` and `catalogs`
+ * keys, read as the YAML they are written in: a key quoted or not, entries
+ * in block or flow form, a named catalog a level deeper, comments after a
+ * `#` outside quotes. Nothing under any other key, such as pnpm 10's
+ * `overrides`, is a catalog entry.
  */
 export function catalogValues(text: string): string[] {
+	const tokens = yamlTokens(text);
 	const values: string[] = [];
-	const unquote = (value: string) => value.replace(/^(["'])(.*)\1$/u, "$2");
 	let inCatalog = false;
-	for (const raw of text.split(/\r?\n/u)) {
-		const line = raw.replace(/(^|\s)#.*$/u, "").trimEnd();
-		if (line.trim() === "") continue;
-		const top = /^([^\s:#][^:]*):(.*)$/u.exec(line);
-		if (top !== null) {
-			inCatalog = top[1] === "catalog" || top[1] === "catalogs";
-			if (inCatalog && top[2]!.trim() !== "") values.push(top[2]!.trim());
-			continue;
-		}
-		if (!inCatalog) continue;
-		const value = /^\s+(?:"[^"]*"|'[^']*'|[^\s:][^:]*):\s*(.*)$/u.exec(
-			line,
-		)?.[1];
-		if (value !== undefined && value !== "") values.push(unquote(value));
-	}
+	let depth = 0;
+	tokens.forEach((token, i) => {
+		if (token.kind === "open") depth += 1;
+		else if (token.kind === "close") depth -= 1;
+		else if (
+			depth === 0 &&
+			token.kind === "scalar" &&
+			token.column === 0 &&
+			tokens[i + 1]?.kind === "colon"
+		)
+			inCatalog = token.text === "catalog" || token.text === "catalogs";
+		else if (
+			inCatalog &&
+			token.kind === "scalar" &&
+			tokens[i - 1]?.kind === "colon"
+		)
+			values.push(token.text);
+	});
 	return values;
 }
 

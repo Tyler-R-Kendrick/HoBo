@@ -10,7 +10,7 @@
  * only the guard, a HOME and a TMPDIR of its own, so it never touches the
  * machine's real `~/.hobo` or `/tmp/.hobo`.
  */
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -122,6 +122,45 @@ function runUnderGuard(
 		temp: realpathSync(temp),
 	};
 }
+
+describe("walking a home a live session is churning", () => {
+	it("never reports an entry the session did not touch", async () => {
+		// A HoBo session removes and recreates sandboxes/<runId> while the guard
+		// walks. A listing that failed on one vanished subdirectory used to fall
+		// back to the top level, so every untouched file below it read as new.
+		const home = join(scratch, "churned", ".hobo");
+		mkdirSync(join(home, "durable", "code", "chats"), { recursive: true });
+		for (let i = 0; i < 40; i += 1)
+			writeFileSync(
+				join(home, "durable", "code", "chats", `old-${i}.json`),
+				"{}",
+			);
+		for (let i = 0; i < 200; i += 1)
+			mkdirSync(join(home, "sandboxes", `run-${i}`, "a", "b"), {
+				recursive: true,
+			});
+		const churn = spawn(process.execPath, [
+			"-e",
+			`const fs = require("node:fs"), p = require("node:path");
+			const home = ${JSON.stringify(home)};
+			const end = Date.now() + 1500;
+			for (let i = 0; Date.now() < end; i += 1) {
+				const run = p.join(home, "sandboxes", "run-" + (i % 200));
+				fs.rmSync(run, { recursive: true, force: true });
+				fs.mkdirSync(p.join(run, "a", "b"), { recursive: true });
+			}`,
+		]);
+		const exited = new Promise((done) => churn.once("exit", done));
+		let before = snapshotHomes([home]);
+		const until = Date.now() + 1000;
+		while (Date.now() < until) before = snapshotHomes([home]);
+		await exited;
+		const gained = gainedEntries(before, snapshotHomes([home]));
+		expect(
+			gained.filter((path) => !path.startsWith(join(home, "sandboxes"))),
+		).toEqual([]);
+	});
+});
 
 describe("the guard", () => {
 	it("passes a run that wrote nowhere, though the homes already held entries", () => {

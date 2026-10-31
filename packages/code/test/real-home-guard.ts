@@ -18,6 +18,11 @@
  * They may already hold a developer's own state, and on a shared machine they
  * may hold evidence of an earlier leak, so the guard compares against what was
  * there when the run started and never requires them to be absent or empty.
+ * It walks each home one directory at a time: a directory a live session
+ * removed between being listed and being read is listed again if it is back
+ * and recorded as gone if not, so one vanished `sandboxes/<runId>` never turns
+ * the rest of the home into "new" entries. It still reports any entry that was
+ * not there when its first walk passed.
  * It only looks for new entries: a file that was already there and changed is
  * not reported. It cannot tell who wrote an entry, so a HoBo session, or
  * another checkout's suite without this isolation, writing there during the
@@ -28,18 +33,32 @@
  * against a real home has chosen to write there.
  */
 import {
-	existsSync,
+	lstatSync,
 	mkdtempSync,
 	readdirSync,
 	realpathSync,
 	rmSync,
+	type Stats,
 } from "node:fs";
 import { homedir, tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { HOMES_ROOT_ENV } from "../../../test/setup/hobo-test-homes.js";
 
-/** What one watched home held: `null` when it did not exist. */
-export type HomeSnapshot = ReadonlyMap<string, ReadonlySet<string> | null>;
+/** One path under a watched home, as the walk found it. */
+export interface HomeEntry {
+	/** `gone`: listed in its directory, then removed before it could be read. */
+	readonly kind: "dir" | "file" | "other" | "gone";
+	readonly size: number;
+	readonly mtimeMs: number;
+}
+
+/** What one watched home held, by path relative to it: `null` when it did not exist. */
+export type HomeSnapshot = ReadonlyMap<
+	string,
+	ReadonlyMap<string, HomeEntry> | null
+>;
+
+const GONE: HomeEntry = { kind: "gone", size: 0, mtimeMs: 0 };
 
 function canonical(path: string): string {
 	try {
@@ -64,28 +83,84 @@ export function watchedHomes(env: NodeJS.ProcessEnv = process.env): string[] {
 	return [...new Set(candidates)].filter((dir) => dir !== chosen);
 }
 
-/**
- * The paths under one home, relative to it. A subdirectory this user cannot
- * read (another account's `keys/`) leaves the listing at the top level rather
- * than failing the run before a test has started.
- */
-function entriesOf(home: string): ReadonlySet<string> {
+function errorCode(error: unknown): string {
+	return error instanceof Error && "code" in error ? String(error.code) : "";
+}
+
+function lstatOrNull(path: string): Stats | null {
 	try {
-		return new Set(readdirSync(home, { recursive: true, encoding: "utf8" }));
-	} catch {
+		return lstatSync(path);
+	} catch (error) {
+		if (errorCode(error) === "ENOENT" || errorCode(error) === "ENOTDIR")
+			return null;
+		throw error;
+	}
+}
+
+/** How often a directory that vanished mid-walk is listed again if it is back. */
+const RELISTS = 5;
+
+/**
+ * A directory's names, or `null` when it is gone. A live HoBo session removes
+ * and recreates directories (`sandboxes/<runId>`) while the guard walks; one
+ * that vanished between being listed and being read is listed again if it is
+ * a directory again, and otherwise reported gone. A directory this user cannot
+ * read lists as empty, before the run and after it alike, so nothing below it
+ * is seen; the walk never falls back to a coarser listing of anything else.
+ */
+function namesIn(dir: string): string[] | null {
+	for (let attempt = 0; attempt <= RELISTS; attempt += 1) {
 		try {
-			return new Set(readdirSync(home, { encoding: "utf8" }));
-		} catch {
-			return new Set();
+			return readdirSync(dir, { encoding: "utf8" }).sort();
+		} catch (error) {
+			const code = errorCode(error);
+			if (code === "EACCES" || code === "EPERM") return [];
+			if (code !== "ENOENT" && code !== "ENOTDIR") throw error;
+			if (!lstatOrNull(dir)?.isDirectory()) return null;
 		}
 	}
+	return null;
+}
+
+function kindOf(stats: Stats): HomeEntry["kind"] {
+	if (stats.isDirectory()) return "dir";
+	if (stats.isFile()) return "file";
+	return "other";
+}
+
+function entryOf(stats: Stats): HomeEntry {
+	return { kind: kindOf(stats), size: stats.size, mtimeMs: stats.mtimeMs };
+}
+
+/** Every path under `home`, walked one directory at a time. */
+function walk(home: string): ReadonlyMap<string, HomeEntry> {
+	const entries = new Map<string, HomeEntry>();
+	const visit = (relative: string) => {
+		const names = namesIn(relative === "" ? home : join(home, relative));
+		if (names === null) {
+			if (relative !== "") entries.set(relative, GONE);
+			return;
+		}
+		for (const name of names) {
+			const path = relative === "" ? name : join(relative, name);
+			const stats = lstatOrNull(join(home, path));
+			if (stats === null) {
+				entries.set(path, GONE);
+				continue;
+			}
+			entries.set(path, entryOf(stats));
+			if (stats.isDirectory()) visit(path);
+		}
+	};
+	visit("");
+	return entries;
 }
 
 /** Every path under each home, relative to it; `null` for a home that is not there. */
 export function snapshotHomes(homes: readonly string[]): HomeSnapshot {
-	const snapshot = new Map<string, ReadonlySet<string> | null>();
+	const snapshot = new Map<string, ReadonlyMap<string, HomeEntry> | null>();
 	for (const home of homes)
-		snapshot.set(home, existsSync(home) ? entriesOf(home) : null);
+		snapshot.set(home, lstatOrNull(home)?.isDirectory() ? walk(home) : null);
 	return snapshot;
 }
 
@@ -99,8 +174,10 @@ export function gainedEntries(
 		if (now === null) continue;
 		const was = before.get(home) ?? null;
 		if (was === null) gained.push(home);
-		for (const entry of now) {
-			if (!was?.has(entry)) gained.push(join(home, entry));
+		// An entry the first walk saw listed counts as there, though it was gone
+		// before the walk could read it.
+		for (const path of now.keys()) {
+			if (!was?.has(path)) gained.push(join(home, path));
 		}
 	}
 	return gained.sort();

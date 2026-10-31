@@ -105,6 +105,9 @@ export function shellQuote(value: string): string {
 	return `'${value.replace(/'/gu, `'\\''`)}'`;
 }
 
+/** A command that begins with a `NAME=value` environment assignment. */
+const LEADING_ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/u;
+
 /**
  * The command that places `target.command` in its workspace — the exec wrapper
  * for namespace-mounted trees, a `cd` otherwise, and nothing when the target
@@ -123,7 +126,14 @@ export function placedCommand(target: MuxTarget): string {
 		const binary = target.exec.binary.endsWith(".js")
 			? `${shellQuote(process.execPath)} ${shellQuote(target.exec.binary)}`
 			: shellQuote(target.exec.binary);
-		return `${binary} exec --root ${shellQuote(target.exec.root)} --name ${shellQuote(target.exec.name)} -- ${target.command}`;
+		// hobo-rift runs what follows `--` as an argv vector, each element
+		// quoted, so leading `NAME=value` words are no environment there: the
+		// first became the command, and the agent never started. `env` makes
+		// them environment again.
+		const vector = LEADING_ASSIGNMENT.test(target.command)
+			? `env ${target.command}`
+			: target.command;
+		return `${binary} exec --root ${shellQuote(target.exec.root)} --name ${shellQuote(target.exec.name)} -- ${vector}`;
 	}
 	return target.cwd
 		? `cd ${shellQuote(target.cwd)} && ${target.command}`

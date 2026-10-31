@@ -242,6 +242,23 @@ describe("parseProviderStates", () => {
 	});
 });
 
+describe("a Pact v2 providerState", () => {
+	it("is refused when the states are asked for, never read as having none", () => {
+		const raw = document([
+			{
+				description: "v2",
+				providerState: NO_PROJECT,
+				request: { method: "GET", path: "/" },
+				response: { status: 200 },
+			},
+		]);
+		expect(() => parseProviderStates(raw)).toThrow(ProviderStateError);
+		expect(() => parseProviderStates(raw)).toThrow(
+			/interactions\[0\] names a Pact v2 providerState/u,
+		);
+	});
+});
+
 describe("parsePactDocument with provider states", () => {
 	const base = {
 		consumer: { name: "TestConsumer" },

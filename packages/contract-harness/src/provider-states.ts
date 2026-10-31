@@ -126,6 +126,13 @@ export function parseProviderStates(
 					`${where}.request needs a method and a path`,
 				);
 			}
+			if (interaction.providerState !== undefined) {
+				// A v2 state is one free-text string; read as "no v3 states" it
+				// would let the interaction run in whatever state it finds.
+				throw new ProviderStateError(
+					`${where} names a Pact v2 providerState; this harness sets up Pact v3 providerStates ([{ "name": ... }]) only`,
+				);
+			}
 			return Object.freeze({
 				request: Object.freeze({ method, path }),
 				states: readProviderStates(interaction.providerStates, where),

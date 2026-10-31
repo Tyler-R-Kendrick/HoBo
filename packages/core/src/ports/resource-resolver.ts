@@ -33,6 +33,7 @@
  */
 
 import {
+	isJsonArray,
 	isJsonBoolean,
 	isJsonNumber,
 	isJsonObject,
@@ -63,6 +64,8 @@ export type ResolverAction = (typeof RESOLVER_ACTIONS)[number];
 const LOGICAL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 /** Provider/product id grammar, bounded so an id cannot smuggle a payload. */
 const RESOLVER_ID_PATTERN = /^[a-z0-9][a-z0-9._/-]{0,127}$/u;
+/** A directive names one realization parameter: a bounded identifier. */
+const DIRECTIVE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/u;
 /**
  * A locator names where material lives; it never carries the material. The
  * body is the RFC 3986 character set minus `@`, so whitespace, control
@@ -118,6 +121,18 @@ export interface ResolveOutcome {
 export interface ResourceResolver {
 	readonly providerId: string;
 	readonly productId: string;
+	/**
+	 * The realization parameters this resolver reads as directives: they say
+	 * how `reconcile` or `delete` acts on the resource (`forceDelete`,
+	 * `restoreScheduled`), never what the resource is, so `read()` normally has
+	 * nothing to report for one. A caller comparing what a plan declares with
+	 * what `read()` observed leaves a declared directive out only when `read()`
+	 * reports no value under that key; a key `read()` does report is compared
+	 * like any other, so this list can never hide drift `read()` observes
+	 * (ADR-0175). Absent means the resolver reads none. This is metadata about
+	 * the resolver's parameters, not a trait and not an attach point.
+	 */
+	readonly directives?: readonly string[];
 	/** Convergent and idempotent: running twice must yield the same outcome
 	 *  and one resource. */
 	reconcile(
@@ -260,6 +275,13 @@ export function parseResolveOutcome(
  * ordered so a catalog dump is a function of its contents; a duplicate
  * `productId` is refused rather than last-write-wins, because a silently
  * shadowed resolver is a deploy calling a provider nobody reviewed.
+ *
+ * Identity: `get(id)` and `list()` return the registered object itself for a
+ * resolver that declares no directives. For one that does, they return a
+ * frozen view, not the registered object: it carries the directive list as
+ * parsed at registration (read once) and delegates every call to the
+ * resolver. So a later change to the resolver's list, or a getter answering
+ * differently, changes nothing the registry hands out.
  */
 export function createResolverRegistry(
 	resolvers: readonly ResourceResolver[],
@@ -284,7 +306,7 @@ export function createResolverRegistry(
 				resolver.productId,
 			);
 		}
-		byProduct.set(resolver.productId, resolver);
+		byProduct.set(resolver.productId, registered(resolver));
 	}
 
 	const ordered = Object.freeze(
@@ -327,6 +349,82 @@ function assertResolverContract(value: ResourceResolver): void {
 			value.productId,
 		);
 	}
+}
+
+/** The directives of a resolver that names none. */
+const NO_DIRECTIVES: readonly string[] = Object.freeze([]);
+
+/**
+ * A resolver's directives, parsed: a frozen copy of its list, or an empty
+ * list when it names none. The list decides which declared keys a caller may
+ * leave out of a desired-versus-observed comparison, so anything but a list of
+ * distinct parameter names (a string, a number, an empty or repeated name) is
+ * refused with a typed `RESOLVER_PRODUCT_UNSUPPORTED`, never iterated as
+ * whatever it happens to be. `createResolverRegistry` registers this copy, and
+ * a caller holding a resolver from anywhere else reads it through here too, so
+ * mutating the array a resolver was built with changes nothing afterwards.
+ */
+export function parseResolverDirectives(
+	resolver: ResourceResolver,
+): readonly string[] {
+	return directiveList(resolver.directives, resolver.productId);
+}
+
+/** A directive list already read off its resolver, parsed (see above). */
+function directiveList(
+	directives: ResourceResolver["directives"],
+	productId: string,
+): readonly string[] {
+	if (directives === undefined) return NO_DIRECTIVES;
+	// By index, not with every(): every() skips the holes of a sparse array,
+	// and a list with a hole names nothing in that slot.
+	const names: string[] = [];
+	let wellFormed = isJsonArray(directives);
+	const length = isJsonArray(directives) ? directives.length : 0;
+	for (let index = 0; wellFormed && index < length; index++) {
+		const name = Object.hasOwn(directives, index)
+			? directives[index]
+			: undefined;
+		wellFormed =
+			isJsonString(name) &&
+			DIRECTIVE_PATTERN.test(name) &&
+			!names.includes(name);
+		if (isJsonString(name)) names.push(name);
+	}
+	if (!wellFormed) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`resolver ${JSON.stringify(productId)} directives: expected distinct parameter names matching ${DIRECTIVE_PATTERN.source}, with no holes, received ${JSON.stringify(directives)}`,
+			productId,
+		);
+	}
+	return Object.freeze(names);
+}
+
+/**
+ * The resolver as registered: unchanged when it names no directives, else a
+ * frozen view that carries the parsed copy and delegates every call to it.
+ * `directives` is read off the resolver exactly once, here, so a getter cannot
+ * answer the check one list and the registry another.
+ */
+function registered(resolver: ResourceResolver): ResourceResolver {
+	const declared = resolver.directives;
+	if (declared === undefined) return resolver;
+	const directives = directiveList(declared, resolver.productId);
+	const view: ResourceResolver = {
+		providerId: resolver.providerId,
+		productId: resolver.productId,
+		directives,
+		reconcile: (request, transport) => resolver.reconcile(request, transport),
+		delete: (request, transport) => resolver.delete(request, transport),
+		...(resolver.read === undefined
+			? undefined
+			: {
+					read: async (request: ResolveRequest, transport: HttpTransport) =>
+						resolver.read?.(request, transport),
+				}),
+	};
+	return Object.freeze(view);
 }
 
 function parseResolvedResourceRef(

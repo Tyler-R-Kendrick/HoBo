@@ -29,8 +29,10 @@ export function launcherSignals(platform) {
 
 /**
  * Pass `signal` on to the child: to its process group, which it leads in a
- * session of its own, so that whatever it started without detaching (a
- * `/hobo` command, the `--pi` TUI, `tmux attach`, `ssh`) gets the signal too.
+ * session of its own, so that what it starts without detaching (the `--pi`
+ * TUI, `tmux attach`, the `ssh` of `session serve --host`) gets the signal
+ * too. (A `/hobo` command runs in the child itself, or, with
+ * `HOBO_CODE_HOBO_BIN`, as one more process in the group.)
  * Sent to the child alone, the signal orphaned them wherever the child had no
  * handler for it. When the group cannot be signalled (ESRCH: the child leads
  * none, or is gone; or any other failure), the child gets it alone.

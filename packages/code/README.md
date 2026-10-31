@@ -55,9 +55,12 @@ The launcher runs `dist/bin/hobo-code.js` (or `src/` via tsx) as a child.
 Except on Windows that child has a session and process group of its own, so
 neither a signal sent to `hobo-code` nor the terminal's hangup reaches it
 directly. There, the launcher passes SIGINT, SIGTERM, SIGHUP and SIGQUIT on to
-the child's process group, the SIGHUP of a closing terminal included, so
-whatever the child started without detaching (a `/hobo` command, the `--pi`
-TUI, `tmux attach`, `ssh`) gets them too. It waits for the child to end, and
+the child's process group, the SIGHUP of a closing terminal included, so what
+the child starts without detaching gets them too: the `--pi` TUI, `tmux
+attach`, and the `ssh` of `session serve --host`. (A `/hobo` command runs in the
+child itself; only with `HOBO_CODE_HOBO_BIN`, a stand-in for tests, is it a
+process of its own, which the group signal then reaches as well.) It waits for
+the child to end, and
 exits with its status, or 128+n when it ends by signal n. Killed outright
 (SIGKILL), the launcher passes nothing on: the child takes its IPC channel to
 the launcher closing as a hangup and raises SIGHUP on itself, at once if the

@@ -448,9 +448,11 @@ describe.skipIf(skipReason !== false)(
 describe.skipIf(skipReason !== false)(
 	`hobo-code ended while a /hobo command its shell started is still running${skipReason === false ? "" : ` (${skipReason})`}`,
 	() => {
-		// The shell starts the command as a child of its own, without detaching,
-		// so it is in the process group hobo-code's launcher passes signals to.
-		// Passed on to the shell alone, the signal left it running.
+		// With HOBO_CODE_HOBO_BIN, the stand-in here, the shell starts the
+		// command as a child of its own, without detaching, so it is in the
+		// process group hobo-code's launcher passes signals to. (Without it,
+		// a /hobo command runs in the shell's own process.) Passed on to the
+		// shell alone, the signal left it running.
 		for (const signal of ["SIGTERM", "SIGHUP"] as const) {
 			it(
 				`${signal} ends that command too, and the shell quits`,

@@ -6,9 +6,11 @@
  * with no substitution:
  * - `import … from`, `import "…"`, `export … from`, `import x = require(…)`;
  * - `import(…)`, `require(…)`, `require.resolve(…)`, `import.meta.resolve(…)`;
- * - `createRequire(…)(…)`, and a name bound to `createRequire(…)` called or
- *   `.resolve`d;
- * - `vi.mock`, `vi.doMock`, `vi.importActual` and `vi.importMock`;
+ * - `createRequire(…)(…)`, and a name bound to `createRequire(…)`, where it is
+ *   declared or by a later assignment (`let req; req = createRequire(…)`),
+ *   called or `.resolve`d;
+ * - `vi.mock`, `vi.doMock`, `vi.importActual` and `vi.importMock`, where `vi`
+ *   is the global or a name vitest's `vi` is imported as (`import { vi as v }`);
  * - `typeof import(…)` in a type.
  *
  * What cannot be read, and is not: a specifier computed or substituted at run
@@ -54,9 +56,19 @@ function isCreateRequire(node: ts.Expression): boolean {
 	);
 }
 
-/** Names bound to `createRequire(…)` anywhere in the file. */
-function requireNames(file: ts.SourceFile): Set<string> {
-	const names = new Set(["require"]);
+interface LoaderNames {
+	/** `require`, and names bound to `createRequire(…)`. */
+	readonly requires: Set<string>;
+	/** `vi`, and names vitest's `vi` is imported as. */
+	readonly vis: Set<string>;
+}
+
+/** The names that load a module, bound anywhere in the file. */
+function loaderNames(file: ts.SourceFile): LoaderNames {
+	const names: LoaderNames = {
+		requires: new Set(["require"]),
+		vis: new Set(["vi"]),
+	};
 	const visit = (node: ts.Node): void => {
 		if (
 			ts.isVariableDeclaration(node) &&
@@ -64,7 +76,20 @@ function requireNames(file: ts.SourceFile): Set<string> {
 			node.initializer !== undefined &&
 			isCreateRequire(node.initializer)
 		)
-			names.add(node.name.text);
+			names.requires.add(node.name.text);
+		else if (
+			ts.isBinaryExpression(node) &&
+			node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+			ts.isIdentifier(node.left) &&
+			isCreateRequire(node.right)
+		)
+			names.requires.add(node.left.text);
+		else if (
+			ts.isImportSpecifier(node) &&
+			(node.propertyName ?? node.name).text === "vi" &&
+			literal(node.parent.parent.parent.moduleSpecifier) === "vitest"
+		)
+			names.vis.add(node.name.text);
 		ts.forEachChild(node, visit);
 	};
 	visit(file);
@@ -98,7 +123,7 @@ function exportIsTypeOnly(node: ts.ExportDeclaration): boolean {
 /** The specifier a call loads, if it is one of the loaders this reader knows. */
 function calledSpecifier(
 	node: ts.CallExpression,
-	requires: ReadonlySet<string>,
+	{ requires, vis }: LoaderNames,
 ): string | undefined {
 	const callee = node.expression;
 	const first = literal(node.arguments[0]);
@@ -123,7 +148,7 @@ function calledSpecifier(
 		owner.keywordToken === ts.SyntaxKind.ImportKeyword
 	)
 		return first;
-	if (ts.isIdentifier(owner) && owner.text === "vi" && VI_LOADERS.has(method))
+	if (ts.isIdentifier(owner) && vis.has(owner.text) && VI_LOADERS.has(method))
 		return first;
 	return undefined;
 }
@@ -140,7 +165,7 @@ export function importSpecifiersOf(
 		true,
 		scriptKind(fileName),
 	);
-	const requires = requireNames(file);
+	const loaders = loaderNames(file);
 	const out: ImportSpecifier[] = [];
 	const add = (specifier: string | undefined, typeOnly: boolean) => {
 		if (specifier !== undefined) out.push({ specifier, typeOnly });
@@ -161,7 +186,7 @@ export function importSpecifiersOf(
 		else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument))
 			add(literal(node.argument.literal), true);
 		else if (ts.isCallExpression(node))
-			add(calledSpecifier(node, requires), false);
+			add(calledSpecifier(node, loaders), false);
 		ts.forEachChild(node, visit);
 	};
 	visit(file);

@@ -121,6 +121,30 @@ describe("importSpecifiersOf", () => {
 		);
 	});
 
+	it("reads a require bound by a later assignment, and vitest's vi under another name", () => {
+		const source = [
+			"let req;",
+			"req = createRequire(import.meta.url);",
+			'req("@s/assigned-require");',
+			'req.resolve("@s/assigned-require-resolve");',
+			'import { vi as v } from "vitest";',
+			'v.mock("@s/aliased-vi-mock");',
+			'await v.importActual("@s/aliased-vi-import-actual");',
+			'other.mock("@s/not-vi");',
+			'notRequire("@s/not-require");',
+		].join("\n");
+		assert.deepEqual(
+			importSpecifiersOf(source, "a.test.ts").map((item) => item.specifier),
+			[
+				"@s/assigned-require",
+				"@s/assigned-require-resolve",
+				"vitest",
+				"@s/aliased-vi-mock",
+				"@s/aliased-vi-import-actual",
+			],
+		);
+	});
+
 	it("reads nothing out of strings, comments or a test's source text, and nothing computed", () => {
 		// runtime-local's link-table and capability-grant-gate tests hold a
 		// Bindle's source as a string, `import { api, kv } from "@hobo/bindles"`

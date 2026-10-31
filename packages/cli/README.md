@@ -87,6 +87,33 @@ install story yet. Prefer the monorepo workspace until publish hygiene lands.
 The composed product provides persistent self-hosted local deployments and
 explicitly selected live provider paths; see [`packages/hobo/README.md`](../hobo/README.md).
 
+## Project discovery
+
+Project-scoped verbs walk up from the working directory (or `--cwd`) to the
+first directory holding a project marker: `hobo.bindle.json`, `bindle.ts`/`.js`,
+`src/bindle.{ts,mts,js,mjs}`, `dist/bindle.js`, `app.{ts,mts,js,mjs}`, or a
+project `.hobo/` (`codegen`, `stub` and `build` also accept `tsconfig.json`).
+With none, the verb fails with `HOBO_NO_BINDLE`.
+
+A `.hobo/` counts only when it is a project's state (`session.json`,
+`generated/`, `build/`, `sources/`, …). It does not count when it is the
+user's own HoBo home — the one `HOBO_HOME` resolves to, or the default
+`$HOME/.hobo` while `HOBO_HOME` points elsewhere — or when everything in it is
+user-level state (`durable/`, `runtime/`, `stations/`, `keys/`, `tools/`,
+`sandboxes/`, `worktrees/`, `worlds/`, `yards/`, `oci/`, `profile.json`). Before
+this rule, every directory under `$HOME` resolved to `$HOME`, and a stray
+`/tmp/.hobo` made `/tmp` the project of every temp dir.
+
+`HOBO_CEILING_DIRECTORIES` bounds the walk the way `GIT_CEILING_DIRECTORIES`
+bounds git's: a `:`-separated (`;` on Windows) list of absolute paths the walk
+never moves up into. The starting directory is always examined; empty and
+relative entries are ignored. The CLI's own tests set it to their temp root.
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `HOBO_CEILING_DIRECTORIES` | unset (walk to `/`) | Directories project discovery never walks up into |
+| `HOBO_HOME` | `$HOME/.hobo` | The user's HoBo home; never taken for a project |
+
 ## Contracts
 
 - `contracts/cli-command-path.pact.json` — shell ↔ command registry boundary

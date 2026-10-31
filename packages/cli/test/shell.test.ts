@@ -10,6 +10,7 @@ import {
 	runHobo,
 } from "../src/index.js";
 import type { JsonObject } from "../src/json.js";
+import { CEILING_DIRECTORIES_ENV } from "../src/shell/context.js";
 
 const canonicalVerbNames = [
 	"up",
@@ -145,10 +146,21 @@ async function withBindle(callback: (cwd: string) => Promise<void>) {
 	}
 }
 
-async function withEmptyDir(callback: (cwd: string) => Promise<void>) {
+/**
+ * An empty directory, and an environment whose project discovery stops at the
+ * temp root it was made in (`HOBO_CEILING_DIRECTORIES`). Without the ceiling
+ * the walk reaches whatever sits above the temp dir — a stray `/tmp/.hobo`, a
+ * Bindle in a parent checkout — and "empty" stops meaning anything.
+ */
+async function withEmptyDir(
+	callback: (cwd: string, env: NodeJS.ProcessEnv) => Promise<void>,
+) {
 	const dir = await mkdtemp(path.join(tmpdir(), "hobo-cli-empty-"));
 	try {
-		await callback(dir);
+		await callback(dir, {
+			...process.env,
+			[CEILING_DIRECTORIES_ENV]: path.dirname(dir),
+		});
 	} finally {
 		await rm(dir, { recursive: true, force: true });
 	}
@@ -368,8 +380,8 @@ describe("HoBo CLI shell", () => {
 	});
 
 	it("fails outside a HoBo project with a clear no-Bindle error", async () => {
-		await withEmptyDir(async (cwd) => {
-			const result = await runHobo(["plan"], { cwd });
+		await withEmptyDir(async (cwd, env) => {
+			const result = await runHobo(["plan"], { cwd, env });
 
 			expect(result.exitCode).toBe(1);
 			expect(result.stdout).toBe("");

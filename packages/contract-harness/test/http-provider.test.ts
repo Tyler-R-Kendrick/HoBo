@@ -290,7 +290,8 @@ describe("TLS is verified against the address dialled, never the Host header", (
 	const fixture = (name: string) =>
 		readFileSync(new URL(`./fixtures/tls/${name}`, import.meta.url), "utf8");
 	const ca = fixture("ca.pem");
-	const AWS_HOST = "s3.us-east-1.amazonaws.com";
+	// The name a rewritten request carries in Host: never the address dialled.
+	const AWS_HOST = "s3.mirror-lane.test";
 
 	type TlsSeen = { readonly host: string; readonly servername: string | false };
 

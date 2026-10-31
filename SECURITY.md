@@ -10,7 +10,7 @@ Only the default branch and active pull requests are supported. Archived require
 
 Please report:
 
-- Secrets, tokens, credentials, or private keys committed to the repo.
+- Secrets, tokens, credentials, or private keys committed to the repo. The one exception is the two test-only TLS keys `packages/contract-harness/test/fixtures/tls/hostname.key` and `loopback.key`, whose CA can only vouch for `.test` names and loopback (see that directory's README); `.gitleaks.toml` exempts exactly those two files.
 - CI workflow changes that could exfiltrate secrets or run untrusted code unsafely.
 - Agent-tooling configuration that causes unexpected data egress or unsafe command execution.
 - Draft contract code that contradicts documented deny-by-default, secretless, tenant-isolation, provenance, or no-egress claims.

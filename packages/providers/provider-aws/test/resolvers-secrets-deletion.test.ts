@@ -941,6 +941,26 @@ describe("a DeletedDate that is a leap second", () => {
 			`AWS returned a DeletedDate (${JSON.stringify(text)}) that is a leap second (second 60)`,
 		);
 	});
+
+	it.each([
+		["2026-13-45T23:59:60Z", "a month and day that do not exist"],
+		["2026-11-30T24:59:60Z", "hour 24"],
+		["2026-11-30T23:60:60Z", "minute 60"],
+		["2026-11-30T23:59:60+24:00", "offset hour 24"],
+		["9999-12-31T23:59:60-01:00", "an instant past 9999"],
+	])("does not call %s (%s) a leap second, since more than second 60 is wrong", async (text) => {
+		const runner = harness(scheduledWith(text));
+
+		const refusal = await refusalOf(runner.read());
+
+		expect(refusal instanceof ResolverError ? refusal.code : "").toBe(
+			"RESOLVER_OUTPUT_UNPARSEABLE",
+		);
+		expect(refusal?.message).toContain(
+			`AWS returned a DeletedDate (${JSON.stringify(text)}) that is neither epoch seconds nor an RFC 3339 date-time in the years 0000 to 9999`,
+		);
+		expect(refusal?.message).not.toContain("leap second");
+	});
 });
 
 /** A deterministic generator (mulberry32), so a failure names a reproducible case. */

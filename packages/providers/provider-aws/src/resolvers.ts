@@ -1951,8 +1951,14 @@ function parseDeletedDate(
 	// it parsed to: its source text could spell a credential in \u escapes,
 	// which neither the exact-match nor the token scrub would see.
 	const written = numberText ?? JSON.stringify(value);
+	// A leap second only when second 60 is the one thing wrong: the same text
+	// with second 59 must be a date-time this parser accepts. "2026-13-45T…:60Z"
+	// gets the general refusal, because its date is wrong too.
 	const leapSecond =
-		isJsonString(value) && RFC3339_DATE_TIME.exec(value)?.[6] === "60";
+		isJsonString(value) &&
+		RFC3339_DATE_TIME.exec(value)?.[6] === "60" &&
+		instantFromRfc3339(`${value.slice(0, 17)}59${value.slice(19)}`) !==
+			undefined;
 	const what = leapSecond
 		? "is a leap second (second 60), which no AWS timestamp carries and which Date.parse cannot read"
 		: "is neither epoch seconds nor an RFC 3339 date-time in the years 0000 to 9999";

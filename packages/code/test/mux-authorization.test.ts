@@ -174,7 +174,7 @@ async function mux(
 	proxyEntry: string = ENTRY,
 ): Promise<Muxed> {
 	// The proxy is started as `process.argv[1] _station-agent …`.
-	const entry = process.argv[1];
+	const entry = process.argv[1] ?? "";
 	process.argv[1] = proxyEntry;
 	let handedOff = 0;
 	try {

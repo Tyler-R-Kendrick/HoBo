@@ -17,6 +17,7 @@ import {
 	type HttpTransport,
 	parseResolveOutcome,
 	parseResolveRequest,
+	parseResolverDirectives,
 	RESOLVER_CONTRACT,
 	type ResolveOutcome,
 	type ResolveRequest,
@@ -255,6 +256,8 @@ interface DesiredComparison {
 	readonly differing: readonly string[];
 	/** Declared parameters `read()` reports nothing about, either way. */
 	readonly unobservable: readonly string[];
+	/** Declared directives `read()` reports nothing about, left out. */
+	readonly directives: readonly string[];
 }
 
 /**
@@ -266,25 +269,55 @@ interface DesiredComparison {
  * comparison reports both sets and lets the caller phrase the honest verdict:
  * a difference is a lower bound on the change count, and an unobservable
  * parameter makes the total undetermined.
+ *
+ * A key the resolver names in `directives` says how apply or delete acts
+ * (`restoreScheduled`, `forceDelete`), not what the resource is, so `read()`
+ * normally reports nothing for it. Such a key is left out rather than counted
+ * as unobservable, and listed so the verdict can say what it did not compare
+ * (ADR-0175). A directive key `read()` DOES report is compared like any other
+ * parameter: the list only excuses a key there is nothing to compare against,
+ * so naming a reported state key as a directive cannot hide its drift.
  */
 function compareDesired(
 	desired: JsonObject,
 	observed: JsonObject,
+	directiveKeys: readonly string[],
 ): DesiredComparison {
 	const differing: string[] = [];
 	const unobservable: string[] = [];
+	const directives: string[] = [];
+	const isDirective = new Set(directiveKeys);
 	// Keys are already code-unit sorted by the parse boundaries; sorting again
 	// keeps the result stable if that ever stops being true.
 	for (const key of Object.keys(desired).sort(compareStrings)) {
 		if (!Object.hasOwn(observed, key)) {
-			unobservable.push(key);
+			(isDirective.has(key) ? directives : unobservable).push(key);
 			continue;
 		}
 		if (stringifyOutput(desired[key]) !== stringifyOutput(observed[key])) {
 			differing.push(key);
 		}
 	}
-	return { differing, unobservable };
+	return { differing, unobservable, directives };
+}
+
+/**
+ * The verdict when nothing compared differs. With directives left out it says
+ * "every compared declared parameter", never "every declared parameter": the
+ * directives were declared and not compared.
+ */
+function allMatch(directives: readonly string[]): string {
+	return `every ${directives.length === 0 ? "" : "compared "}declared parameter matches what the provider reports`;
+}
+
+/** Names the declared directives a comparison left out, or nothing. */
+function directiveNote(directives: readonly string[]): string {
+	if (directives.length === 0) return "";
+	const kind =
+		directives.length === 1
+			? "a directive that says how apply or delete acts, not state"
+			: "directives that say how apply or delete acts, not state";
+	return ` Not compared: ${directives.join(", ")} (${kind}).`;
 }
 
 function diagnosticSuffix(diagnostics: readonly string[]): string {
@@ -298,6 +331,8 @@ interface BoundResource {
 	readonly plan: ResourcePlan;
 	readonly productId: string;
 	readonly resolver: ResourceResolver;
+	/** The resolver's directives, parsed (a frozen copy, refused if malformed). */
+	readonly directives: readonly string[];
 	readonly request: ResolveRequest;
 }
 
@@ -389,7 +424,10 @@ export function createResolverBackedIacProvider(
 				credentialRef,
 			}),
 		);
-		return { plan: resource, productId, resolver, request };
+		// The registry is structural, so it may not be core's: the directive list
+		// is parsed here as well, and a malformed one is a typed refusal.
+		const directives = parseResolverDirectives(resolver);
+		return { plan: resource, productId, resolver, directives, request };
 	}
 
 	return {
@@ -420,31 +458,43 @@ export function createResolverBackedIacProvider(
 			// untrusted JSON while the port hands us the domain type: same value,
 			// viewed as the JSON the parser is written against.
 			const observed = parseResolveOutcome(cloneAsJson(raw));
+			const diagnostics = diagnosticSuffix(observed.diagnostics);
+			// A read reporting `delete` is a resource the provider is deleting
+			// (a secret in its recovery window): it exists, so apply does not
+			// create it, and it is not converged; the resolver's diagnostic says
+			// what apply will do with it.
+			if (observed.action === "delete") {
+				return {
+					summary: `${label}: exists as ${observed.physicalId}, and the provider is deleting it.${diagnostics}`,
+					changes: 1,
+				};
+			}
 			const desiredJson = cloneAsJson(bound.request.desired);
 			const observedJson = cloneAsJson(observed.outputs);
-			const { differing, unobservable } = compareDesired(
+			const { differing, unobservable, directives } = compareDesired(
 				isJsonObject(desiredJson) ? desiredJson : {},
 				isJsonObject(observedJson) ? observedJson : {},
+				bound.directives,
 			);
-			const diagnostics = diagnosticSuffix(observed.diagnostics);
+			const notCompared = directiveNote(directives);
 			if (differing.length > 0) {
 				const bound_note =
 					unobservable.length > 0
 						? ` A further ${unobservable.length} declared parameter(s) (${unobservable.join(", ")}) have no counterpart in what read() reports, so this count is a LOWER BOUND.`
 						: "";
 				return {
-					summary: `${label}: exists as ${observed.physicalId}; ${differing.length} declared parameter(s) differ (${differing.join(", ")}).${bound_note}${diagnostics}`,
+					summary: `${label}: exists as ${observed.physicalId}; ${differing.length} declared parameter(s) differ (${differing.join(", ")}).${bound_note}${notCompared}${diagnostics}`,
 					changes: differing.length,
 				};
 			}
 			if (unobservable.length > 0) {
 				return {
-					summary: `${label}: exists as ${observed.physicalId}; every observable declared parameter matches, but ${unobservable.length} (${unobservable.join(", ")}) have no counterpart in what read() reports, so whether apply would change anything is UNDETERMINED.${diagnostics}`,
+					summary: `${label}: exists as ${observed.physicalId}; every observable declared parameter matches, but ${unobservable.length} (${unobservable.join(", ")}) have no counterpart in what read() reports, so whether apply would change anything is UNDETERMINED.${notCompared}${diagnostics}`,
 					changes: RESOLVER_PREVIEW_UNDETERMINED,
 				};
 			}
 			return {
-				summary: `${label}: exists as ${observed.physicalId}; every declared parameter matches what the provider reports.${diagnostics}`,
+				summary: `${label}: exists as ${observed.physicalId}; ${allMatch(directives)}.${notCompared}${diagnostics}`,
 				changes: 0,
 			};
 		},
@@ -516,19 +566,44 @@ export function createResolverBackedIacProvider(
 			// viewed as the JSON the parser is written against.
 			const observed = parseResolveOutcome(cloneAsJson(raw));
 			const outputs = toIacOutputs(observed, program.resourceId);
+			if (observed.action === "delete") {
+				return {
+					drift: true,
+					observed: marker(
+						true,
+						`the provider is deleting the resource the plan describes${diagnosticSuffix(observed.diagnostics)}`,
+						outputs,
+					),
+				};
+			}
 			const desiredJson = cloneAsJson(bound.request.desired);
 			const observedJson = cloneAsJson(observed.outputs);
-			const { differing, unobservable } = compareDesired(
+			const { differing, unobservable, directives } = compareDesired(
 				isJsonObject(desiredJson) ? desiredJson : {},
 				isJsonObject(observedJson) ? observedJson : {},
+				bound.directives,
 			);
+			// A reason has no closing period of its own, so a note gets one first.
+			const directiveTail =
+				directives.length === 0 ? "" : `.${directiveNote(directives)}`;
+			const tail = `${directiveTail}${diagnosticSuffix(observed.diagnostics)}`;
+			// The directives left out, for a machine reader too: a sorted JSON
+			// list under the drift metadata, present only when one was left out.
+			const verdictOutputs: IacOutputs =
+				directives.length === 0
+					? outputs
+					: {
+							...outputs,
+							[`${RESERVED_OUTPUT_PREFIX}drift.notCompared`]:
+								JSON.stringify(directives),
+						};
 			if (differing.length > 0) {
 				return {
 					drift: true,
 					observed: marker(
 						true,
-						`declared parameters differ from what the provider reports: ${differing.join(", ")}${diagnosticSuffix(observed.diagnostics)}`,
-						outputs,
+						`declared parameters differ from what the provider reports: ${differing.join(", ")}${tail}`,
+						verdictOutputs,
 					),
 				};
 			}
@@ -537,8 +612,8 @@ export function createResolverBackedIacProvider(
 					drift: true,
 					observed: marker(
 						false,
-						`every observable declared parameter matches, but ${unobservable.join(", ")} have no counterpart in what read() reports, so drift is UNDETERMINED and is reported as drift rather than certified clean${diagnosticSuffix(observed.diagnostics)}`,
-						outputs,
+						`every observable declared parameter matches, but ${unobservable.join(", ")} have no counterpart in what read() reports, so drift is UNDETERMINED and is reported as drift rather than certified clean${tail}`,
+						verdictOutputs,
 					),
 				};
 			}
@@ -546,8 +621,8 @@ export function createResolverBackedIacProvider(
 				drift: false,
 				observed: marker(
 					true,
-					`every declared parameter matches what the provider reports${diagnosticSuffix(observed.diagnostics)}`,
-					outputs,
+					`${allMatch(directives)}${tail}`,
+					verdictOutputs,
 				),
 			};
 		},

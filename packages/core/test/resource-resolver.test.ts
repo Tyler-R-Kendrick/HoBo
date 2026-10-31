@@ -11,6 +11,7 @@ import {
 	type HttpTransport,
 	parseResolveOutcome,
 	parseResolveRequest,
+	parseResolverDirectives,
 	RESOLVER_ACTIONS,
 	RESOLVER_CONTRACT,
 	RESOLVER_ERROR_CODES,
@@ -423,6 +424,122 @@ describe("createResolverRegistry", () => {
 		[{ providerId: "Vercel" }, "an uppercase providerId"],
 	])("refuses a malformed registration %o (%s)", (overrides) => {
 		expect(codeOf(() => createResolverRegistry([resolver(overrides)]))).toBe(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+		);
+	});
+
+	it("keeps the directives a resolver declares", () => {
+		const registry = createResolverRegistry([
+			resolver({ directives: ["forceDelete", "restoreScheduled"] }),
+		]);
+
+		expect(registry.get("vercel.postgres")?.directives).toEqual([
+			"forceDelete",
+			"restoreScheduled",
+		]);
+	});
+
+	it.each([
+		[["forceDelete", "forceDelete"], "a directive named twice"],
+		[[""], "an empty name"],
+		[["force delete"], "a name that is not a parameter key"],
+	])("refuses a malformed directive list %o (%s)", (directives) => {
+		expect(
+			codeOf(() => createResolverRegistry([resolver({ directives })])),
+		).toBe("RESOLVER_PRODUCT_UNSUPPORTED");
+	});
+
+	it("registers a frozen copy of the directives, so changing the original changes nothing", async () => {
+		const directives = ["forceDelete"];
+		const registry = createResolverRegistry([resolver({ directives })]);
+		directives.push("restoreScheduled");
+
+		const entry = registry.get("vercel.postgres");
+		expect(entry?.directives).toEqual(["forceDelete"]);
+		expect(Object.isFrozen(entry?.directives)).toBe(true);
+		expect(Object.isFrozen(entry)).toBe(true);
+		await expect(
+			entry?.reconcile(parseResolveRequest(requestInput()), transport),
+		).resolves.toMatchObject({ action: "create", physicalId: "prj_9wKm" });
+		expect(entry?.read).toBeUndefined();
+	});
+
+	it("keeps read() on a registered resolver with directives", async () => {
+		const outcome = parseResolveOutcome(outcomeInput({ action: "noop" }));
+		const registry = createResolverRegistry([
+			resolver({ directives: ["forceDelete"], read: async () => outcome }),
+		]);
+
+		await expect(
+			registry
+				.get("vercel.postgres")
+				?.read?.(parseResolveRequest(requestInput()), transport),
+		).resolves.toBe(outcome);
+	});
+
+	it("parses a resolver's directives the same way outside a registry", () => {
+		expect(parseResolverDirectives(resolver())).toEqual([]);
+		expect(
+			parseResolverDirectives(resolver({ directives: ["forceDelete"] })),
+		).toEqual(["forceDelete"]);
+		expect(
+			codeOf(() =>
+				parseResolverDirectives(Object.assign(resolver(), { directives: 5 })),
+			),
+		).toBe("RESOLVER_PRODUCT_UNSUPPORTED");
+	});
+
+	it("reads a resolver's directives once, and hands out a frozen view that keeps them", () => {
+		let reads = 0;
+		const lists = [["forceDelete"], ["forceDelete", "restoreScheduled"]];
+		const registry = createResolverRegistry([
+			Object.defineProperty(resolver(), "directives", {
+				enumerable: true,
+				get: () => lists[Math.min(reads++, 1)],
+			}),
+		]);
+
+		expect(reads).toBe(1);
+		const view = registry.get("vercel.postgres");
+		expect(view?.directives).toEqual(["forceDelete"]);
+		expect(registry.list()[0]).toBe(view);
+		expect(Object.isFrozen(view)).toBe(true);
+		expect(reads).toBe(1);
+	});
+
+	it("hands out the registered object itself when it declares no directives", () => {
+		const plain = resolver();
+
+		expect(createResolverRegistry([plain]).get("vercel.postgres")).toBe(plain);
+	});
+
+	it("refuses a sparse directive list, which names nothing in its hole", () => {
+		const holes: string[] = [];
+		holes[1] = "size";
+
+		expect(
+			codeOf(() => parseResolverDirectives(resolver({ directives: holes }))),
+		).toBe("RESOLVER_PRODUCT_UNSUPPORTED");
+		expect(
+			codeOf(() => createResolverRegistry([resolver({ directives: holes })])),
+		).toBe("RESOLVER_PRODUCT_UNSUPPORTED");
+	});
+
+	it("parses a directive list to one that parses to itself", () => {
+		const parsed = parseResolverDirectives(
+			resolver({ directives: ["forceDelete", "restoreScheduled"] }),
+		);
+
+		expect(parseResolverDirectives(resolver({ directives: parsed }))).toEqual(
+			parsed,
+		);
+		expect(Object.keys(parsed)).toEqual(["0", "1"]);
+	});
+
+	it("refuses directives that are not a list", () => {
+		const malformed = Object.assign(resolver(), { directives: "forceDelete" });
+
+		expect(codeOf(() => createResolverRegistry([malformed]))).toBe(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
 		);
 	});

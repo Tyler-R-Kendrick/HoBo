@@ -115,8 +115,16 @@ and remove the resource — not the whole surface.
 | `aws.dynamodb/v1` | REST-JSON `x-amz-target` on `dynamodb.{region}.amazonaws.com` | `DescribeTable`, `CreateTable`, `UpdateTable`, `DeleteTable` |
 | `aws.sqs/v1`, `aws.sqs-fifo/v1` | query protocol on `sqs.{region}.amazonaws.com` | `GetQueueUrl`, `CreateQueue`, `GetQueueAttributes`, `SetQueueAttributes`, `DeleteQueue` |
 | `aws.sns/v1` | query protocol on `sns.{region}.amazonaws.com` | `ListTopics` (paged), `CreateTopic`, `GetTopicAttributes`, `SetTopicAttributes`, `DeleteTopic` |
-| `aws.secrets-manager/v1` | REST-JSON `x-amz-target` on `secretsmanager.{region}.amazonaws.com` | `DescribeSecret`, `CreateSecret`, `UpdateSecret`, `DeleteSecret` |
+| `aws.secrets-manager/v1` | REST-JSON `x-amz-target` on `secretsmanager.{region}.amazonaws.com` | `DescribeSecret`, `CreateSecret`, `UpdateSecret`, `RestoreSecret`, `DeleteSecret` |
 | `aws.ssm-parameter-store/v1` | REST-JSON `x-amz-target` on `ssm.{region}.amazonaws.com` | `GetParameter`, `PutParameter`, `DeleteParameter` |
+
+IAM actions for `aws.secrets-manager/v1`, per verb:
+
+| Verb | Actions |
+|---|---|
+| `read` | `secretsmanager:DescribeSecret` |
+| `reconcile` | `secretsmanager:DescribeSecret`, `secretsmanager:CreateSecret`, `secretsmanager:UpdateSecret`, and `secretsmanager:RestoreSecret` when `restoreScheduled: true` is declared |
+| `delete` | `secretsmanager:DescribeSecret` (it describes the secret first), `secretsmanager:DeleteSecret` |
 
 Path-style S3 addressing (`/{bucket}`) is deliberate: it keeps the transport
 allowlist to one reviewable host per region instead of one host per bucket name
@@ -199,6 +207,61 @@ different suffix — is refused rather than interpolated into a hostname.
 - Resolvers do not create Resource Definitions. Whether a matching definition is
   registered in the catalog is still checked at resolution time
   (`YARD_BINDING_PRODUCT_UNKNOWN`).
+- Every `desired` setting a resolver reads has a type: `versioning`,
+  `publicAccessBlocked` and `fifo` are booleans, `readCapacity` and
+  `visibilityTimeoutSeconds` are integers, `storageClass` and `billingMode`
+  are strings, and so on through each product's options. A setting that is
+  absent stays absent. One of another type, `null` included, is refused
+  before any call with `RESOLVER_PRODUCT_UNSUPPORTED`
+  (`aws.s3/v1: desired.versioning must be a boolean (true or false), received
+  "true"`), never read as "not declared". A member of AWS's JSON answer with
+  the wrong type (a `TableStatus` of `5`, say) is the provider's fault. It is
+  refused as `RESOLVER_OUTPUT_UNPARSEABLE`, like any answer that cannot be
+  read; an absent or `null` member is absent.
+- A Secrets Manager secret **scheduled for deletion** (DescribeSecret answers
+  `DeletedDate`) still holds its name for its recovery window, and AWS refuses
+  CreateSecret, UpdateSecret and a second unforced DeleteSecret for it
+  ([ADR-0175](../../../docs/design/adr/07-portability-extensibility.md#adr-0175)).
+  - `read` reports it with action `delete`, `outputs.deletedDate`, and a
+    diagnostic: "scheduled for deletion (DeletedDate <date>)", then what apply
+    will do. The date is DescribeSecret's `DeletedDate` as AWS reports it, not
+    a promise of when the secret is gone: the API calls it "the date the secret
+    is scheduled for deletion", and does not equate it with DeleteSecret's
+    `DeletionDate`, the end of the recovery window. It must be epoch seconds
+    (fractional allowed, rounded half up toward +∞ to the millisecond from the
+    number's decimal text, never its binary double, so `-1.0005` is
+    `-1.000`) or an RFC 3339 date-time
+    (either case, any fraction digits; a leap second, second 60, is refused),
+    in the years 0000 to 9999. Both are reported as one canonical UTC instant,
+    `YYYY-MM-DDTHH:MM:SS.fffZ`, with the fraction kept to the nanosecond. A
+    `null` is the field's absence: not scheduled. Anything else is refused as
+    `RESOLVER_OUTPUT_UNPARSEABLE`, because the secret's state cannot be read.
+    Preview and drift say so; neither reports it absent.
+  - `reconcile` **fails closed** by default (`RESOLVER_PROVIDER_REJECTED`): someone
+    deleted it on purpose. Declare `restoreScheduled: true` to restore it with its
+    previous versions (`RestoreSecret`, reported as `update`), or destroy it with
+    `forceDelete: true` to delete it now. Both are `SecretsManagerOptions`
+    fields: `secretsManager({ restoreScheduled: true })`,
+    `secretsManager({ forceDelete: true })`. A forced delete cannot be undone.
+    A restore counts only when the DescribeSecret after it shows the secret
+    live. If it still shows `DeletedDate`, or no secret at all, `reconcile`
+    refuses and says the restore did not take effect, and sends no
+    `UpdateSecret`.
+  - `delete` issues nothing more for it, and a `forceDelete: true` delete still
+    deletes it at once, even when `DeletedDate` is unreadable (both calls name
+    the secret by `SecretId`, and force ends the window whatever the date is).
+    An unforced delete refuses an unreadable `DeletedDate`. An
+    `InvalidRequestException` because someone scheduled it between the describe
+    and the delete counts as done.
+  - `restoreScheduled` and `forceDelete` are directives: they say how apply and
+    delete act, not what the secret is, and `read` never reports them. The
+    resolver lists them in its `directives`, so preview and drift leave them out
+    of the comparison and say so. A plan that keeps either one previews and
+    refreshes a live secret as clean as it would without it. Each is a boolean:
+    any other value (`"true"`, `1`, `null`) is refused with
+    `RESOLVER_PRODUCT_UNSUPPORTED` (like any wrong-type `desired` setting:
+    `desired.forceDelete must be a boolean`), before `read`, `reconcile` or
+    `delete` makes a call.
 - Secrets Manager secrets are created **without a version**, and SSM
   `SecureString` parameters are **refused**: in both cases the value is
   credential material, and this resolver never carries it.

@@ -222,7 +222,7 @@ const ALLOWANCES = {
 	},
 	"scripts/test/bootstrap-siblings.test.ts": {
 		literals: { "/nonexistent-dir": 1 },
-		why: "a --reference the script refuses with a usage error before it runs anything (scripts/bootstrap-siblings.mts:112-119)",
+		why: "a --reference the script refuses with a usage error before it runs anything (scripts/bootstrap-siblings.mts:126-134)",
 	},
 	"packages/adapters/adapter-opensesame/test/child-env.test.ts": {
 		literals: { "/nowhere": 1 },

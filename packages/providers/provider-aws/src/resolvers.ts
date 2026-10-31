@@ -325,11 +325,15 @@ async function resolveAwsCredentials(
 	// did -- and reading `.accessKeyId` off `undefined` or a string throws a
 	// TypeError, which is precisely the untyped failure this boundary exists to
 	// turn into a refusal an operator can act on.
+	// The kind is read from the value's tag, as `json.ts` reads a JSON value's
+	// (the repo bans `typeof` narrowing); `undefined`, `null` and a string are
+	// not "[object Object]", so nothing below reads a field off them.
+	const tag = (value: AwsCredentials | string | undefined): string =>
+		Object.prototype.toString.call(value);
 	if (
-		material === null ||
-		typeof material !== "object" ||
-		typeof material.accessKeyId !== "string" ||
-		typeof material.secretAccessKey !== "string" ||
+		tag(material) !== "[object Object]" ||
+		tag(material.accessKeyId) !== "[object String]" ||
+		tag(material.secretAccessKey) !== "[object String]" ||
 		material.accessKeyId.trim().length === 0 ||
 		material.secretAccessKey.trim().length === 0
 	) {
@@ -364,9 +368,51 @@ function optionalInteger(record: JsonObject, key: string): number | undefined {
 	return isJsonNumber(value) && Number.isSafeInteger(value) ? value : undefined;
 }
 
-function nestedRecord(record: JsonObject, key: string): JsonObject | undefined {
+/** The JSON type of a value, as a refusal names it. */
+function jsonTypeName(value: JsonValue): string {
+	if (isJsonArray(value)) return "an array";
+	if (isJsonObject(value)) return "an object";
+	if (isJsonString(value)) return "a string";
+	if (isJsonNumber(value)) return "a number";
+	if (isJsonBoolean(value)) return "a boolean";
+	return "null";
+}
+
+/**
+ * A member of a provider's JSON answer that must be a string, or an object.
+ * Absent and `null` are `undefined`, as Smithy's JSON protocols read a null
+ * member. Any other type means the answer is not the documented one: that is a
+ * provider fault, refused as RESOLVER_OUTPUT_UNPARSEABLE like every other
+ * answer this file cannot read, never read as absent. A blank string reads as
+ * absent, as `optionalString` reads one.
+ */
+function answerString(
+	record: JsonObject,
+	key: string,
+	label: string,
+): string | undefined {
 	const value = record[key];
-	return isJsonObject(value) ? value : undefined;
+	if (value === undefined || value === null) return undefined;
+	if (isJsonString(value)) return value.trim().length > 0 ? value : undefined;
+	throw unparseable(
+		label,
+		`AWS answered "${key}" with ${jsonTypeName(value)}, not a string, so the answer is not the documented one; it is refused rather than read as absent`,
+	);
+}
+
+/** As {@link answerString}, for a member that must be an object. */
+function answerRecord(
+	record: JsonObject,
+	key: string,
+	label: string,
+): JsonObject | undefined {
+	const value = record[key];
+	if (value === undefined || value === null) return undefined;
+	if (isJsonObject(value)) return value;
+	throw unparseable(
+		label,
+		`AWS answered "${key}" with ${jsonTypeName(value)}, not an object, so the answer is not the documented one; it is refused rather than read as absent`,
+	);
 }
 
 /**
@@ -491,6 +537,12 @@ interface AwsResolverContext {
 	readonly desired: JsonObject;
 	/** True when the caller already knows the physical id (adopt vs noop). */
 	readonly knownPhysicalId: string | undefined;
+	/**
+	 * The product's directives the declaration switches on. Each declared
+	 * directive was parsed as a boolean at the boundary ({@link parseSettings}),
+	 * so a resolver reads this set and never `desired` for a directive.
+	 */
+	readonly directivesOn: ReadonlySet<string>;
 	redact(text: string, limit?: number): string;
 }
 
@@ -808,6 +860,11 @@ function s3Diagnostics(
 }
 
 const S3_SPEC: Omit<AwsResolverSpec, "productId"> = {
+	settings: {
+		versioning: "boolean",
+		publicAccessBlocked: "boolean",
+		storageClass: "string",
+	},
 	async read(context) {
 		const observed = await readS3(context);
 		if (observed === undefined) return undefined;
@@ -1013,7 +1070,7 @@ async function readDynamoTable(
 		return undefined;
 	}
 	const body = jsonResult(context, response, label);
-	const table = nestedRecord(body, "Table");
+	const table = answerRecord(body, "Table", label);
 	if (table === undefined) {
 		throw unparseable(
 			label,
@@ -1024,7 +1081,7 @@ async function readDynamoTable(
 }
 
 function dynamoTableArn(table: JsonObject, label: string): string {
-	const arn = optionalString(table, "TableArn");
+	const arn = answerString(table, "TableArn", label);
 	if (arn === undefined) {
 		throw unparseable(
 			label,
@@ -1034,19 +1091,23 @@ function dynamoTableArn(table: JsonObject, label: string): string {
 	return arn;
 }
 
-function dynamoObservedMode(table: JsonObject): string | undefined {
-	const summary = nestedRecord(table, "BillingModeSummary");
+function dynamoObservedMode(
+	table: JsonObject,
+	label: string,
+): string | undefined {
+	const summary = answerRecord(table, "BillingModeSummary", label);
 	return summary === undefined
 		? undefined
-		: optionalString(summary, "BillingMode");
+		: answerString(summary, "BillingMode", label);
 }
 
 function dynamoOutputs(table: JsonObject, name: string): JsonObject {
-	const status = optionalString(table, "TableStatus");
-	const mode = dynamoObservedMode(table);
+	const label = `dynamodb table ${name}`;
+	const status = answerString(table, "TableStatus", label);
+	const mode = dynamoObservedMode(table, label);
 	return {
 		tableName: name,
-		tableArn: optionalString(table, "TableArn") ?? "",
+		tableArn: answerString(table, "TableArn", label) ?? "",
 		...(status === undefined ? undefined : { tableStatus: status }),
 		...(mode === undefined ? undefined : { billingMode: mode }),
 	};
@@ -1056,14 +1117,21 @@ function dynamoKeyDiagnostics(
 	context: AwsResolverContext,
 	table: JsonObject,
 ): readonly string[] {
+	const label = `dynamodb describe table ${context.name}`;
 	const wanted = optionalString(context.desired, "partitionKey") ?? "pk";
 	const schema = table.KeySchema;
-	if (!isJsonArray(schema)) return [];
+	if (schema === undefined || schema === null) return [];
+	if (!isJsonArray(schema)) {
+		throw unparseable(
+			label,
+			`AWS answered "KeySchema" with ${jsonTypeName(schema)}, not an array, so the answer is not the documented one; it is refused rather than read as absent`,
+		);
+	}
 	const hash = schema.find(
 		(entry) => isJsonObject(entry) && entry.KeyType === "HASH",
 	);
 	const actual = isJsonObject(hash)
-		? optionalString(hash, "AttributeName")
+		? answerString(hash, "AttributeName", label)
 		: undefined;
 	if (actual !== undefined && actual !== wanted) {
 		return [
@@ -1074,6 +1142,15 @@ function dynamoKeyDiagnostics(
 }
 
 const DYNAMODB_SPEC: Omit<AwsResolverSpec, "productId"> = {
+	settings: {
+		billingMode: "string",
+		readCapacity: "integer",
+		writeCapacity: "integer",
+		partitionKey: "string",
+		partitionKeyType: "string",
+		sortKey: "string",
+		sortKeyType: "string",
+	},
 	async read(context) {
 		const table = await readDynamoTable(context);
 		if (table === undefined) return undefined;
@@ -1144,7 +1221,7 @@ const DYNAMODB_SPEC: Omit<AwsResolverSpec, "productId"> = {
 				}),
 				label,
 			);
-			const description = nestedRecord(created, "TableDescription");
+			const description = answerRecord(created, "TableDescription", label);
 			if (description === undefined) {
 				throw unparseable(
 					label,
@@ -1160,7 +1237,10 @@ const DYNAMODB_SPEC: Omit<AwsResolverSpec, "productId"> = {
 		}
 
 		diagnostics.push(...dynamoKeyDiagnostics(context, existing));
-		const observedMode = dynamoObservedMode(existing);
+		const observedMode = dynamoObservedMode(
+			existing,
+			`dynamodb describe table ${context.name}`,
+		);
 		if (!billing.defaulted && observedMode !== billing.mode) {
 			const label = `dynamodb update table ${context.name}`;
 			const readCapacity = billing.readCapacity;
@@ -1183,7 +1263,8 @@ const DYNAMODB_SPEC: Omit<AwsResolverSpec, "productId"> = {
 				}),
 				label,
 			);
-			const description = nestedRecord(updated, "TableDescription") ?? existing;
+			const description =
+				answerRecord(updated, "TableDescription", label) ?? existing;
 			return outcome(
 				"update",
 				dynamoTableArn(description, label),
@@ -1346,6 +1427,11 @@ function sqsDiagnostics(context: AwsResolverContext): readonly string[] {
 
 function sqsSpec(productId: string): Omit<AwsResolverSpec, "productId"> {
 	return {
+		settings: {
+			fifo: "boolean",
+			visibilityTimeoutSeconds: "integer",
+			maxReceiveCount: "integer",
+		},
 		async read(context) {
 			const fifo = sqsIsFifo(context, productId);
 			const name = sqsQueueName(context, fifo);
@@ -1552,6 +1638,7 @@ function snsOutputs(
 }
 
 const SNS_SPEC: Omit<AwsResolverSpec, "productId"> = {
+	settings: { fifo: "boolean", contentBasedDeduplication: "boolean" },
 	async read(context) {
 		const fifo = optionalBoolean(context.desired, "fifo") === true;
 		const name = snsTopicName(context, fifo);
@@ -1666,9 +1753,26 @@ async function secretsCall(
 	});
 }
 
-async function readSecret(
+/** DescribeSecret's answer, unparsed: the record and the body it was read from. */
+interface SecretDescription {
+	readonly record: JsonObject;
+	readonly body: string;
+}
+
+/**
+ * A secret as DescribeSecret answered it, with `DeletedDate` parsed: the
+ * canonical instant while the secret is scheduled for deletion, `undefined`
+ * while it is live. Nothing past this boundary reads `record.DeletedDate`.
+ */
+interface DescribedSecret {
+	readonly record: JsonObject;
+	readonly deletedDate: string | undefined;
+}
+
+/** DescribeSecret for this secret, or `undefined` when AWS has no such secret. */
+async function describeSecret(
 	context: AwsResolverContext,
-): Promise<JsonObject | undefined> {
+): Promise<SecretDescription | undefined> {
 	const response = await secretsCall(context, "DescribeSecret", {
 		SecretId: context.name,
 	});
@@ -1678,15 +1782,297 @@ async function readSecret(
 	) {
 		return undefined;
 	}
-	return jsonResult(
+	const record = jsonResult(
 		context,
 		response,
 		`secretsmanager describe ${context.name}`,
 	);
+	return { record, body: response.body };
+}
+
+/** The secret, described and parsed; `undefined` when there is none. */
+async function readSecret(
+	context: AwsResolverContext,
+): Promise<DescribedSecret | undefined> {
+	const described = await describeSecret(context);
+	if (described === undefined) return undefined;
+	return {
+		record: described.record,
+		deletedDate: parseDeletedDate(context, described),
+	};
+}
+
+/** 0000-01-01T00:00:00.000Z and 9999-12-31T23:59:59.999Z: four-digit years. */
+const FIRST_INSTANT_MS = -62167219200000;
+const LAST_INSTANT_MS = 253402300799999;
+
+/**
+ * RFC 3339 `date-time` (section 5.6): `T` and `Z` in either case (section
+ * 5.6's NOTE) and any number of fraction digits (`time-secfrac = "." 1*DIGIT`).
+ * The grammar's seconds field also allows 60 for a leap second; that is
+ * matched here and refused by {@link instantFromRfc3339}.
+ */
+const RFC3339_DATE_TIME =
+	/^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:[Zz]|([+-])(\d{2}):(\d{2}))$/u;
+
+/**
+ * Days in a month of the proleptic Gregorian calendar RFC 3339 uses, and 0 for
+ * a month outside 01-12, so no day of it is in range.
+ */
+function daysInMonth(year: number, month: number): number {
+	const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+	return (
+		[31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1] ?? 0
+	);
+}
+
+/**
+ * A fraction of a second, canonical: kept to the nanosecond (nine digits;
+ * digits past the ninth are dropped), at least three digits, and no trailing
+ * zero past the third. So `.5`, `.500` and `.5000` are one value, `.500`.
+ */
+function canonicalFraction(digits: string): string {
+	let fraction = digits.slice(0, 9).padEnd(3, "0");
+	while (fraction.length > 3 && fraction.endsWith("0")) {
+		fraction = fraction.slice(0, -1);
+	}
+	return fraction;
+}
+
+/** The years 0000 to 9999 in epoch seconds: from the first second, up to the end. */
+const FIRST_SECOND = -62167219200n;
+const END_SECOND = 253402300800n;
+
+/**
+ * A JSON number (RFC 8259 section 6) in decimal parts: sign, whole digits,
+ * fraction digits, exponent. At most 40 whole digits and 40 fraction digits;
+ * the exponent's text may have up to three digits, and its value is capped at
+ * 40 either way in {@link instantFromEpochSeconds}. That is far past any epoch
+ * seconds in the years 0000 to 9999 AWS would write, and it keeps the exact
+ * arithmetic small. A number past either bound is refused even when its value
+ * is in range (`1e-41`, or a fraction of 41 digits).
+ */
+const JSON_NUMBER =
+	/^(-?)(0|[1-9]\d{0,39})(?:\.(\d{1,40}))?(?:[eE]([+-]?\d{1,3}))?$/u;
+
+/**
+ * Epoch seconds, AWS's JSON-protocol timestamp, as the canonical instant,
+ * computed from the number's decimal text, not from the binary double it
+ * parses to (which would make `1523477145.72949999` round as `.7295`).
+ *
+ * The exact value must lie in the years 0000 to 9999 before it is rounded, so
+ * `-62167219200.0004` is refused. It is then rounded half up, toward +∞, to
+ * the millisecond: `.7295` is `.730`, and `-1.0005` is `-1.000`. The rounded
+ * instant must still be in 9999, so `253402300799.9995` is refused. AWS writes
+ * at most milliseconds (`1523477145.729`). `undefined` for anything else,
+ * including text that is not a JSON number (`Infinity`).
+ */
+function instantFromEpochSeconds(text: string): string | undefined {
+	const match = JSON_NUMBER.exec(text);
+	if (match === null) return undefined;
+	const exponent = Number(match[4] ?? "0");
+	if (Math.abs(exponent) > 40) return undefined;
+	const fraction = match[3] ?? "";
+	// The value is exactly digits / 10^scale.
+	const digits = BigInt(`${match[1] ?? ""}${match[2] ?? "0"}${fraction}`);
+	const scale = fraction.length - exponent;
+	const whole = Math.max(scale, 0);
+	const scaled = digits * 10n ** BigInt(whole - scale);
+	const unit = 10n ** BigInt(whole);
+	if (scaled < FIRST_SECOND * unit || scaled >= END_SECOND * unit) {
+		return undefined;
+	}
+	const msScale = scale - 3;
+	let ms = digits * 10n ** BigInt(Math.max(-msScale, 0));
+	if (msScale > 0) {
+		const divisor = 10n ** BigInt(msScale);
+		const floor =
+			digits >= 0n ? digits / divisor : -((-digits + divisor - 1n) / divisor);
+		const halfOrMore = 2n * (digits - floor * divisor) >= divisor;
+		ms = floor + (halfOrMore ? 1n : 0n);
+	}
+	if (ms > BigInt(LAST_INSTANT_MS)) return undefined;
+	return new Date(Number(ms)).toISOString();
+}
+
+/**
+ * An RFC 3339 date-time as the canonical instant, or `undefined` when it is
+ * not one: a field out of its range (month 01-12, day 01 to the month's last,
+ * hour 00-23, minute 00-59, second 00-59, offset hour 00-23 and minute 00-59),
+ * or an instant outside the years 0000 to 9999 once its offset is applied.
+ *
+ * A leap second (second 60) is refused. AWS's epoch-seconds timestamps cannot
+ * carry one; RFC 3339 allows one only where a leap second actually occurred;
+ * and `…:60.000Z` is an output `Date.parse` cannot read, so a consumer of
+ * `outputs.deletedDate` would get NaN.
+ *
+ * The date and time are moved to UTC by whole-second arithmetic; the fraction
+ * is carried as text, never through a number.
+ */
+function instantFromRfc3339(text: string): string | undefined {
+	const match = RFC3339_DATE_TIME.exec(text);
+	if (match === null) return undefined;
+	// Groups 1-6 are the date and time, 7 the fraction, 8-10 the offset's sign,
+	// hour and minute. "Z" leaves 8-10 unset, which reads as +00:00; a group
+	// the pattern requires defaults to a value its range check refuses.
+	const field = (index: number, absent: number): number => {
+		const digits = match[index];
+		return digits === undefined ? absent : Number(digits);
+	};
+	const year = field(1, 0);
+	const month = field(2, 0);
+	const day = field(3, 0);
+	const hour = field(4, 24);
+	const minute = field(5, 60);
+	const second = field(6, 61);
+	const fraction = match[7] ?? "";
+	const sign = match[8];
+	const offsetHour = field(9, 0);
+	const offsetMinute = field(10, 0);
+	// The month needs no check of its own: daysInMonth is 0 outside 01-12.
+	const inRange =
+		day >= 1 &&
+		day <= daysInMonth(year, month) &&
+		hour <= 23 &&
+		minute <= 59 &&
+		second <= 59 &&
+		offsetHour <= 23 &&
+		offsetMinute <= 59;
+	if (!inRange) return undefined;
+	const local = new Date(0);
+	local.setUTCFullYear(year, month - 1, day);
+	local.setUTCHours(hour, minute, second, 0);
+	const offsetMinutes =
+		(sign === "-" ? -1 : 1) * (offsetHour * 60 + offsetMinute);
+	const utcMs = local.getTime() - offsetMinutes * 60_000;
+	if (utcMs < FIRST_INSTANT_MS || utcMs > LAST_INSTANT_MS) return undefined;
+	const iso = new Date(utcMs).toISOString();
+	return `${iso.slice(0, 19)}.${canonicalFraction(fraction)}Z`;
+}
+
+/**
+ * The JSON text a top-level member of `body` was written as, where the
+ * runtime gives a reviver the source text (ES2025 JSON.parse source text
+ * access); otherwise `undefined`. A value JSON.parse cannot hold, such as
+ * `1e400` (read as Infinity, written back as `null`), is quoted as it arrived.
+ */
+function memberSource(body: string, key: string): string | undefined {
+	// The body already parsed as JSON (jsonResult), so every value and holder
+	// the reviver sees is a JSON value.
+	const sources: { holder: JsonValue; source: string }[] = [];
+	const root: JsonValue = JSON.parse(
+		body,
+		function collect(
+			this: JsonValue,
+			name: string,
+			value: JsonValue,
+			context?: { readonly source?: string },
+		): JsonValue {
+			if (name === key && context?.source !== undefined) {
+				sources.push({ holder: this, source: context.source });
+			}
+			return value;
+		},
+	);
+	return sources.find((entry) => entry.holder === root)?.source;
+}
+
+/**
+ * DescribeSecret's `DeletedDate`, parsed where the answer is read.
+ *
+ * - **Absent, or `null`: not scheduled.** The API omits the field when the
+ *   secret "is not scheduled for deletion", and Smithy's JSON protocols read a
+ *   `null` member as one not sent.
+ * - **A number: epoch seconds**, AWS's JSON-protocol timestamp.
+ * - **A string: an RFC 3339 date-time**, the form a provider that answers text
+ *   writes ("2026-11-30T05:30:25.033060027Z").
+ *
+ * Either is reported as one canonical ISO 8601 instant, in UTC:
+ * `YYYY-MM-DDTHH:MM:SS.fffZ`, upper-case `T` and `Z`, a four-digit year, any
+ * offset (`-00:00` included) applied, and the fraction as
+ * {@link canonicalFraction} keeps it. A number is rounded to the millisecond;
+ * a leap second (second 60) is refused. Anything else is unreadable, and the
+ * secret's state with it, so it is refused rather than guessed at. The
+ * refusal quotes a number as it was written and anything else as the value it
+ * parsed to, bounded and redacted like any provider text.
+ *
+ * Nothing more is read into the date than the API says. DescribeSecret calls it
+ * "The date the secret is scheduled for deletion"; DeleteSecret's
+ * `DeletionDate`, the end of the recovery window, is "the date and time of the
+ * delete request plus the number of days in RecoveryWindowInDays", and the API
+ * does not say the two are equal. So the date is reported as `DeletedDate`,
+ * never as the day the secret will be gone.
+ */
+function parseDeletedDate(
+	context: AwsResolverContext,
+	described: SecretDescription,
+): string | undefined {
+	const value = described.record.DeletedDate;
+	if (value === undefined || value === null) return undefined;
+	// A number is read from its decimal text, as the response wrote it; a
+	// runtime without JSON.parse source text access falls back to the number's
+	// shortest decimal form.
+	const numberText = isJsonNumber(value)
+		? (memberSource(described.body, "DeletedDate") ?? String(value))
+		: undefined;
+	const instant =
+		numberText !== undefined
+			? instantFromEpochSeconds(numberText)
+			: isJsonString(value)
+				? instantFromRfc3339(value)
+				: undefined;
+	if (instant !== undefined) return instant;
+	// A number is quoted as the response wrote it, because JSON.parse cannot
+	// hold every number (1e400 reads back as Infinity and is written as null)
+	// and a number's text has no escapes. Anything else is quoted as the value
+	// it parsed to: its source text could spell a credential in \u escapes,
+	// which neither the exact-match nor the token scrub would see.
+	const written = numberText ?? JSON.stringify(value);
+	// A leap second only when second 60 is the one thing wrong: the same text
+	// with second 59 must be a date-time this parser accepts. "2026-13-45T…:60Z"
+	// gets the general refusal, because its date is wrong too.
+	const leapSecond =
+		isJsonString(value) &&
+		RFC3339_DATE_TIME.exec(value)?.[6] === "60" &&
+		instantFromRfc3339(`${value.slice(0, 17)}59${value.slice(19)}`) !==
+			undefined;
+	const what = leapSecond
+		? "is a leap second (second 60), which no AWS timestamp carries and which Date.parse cannot read"
+		: "is neither epoch seconds nor an RFC 3339 date-time in the years 0000 to 9999";
+	throw unparseable(
+		`secretsmanager describe ${context.name}`,
+		`AWS returned a DeletedDate (${context.redact(written, 80)}) that ${what}, so whether the secret is scheduled for deletion cannot be read; it is refused rather than assumed`,
+	);
+}
+
+/**
+ * The Secrets Manager declarations that say how apply and delete act, never
+ * what the secret is: `forceDelete` ends the recovery window on delete, and
+ * `restoreScheduled` lets apply restore a secret scheduled for deletion.
+ */
+const SECRETS_MANAGER_DIRECTIVES: readonly string[] = Object.freeze([
+	"forceDelete",
+	"restoreScheduled",
+]);
+
+/** Whether the declaration asks for a secret scheduled for deletion to be restored. */
+function restoreDeclared(context: AwsResolverContext): boolean {
+	return context.directivesOn.has("restoreScheduled");
+}
+
+/** What apply will do with a secret scheduled for deletion, in one sentence. */
+function scheduledNote(
+	context: AwsResolverContext,
+	deletedDate: string,
+): string {
+	const scheduled = `the secret is scheduled for deletion (DeletedDate ${deletedDate})`;
+	return restoreDeclared(context)
+		? `${scheduled}; apply will restore it, with its previous versions (restoreScheduled: true)`
+		: `${scheduled}; apply refuses it: declare restoreScheduled: true to restore it with its previous versions, or destroy it with forceDelete: true to delete it now`;
 }
 
 function secretArn(record: JsonObject, label: string): string {
-	const arn = optionalString(record, "ARN");
+	const arn = answerString(record, "ARN", label);
 	if (arn === undefined) {
 		throw unparseable(
 			label,
@@ -1697,8 +2083,9 @@ function secretArn(record: JsonObject, label: string): string {
 }
 
 function secretOutputs(name: string, record: JsonObject): JsonObject {
-	const description = optionalString(record, "Description");
-	const kmsKeyId = optionalString(record, "KmsKeyId");
+	const label = `secretsmanager ${name}`;
+	const description = answerString(record, "Description", label);
+	const kmsKeyId = answerString(record, "KmsKeyId", label);
 	// The keys are `name`/`arn` rather than `secretName`/`secretArn`: core's
 	// outcome parse boundary refuses any property key matching /secret/, because
 	// a bag key that reads like a secret is exactly where material hides. The
@@ -1706,7 +2093,7 @@ function secretOutputs(name: string, record: JsonObject): JsonObject {
 	// unambiguous without the prefix.
 	return {
 		name,
-		arn: optionalString(record, "ARN") ?? "",
+		arn: answerString(record, "ARN", label) ?? "",
 		...(description === undefined ? undefined : { description }),
 		// A KMS key id is a locator for a key, not key material, so it belongs in
 		// outputs the way a bucket name does.
@@ -1725,9 +2112,31 @@ function secretDiagnostics(context: AwsResolverContext): readonly string[] {
 }
 
 const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
+	// Neither is a fact about the secret, so read() never reports one, and a
+	// preview or drift check leaves them out of its comparison (ADR-0175).
+	directives: SECRETS_MANAGER_DIRECTIVES,
+	settings: {
+		description: "string",
+		kmsKeyRef: "string",
+		rotationDays: "integer",
+	},
 	async read(context) {
-		const existing = await readSecret(context);
-		if (existing === undefined) return undefined;
+		const secret = await readSecret(context);
+		if (secret === undefined) return undefined;
+		const existing = secret.record;
+		// A secret scheduled for deletion still exists and still holds its name,
+		// so it is reported, not hidden: as `delete` (the provider is deleting
+		// it), with the date and what apply will do. Reporting it absent would
+		// tell a preview that apply creates it, which CreateSecret refuses.
+		const { deletedDate } = secret;
+		if (deletedDate !== undefined) {
+			return outcome(
+				"delete",
+				secretArn(existing, `secretsmanager describe ${context.name}`),
+				{ ...secretOutputs(context.name, existing), deletedDate },
+				[scheduledNote(context, deletedDate), ...secretDiagnostics(context)],
+			);
+		}
 		return outcome(
 			settledAction(context),
 			secretArn(existing, `secretsmanager describe ${context.name}`),
@@ -1739,7 +2148,53 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 		const description = optionalString(context.desired, "description");
 		const kmsKeyRef = optionalString(context.desired, "kmsKeyRef");
 		const diagnostics = [...secretDiagnostics(context)];
-		const existing = await readSecret(context);
+		const secret = await readSecret(context);
+		let existing = secret?.record;
+		let restored = false;
+		const deletedDate = secret?.deletedDate;
+
+		if (existing !== undefined && deletedDate !== undefined) {
+			// CreateSecret cannot take the name back while the deletion is pending.
+			// Someone deleted this secret on purpose, so bringing it back is the
+			// declaration's call, never a default: without restoreScheduled this
+			// fails closed and says how to proceed.
+			if (!restoreDeclared(context)) {
+				throw new ResolverError(
+					"RESOLVER_PROVIDER_REJECTED",
+					`secretsmanager ${context.name}: ${scheduledNote(context, deletedDate)}`,
+				);
+			}
+			// RestoreSecret "Cancels the scheduled deletion of a secret by removing
+			// the DeletedDate time stamp", and keeps the versions written out of band.
+			jsonResult(
+				context,
+				await secretsCall(context, "RestoreSecret", {
+					SecretId: context.name,
+				}),
+				`secretsmanager restore ${context.name}`,
+			);
+			// A success is believed only once DescribeSecret agrees. If the secret
+			// is still scheduled (or gone), an UpdateSecret now would be refused
+			// for a reason the operator never sees, and an `update` outcome would
+			// claim a restore that did not happen; both are refused here instead.
+			const after = await readSecret(context);
+			const stillScheduled = after?.deletedDate;
+			if (after === undefined || stillScheduled !== undefined) {
+				throw new ResolverError(
+					"RESOLVER_PROVIDER_REJECTED",
+					`secretsmanager restore ${context.name}: RestoreSecret answered success, but the restore did not take effect: DescribeSecret ${
+						after === undefined
+							? "no longer finds the secret"
+							: `still reports it scheduled for deletion (DeletedDate ${stillScheduled})`
+					}. Nothing more was sent; run apply again once DescribeSecret shows the secret restored`,
+				);
+			}
+			diagnostics.push(
+				`restored the secret scheduled for deletion (DeletedDate ${deletedDate}), with its previous versions (restoreScheduled: true)`,
+			);
+			existing = after.record;
+			restored = true;
+		}
 
 		if (existing === undefined) {
 			const label = `secretsmanager create ${context.name}`;
@@ -1770,10 +2225,20 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 
 		const descriptionDrift =
 			description !== undefined &&
-			description !== optionalString(existing, "Description");
+			description !==
+				answerString(
+					existing,
+					"Description",
+					`secretsmanager describe ${context.name}`,
+				);
 		const keyDrift =
 			kmsKeyRef !== undefined &&
-			kmsKeyRef !== optionalString(existing, "KmsKeyId");
+			kmsKeyRef !==
+				answerString(
+					existing,
+					"KmsKeyId",
+					`secretsmanager describe ${context.name}`,
+				);
 		if (descriptionDrift || keyDrift) {
 			const label = `secretsmanager update ${context.name}`;
 			jsonResult(
@@ -1785,7 +2250,7 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 				}),
 				label,
 			);
-			const refreshed = (await readSecret(context)) ?? existing;
+			const refreshed = (await readSecret(context))?.record ?? existing;
 			return outcome(
 				"update",
 				secretArn(refreshed, label),
@@ -1795,24 +2260,42 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 		}
 
 		return outcome(
-			settledAction(context),
+			restored ? "update" : settledAction(context),
 			secretArn(existing, `secretsmanager describe ${context.name}`),
 			secretOutputs(context.name, existing),
 			diagnostics,
 		);
 	},
 	async remove(context) {
+		const force = context.directivesOn.has("forceDelete");
+		if (force) {
+			// A forced delete ends the recovery window whatever DeletedDate says,
+			// so it asks DescribeSecret only whether the secret exists, and an
+			// unreadable DeletedDate does not stop it. Nothing the describe answers
+			// chooses what is deleted: both calls name the secret by SecretId.
+			if ((await describeSecret(context)) === undefined) return;
+		} else {
+			// Already being deleted: a second unforced DeleteSecret is
+			// InvalidRequestException, and there is nothing more to ask for. An
+			// unreadable DeletedDate is refused here, since this needs to know.
+			const existing = await readSecret(context);
+			if (existing === undefined || existing.deletedDate !== undefined) return;
+		}
 		const response = await secretsCall(context, "DeleteSecret", {
 			SecretId: context.name,
-			...(optionalBoolean(context.desired, "forceDelete") === true
-				? { ForceDeleteWithoutRecovery: true }
-				: undefined),
+			...(force ? { ForceDeleteWithoutRecovery: true } : undefined),
 		});
-		if (
-			!isSuccess(response) &&
-			jsonErrorCode(response.body) === "ResourceNotFoundException"
-		) {
-			return;
+		if (!isSuccess(response)) {
+			const code = jsonErrorCode(response.body);
+			if (code === "ResourceNotFoundException") return;
+			// InvalidRequestException has more than one cause, so it is checked,
+			// not matched by its wording: if the secret is now scheduled for
+			// deletion (someone deleted it between the describe and this call),
+			// the deletion this asked for is already under way.
+			if (code === "InvalidRequestException" && !force) {
+				const now = await readSecret(context);
+				if (now === undefined || now.deletedDate !== undefined) return;
+			}
 		}
 		jsonResult(context, response, `secretsmanager delete ${context.name}`);
 	},
@@ -1897,7 +2380,7 @@ async function readSsmParameter(
 		return undefined;
 	}
 	const body = jsonResult(context, response, label);
-	const parameter = nestedRecord(body, "Parameter");
+	const parameter = answerRecord(body, "Parameter", label);
 	if (parameter === undefined) {
 		throw unparseable(
 			label,
@@ -1912,10 +2395,13 @@ function ssmOutputs(
 	parameter: JsonObject | undefined,
 	tier: string | undefined,
 ): JsonObject {
+	const label = `ssm parameter ${name}`;
 	const arn =
-		parameter === undefined ? undefined : optionalString(parameter, "ARN");
+		parameter === undefined ? undefined : answerString(parameter, "ARN", label);
 	const type =
-		parameter === undefined ? undefined : optionalString(parameter, "Type");
+		parameter === undefined
+			? undefined
+			: answerString(parameter, "Type", label);
 	return {
 		parameterName: name,
 		...(arn === undefined ? undefined : { parameterArn: arn }),
@@ -1933,6 +2419,12 @@ function ssmDiagnostics(context: AwsResolverContext): readonly string[] {
 }
 
 const SSM_PARAMETER_SPEC: Omit<AwsResolverSpec, "productId"> = {
+	settings: {
+		type: "string",
+		tier: "string",
+		kmsKeyRef: "string",
+		value: "string",
+	},
 	async read(context) {
 		const parameter = await readSsmParameter(context);
 		if (parameter === undefined) return undefined;
@@ -1957,13 +2449,14 @@ const SSM_PARAMETER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 
 		if (existing !== undefined) {
 			const diagnostics = [...ssmDiagnostics(context)];
-			const observedType = optionalString(existing, "Type");
+			const answered = `ssm get parameter ${context.name}`;
+			const observedType = answerString(existing, "Type", answered);
 			if (observedType !== undefined && observedType !== type) {
 				diagnostics.push(
 					`parameter type is ${observedType} but the request asks for ${type}; SSM does not allow a type change on overwrite, so the drift is reported rather than forced`,
 				);
 			}
-			if (optionalString(existing, "Value") === value) {
+			if (answerString(existing, "Value", answered) === value) {
 				return outcome(
 					settledAction(context),
 					context.name,
@@ -2034,9 +2527,84 @@ const SSM_PARAMETER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 /** Per-product behaviour; the wrapper owns credentials, naming, and refusals. */
 interface AwsResolverSpec {
 	readonly productId: string;
+	/**
+	 * The declared parameters this product reads as directives, not state.
+	 * Every AWS directive is a boolean flag, parsed by {@link parseSettings}.
+	 */
+	readonly directives?: readonly string[];
+	/**
+	 * The `desired` settings this product reads, and the JSON type each must
+	 * have; `name` is common to every product. {@link parseSettings} checks them
+	 * before any call, so a wrong type is refused rather than read as absent.
+	 */
+	readonly settings?: Readonly<Record<string, DesiredType>>;
 	reconcile(context: AwsResolverContext): Promise<ResolveOutcome>;
 	read(context: AwsResolverContext): Promise<ResolveOutcome | undefined>;
 	remove(context: AwsResolverContext): Promise<void>;
+}
+
+/** The JSON type a product's `desired` setting must have. */
+type DesiredType = "boolean" | "integer" | "string";
+
+/** How a refusal names each type. */
+const DESIRED_TYPE_NAMES = {
+	boolean: "a boolean (true or false)",
+	integer: "an integer",
+	string: "a string",
+} as const satisfies Readonly<Record<DesiredType, string>>;
+
+/** The setting every product reads: the resource name. */
+const COMMON_SETTINGS = {
+	name: "string",
+} as const satisfies Readonly<Record<string, DesiredType>>;
+
+function hasDesiredType(value: JsonValue, type: DesiredType): boolean {
+	switch (type) {
+		case "boolean":
+			return isJsonBoolean(value);
+		case "integer":
+			return isJsonNumber(value) && Number.isSafeInteger(value);
+		case "string":
+			return isJsonString(value);
+	}
+}
+
+/**
+ * The parse boundary for a product's typed `desired` settings, run before
+ * credentials are resolved or any call is made. A setting that is absent stays
+ * absent. A setting present with any other type, `null` included, is refused
+ * with RESOLVER_PRODUCT_UNSUPPORTED in the words every wrong-type setting gets
+ * ("<id>: desired.<key> must be a boolean (true or false), received …"). Read
+ * loosely, `versioning: "true"` would be "not declared" and the bucket left as
+ * it is, and `forceDelete: "true"` would preview clean and then delete without
+ * force. The resolvers can read these settings with the optional readers
+ * because their types were checked here. Directives are boolean settings too,
+ * and the set returned is the directives the declaration switches on.
+ */
+function parseSettings(
+	desired: JsonObject,
+	settings: Readonly<Record<string, DesiredType>>,
+	directives: readonly string[],
+	productId: string,
+): ReadonlySet<string> {
+	const declared: [string, DesiredType][] = [
+		...Object.entries(settings),
+		...directives.map((name): [string, DesiredType] => [name, "boolean"]),
+	];
+	for (const [key, type] of declared) {
+		if (!Object.hasOwn(desired, key)) continue;
+		const value = desired[key];
+		if (value === undefined || !hasDesiredType(value, type)) {
+			// A `desired` setting of the wrong type is RESOLVER_PRODUCT_UNSUPPORTED,
+			// in the same words as every other one this file refuses.
+			throw new ResolverError(
+				"RESOLVER_PRODUCT_UNSUPPORTED",
+				`${productId}: desired.${key} must be ${DESIRED_TYPE_NAMES[type]}, received ${redactAwsText(JSON.stringify(value), undefined, 80)}`,
+				productId,
+			);
+		}
+	}
+	return new Set(directives.filter((name) => desired[name] === true));
 }
 
 function clockOf(nowMs: AwsResolverOptions["nowMs"]): () => number {
@@ -2078,6 +2646,13 @@ function createResolver(
 				spec.productId,
 			);
 		}
+		const desired = parseJsonObject(JSON.stringify(request.desired));
+		const directivesOn = parseSettings(
+			desired,
+			{ ...COMMON_SETTINGS, ...spec.settings },
+			spec.directives ?? [],
+			spec.productId,
+		);
 		const credentials = await resolveAwsCredentials(
 			request,
 			options.resolveCredential,
@@ -2089,8 +2664,9 @@ function createResolver(
 			region,
 			nowMs,
 			name: resourceName(request, spec.productId),
-			desired: parseJsonObject(JSON.stringify(request.desired)),
+			desired,
 			knownPhysicalId: knownPhysicalId(request),
+			directivesOn,
 			redact(text: string, limit = 400): string {
 				return redactAwsText(text, credentials, limit);
 			},
@@ -2100,6 +2676,9 @@ function createResolver(
 	return {
 		providerId: AWS_PROVIDER_TARGET,
 		productId: spec.productId,
+		...(spec.directives === undefined
+			? undefined
+			: { directives: spec.directives }),
 		async reconcile(request, transport) {
 			return spec.reconcile(await contextFor(request, transport));
 		},

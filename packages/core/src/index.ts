@@ -563,6 +563,7 @@ export {
 	createResolverRegistry,
 	parseResolveOutcome,
 	parseResolveRequest,
+	parseResolverDirectives,
 	RESOLVER_ACTIONS,
 	RESOLVER_CONTRACT,
 	RESOLVER_ERROR_CODES,

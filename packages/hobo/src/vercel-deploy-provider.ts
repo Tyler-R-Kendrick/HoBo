@@ -41,7 +41,9 @@ import {
 // that exists only in another scope, so a missing `teamId`, or a wrong one the
 // token can still deploy to, makes a second project there rather than failing.
 // The outputs say what happened: `projectCreated` is "true" when this
-// deployment created the project, and `scope` is the `teamId`, or "personal"
+// deployment created the project, and `scope` is the `teamId`, or
+// "token-default" when there is none: whatever scope Vercel gives a request
+// with no `teamId`, which for a team's token need not be personal
 // (`IacOutputs` values are strings).
 //
 // HONEST SCOPE: the live Vercel call is credential-gated (activates only when a
@@ -112,7 +114,7 @@ export function createVercelDeployProvider(
 	const projectName = options.projectName ?? "hobo-hello-bindle";
 	const target = options.target ?? "production";
 	const templateDir = options.templateDir ?? defaultTemplateDir();
-	const scope = options.teamId ?? "personal";
+	const scope = options.teamId ?? "token-default";
 	const client = createVercelClient({
 		token: options.token,
 		...(options.fetch !== undefined ? { fetch: options.fetch } : undefined),

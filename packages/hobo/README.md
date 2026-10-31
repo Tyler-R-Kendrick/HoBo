@@ -168,7 +168,8 @@ creates carry the same `teamId`. A run whose credentials come from OpenSesame
 team id and not a credential, is on that allowlist.
 The outputs say what happened: `projectCreated` is `"true"` when this deployment
 created the project and `"false"` otherwise, and `scope` is the `teamId`, or
-`"personal"` when there is none.
+`"token-default"` when there is none: the scope Vercel gives a request with no
+`teamId`, which for a team's token need not be a personal account.
 
 **Credentials from OpenSesame (`HOBO_CREDENTIALS=opensesame`, [ADR-0170](../../docs/design/adr/02-identity-security.md#adr-0170)).**
 The composed `hobo` then relaunches itself once, before composing anything, as

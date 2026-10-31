@@ -123,7 +123,7 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 		expect(outputs.url).toBe("https://hobo-hello-bindle-1.vercel.app");
 		expect(outputs).toMatchObject({
 			projectCreated: "false",
-			scope: "personal",
+			scope: "token-default",
 		});
 		const deploy = parseJsonObject(first(sent).init.body ?? "");
 		expect(deploy.project).toBe("hobo-hello-bindle");
@@ -174,7 +174,7 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 		expect(outputs.url).toBe("https://hobo-hello-bindle-1.vercel.app");
 		expect(outputs).toMatchObject({
 			projectCreated: "false",
-			scope: "personal",
+			scope: "token-default",
 		});
 	});
 
@@ -182,7 +182,7 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 	// Vercel looks for it in the token's own scope, answers "Project not found",
 	// and the create makes a second project of that name there. That does not
 	// fail; the outputs say it happened, and where.
-	it("with no teamId, creates the project in the personal scope and says so", async () => {
+	it("with no teamId, creates the project in the token's default scope and says so", async () => {
 		const { fetch, sent, routes } = scripted({
 			[DEPLOY]: [PROJECT_NOT_FOUND, DEPLOYED],
 			[CREATE]: [CREATED],
@@ -199,7 +199,7 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 		for (const { url } of sent) expect(new URL(url).search).toBe("");
 		expect(outputs).toMatchObject({
 			projectCreated: "true",
-			scope: "personal",
+			scope: "token-default",
 		});
 	});
 
@@ -536,7 +536,7 @@ describe("the composed provider's team (selectIacProvider, scripted transport, n
 		expect(queries).toEqual(["", "", ""]);
 		expect(outputs).toMatchObject({
 			projectCreated: "true",
-			scope: "personal",
+			scope: "token-default",
 		});
 	});
 });

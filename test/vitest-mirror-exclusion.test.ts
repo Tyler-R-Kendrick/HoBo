@@ -59,9 +59,20 @@ interface TestOptions {
 	readonly dir?: string;
 	readonly root?: string;
 	readonly projects?: unknown;
+	readonly setupFiles?: unknown;
+	readonly globalSetup?: unknown;
+	readonly pool?: unknown;
+	readonly isolate?: unknown;
+	readonly testTimeout?: unknown;
+	readonly hookTimeout?: unknown;
 }
 
-async function load(config: string): Promise<Collection> {
+interface UserConfig {
+	readonly root?: string;
+	readonly test?: TestOptions;
+}
+
+async function loadUserConfig(config: string): Promise<UserConfig> {
 	const absolute = path.join(ROOT, config);
 	// A config listed by git but absent here (a sparse checkout) is a failure,
 	// not a pass: the guard cannot vouch for a file it did not read.
@@ -75,11 +86,12 @@ async function load(config: string): Promise<Collection> {
 		module.default instanceof Function
 			? await module.default({ command: "serve", mode: "test" })
 			: await module.default;
-	// SAFETY: a vitest config module's default export is a UserConfig; only `root` and `test` are read, each checked below.
-	const user = (exported ?? {}) as {
-		readonly root?: string;
-		readonly test?: TestOptions;
-	};
+	// SAFETY: a vitest config module's default export is a UserConfig; only `root` and `test` are read, and each reader checks what it uses.
+	return (exported ?? {}) as UserConfig;
+}
+
+async function load(config: string): Promise<Collection> {
+	const user = await loadUserConfig(config);
 	const test = user.test ?? {};
 	expect(
 		test.projects,
@@ -175,5 +187,37 @@ describe("only a vitest.mirror.config.ts collects test/mirror", () => {
 				expect(collects(collection, collection.dir, file), file).toBe(true);
 			}
 		}
+	});
+});
+
+describe("a package with a mirror lane keeps the root config in its default lane", () => {
+	const packages = CONFIGS.filter((config) => MIRROR_CONFIG.test(config)).map(
+		(config) => path.posix.dirname(config),
+	);
+
+	it.each(
+		packages,
+	)("%s/vitest.config.ts merges the root config: its setup files, global setup, pool and timeouts", async (dir) => {
+		const root = (await loadUserConfig("vitest.config.ts")).test ?? {};
+		const own = `${dir}/vitest.config.ts`;
+		expect(CONFIGS).toContain(own);
+		const test = (await loadUserConfig(own)).test ?? {};
+
+		expect(test.setupFiles).toEqual(root.setupFiles);
+		expect(test.globalSetup).toEqual(root.globalSetup);
+		expect(test.pool).toEqual(root.pool);
+		expect(test.testTimeout).toEqual(root.testTimeout);
+		expect(test.hookTimeout).toEqual(root.hookTimeout);
+		expect(test.exclude).toEqual(
+			expect.arrayContaining([...(root.exclude ?? [])]),
+		);
+	});
+
+	it.each(
+		packages.filter((dir) => dir.startsWith("packages/providers/")),
+	)("%s/vitest.config.ts keeps the root's isolate setting", async (dir) => {
+		const root = (await loadUserConfig("vitest.config.ts")).test ?? {};
+		const test = (await loadUserConfig(`${dir}/vitest.config.ts`)).test ?? {};
+		expect(test.isolate).toBe(root.isolate);
 	});
 });

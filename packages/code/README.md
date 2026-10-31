@@ -926,7 +926,12 @@ one of its verbs opens an authorization: one that comes while that verb or its
 forward runs quits the shell, which waits for a verb still opening the
 authorization, stops ssh, closes the authorization with the reason
 `shell-quit` (as quitting the shell any other way does), and ends hobo-code
-with 128+n. Its `/sessions serve` without `--host` starts the
+with 128+n. Its terminal closing is a hangup, taken as SIGHUP: a terminal
+that has gone fails every read and write (EIO), and the shell quits on that
+without writing to it again, so the authorization is closed with
+`shell-quit` and hobo-code ends with 129. If the shell's process ends without
+quitting (an uncaught error), its `exit` stops ssh; nothing can close the
+authorization then, and its lease ends it. Its `/sessions serve` without `--host` starts the
 loopback session browser as `hobo-code session serve` does, shows where it is,
 and closes it when the shell quits.
 

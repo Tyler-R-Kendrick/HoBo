@@ -138,7 +138,7 @@ import {
 	scrollToLive,
 	shellViewportRows,
 } from "./shell-scroll.js";
-import { StreamTerminal } from "./shell-terminal.js";
+import { isTerminalGone, StreamTerminal } from "./shell-terminal.js";
 import {
 	BO_IDLE_TICK_MS,
 	HOBO_MARK_CONSOLE,
@@ -2662,6 +2662,11 @@ export interface ShellHost {
 	/** Release long-lived local dev sessions owned by this shell. */
 	readonly dispose?: () => Promise<void>;
 	/**
+	 * The shell's terminal went (its window closed): a hangup, taken as SIGHUP
+	 * is, so `exitSignal` reports SIGHUP while a verb holds an authorization.
+	 */
+	readonly hangUp?: () => void;
+	/**
 	 * The ending signal that came while one of this shell's verbs held a Station
 	 * authorization (opening it, or a forward over it), if any: the shell then
 	 * ends by that signal, once `dispose` has closed what was open.
@@ -2693,6 +2698,15 @@ export interface RunInteractiveShellOptions {
 	readonly sessionId?: string;
 	readonly messages?: readonly ShellMessage[];
 	readonly journal?: readonly ShellMessage[];
+}
+
+/** Stop the shell's TUI; a terminal that has gone takes nothing more. */
+function leaveTerminal(tui: TUI): void {
+	try {
+		tui.stop();
+	} catch (error) {
+		if (!(error instanceof Error) || !isTerminalGone(error)) throw error;
+	}
 }
 
 /**
@@ -2822,17 +2836,6 @@ export async function runInteractiveShell(
 	}
 
 	const liveTty = isTty && options.scriptedKeys === undefined;
-	const terminal = new StreamTerminal({
-		stdin,
-		stdout,
-		columns: state.width,
-		rows: state.height,
-		rawMode: liveTty,
-		alternateScreen: liveTty,
-	});
-	options.onTerminal?.(terminal);
-	const tui = new TUI(terminal, false);
-
 	let quit = false;
 	let resolveDone!: () => void;
 	const done = new Promise<void>((resolve) => {
@@ -2843,6 +2846,23 @@ export async function runInteractiveShell(
 		quit = true;
 		resolveDone();
 	};
+	const terminal = new StreamTerminal({
+		stdin,
+		stdout,
+		columns: state.width,
+		rows: state.height,
+		rawMode: liveTty,
+		alternateScreen: liveTty,
+		// The terminal went (its window closed): a hangup, which quits the
+		// shell as SIGHUP does, and the host ends hobo-code by it while one of
+		// its verbs holds a Station authorization.
+		onHangup: () => {
+			options.host.hangUp?.();
+			requestQuit();
+		},
+	});
+	options.onTerminal?.(terminal);
+	const tui = new TUI(terminal, false);
 
 	let attachBusy = false;
 	/** Set after the Editor exists — Enter / /mux attach call this. */
@@ -3873,10 +3893,12 @@ export async function runInteractiveShell(
 		resizeStream.off?.("resize", onTerminalResize);
 		resizeStream.removeListener?.("resize", onTerminalResize);
 		// Leave the alternate screen (and raw mode) even if the driver threw —
-		// a CLI that can strand a terminal in raw mode is not shippable.
-		tui.stop();
+		// a CLI that can strand a terminal in raw mode is not shippable. A
+		// terminal that has gone takes nothing more, and its failures do not
+		// stop the quit: the host's dispose still closes what the shell holds.
+		leaveTerminal(tui);
 		state = persistShellChat(state, true);
-		if (state.sessionId) {
+		if (state.sessionId && !terminal.hungUp) {
 			stdout.write(`${formatShellCloseout(state.sessionId)}\n`);
 		}
 		await sidecars?.close().catch(() => {});

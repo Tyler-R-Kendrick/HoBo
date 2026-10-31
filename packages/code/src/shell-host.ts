@@ -9,7 +9,7 @@
  * - no success theater, no fixed "Next:" filler, no branding in replies;
  * - every reply teaches the equivalent one-shot command.
  */
-import { spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { join } from "node:path";
 import { Writable } from "node:stream";
@@ -240,6 +240,11 @@ interface ShellForward {
  * ssh's exit before the signal: the forward closed the authorization as if
  * ssh had ended by itself, before the shell knew it was quitting. Now only
  * the shell's quit stops ssh, and the close says why.
+ *
+ * Detached, ssh would outlive a shell that never got to quit. As a last
+ * resort, the process's `exit`, which an uncaught error reaches too, stops
+ * ssh's process group; nothing asynchronous can run there, so that exit
+ * cannot close the authorization.
  */
 function startShellForward(
 	forward: HandedForward,
@@ -256,20 +261,35 @@ function startShellForward(
 			own.off(signal, listener);
 		},
 	});
+	let ssh: ChildProcess | undefined;
+	const stopSshOnExit = (): void => {
+		const pid = ssh?.pid;
+		if (pid === undefined || ssh?.exitCode !== null || ssh.signalCode !== null)
+			return;
+		try {
+			process.kill(process.platform === "win32" ? pid : -pid, "SIGTERM");
+		} catch {
+			// Gone already.
+		}
+	};
+	process.on("exit", stopSshOnExit);
 	const done = forwardResidentSessions(forward, signals, {
 		stdout: new Writable({ write: (_chunk, _encoding, next) => next() }),
-		startSsh: (args) =>
-			spawn("ssh", [...args], {
+		startSsh: (args) => {
+			ssh = spawn("ssh", [...args], {
 				stdio: "ignore",
 				env,
 				detached: process.platform !== "win32",
-			}),
+			});
+			return ssh;
+		},
 	})
 		.catch(() => 1)
 		.finally(async () => {
 			try {
 				await forward.closeAuthorization?.(closingReason());
 			} finally {
+				process.removeListener("exit", stopSshOnExit);
 				signals.release();
 				ended();
 			}
@@ -627,6 +647,10 @@ export function createDefaultShellHost(
 			if (authorizing.size === 0) releaseSignals();
 		},
 		exitSignal: () => endedBy,
+		// The terminal's hangup is taken as SIGHUP is (see whileHeld above).
+		hangUp: () => {
+			if (authorizing.size > 0 || forwards.size > 0) endedBy ??= "SIGHUP";
+		},
 		tryWorkspaceAction,
 		async sendToAgent(agent, text) {
 			const { IN_SESSION_MUX, sendToInSessionPane } = await import(

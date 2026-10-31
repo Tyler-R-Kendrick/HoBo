@@ -38,6 +38,7 @@ import { forwardResidentSessions } from "../session-forward.js";
 import { serveSessionsLocally } from "../session-serve-local.js";
 import type { ShellEngine } from "../shell-engine.js";
 import { createDefaultShellHost } from "../shell-host.js";
+import { isTerminalGone } from "../shell-terminal.js";
 import { endingSignalHold, signalStatus } from "../signal-hold.js";
 import { runResidentSshAgentProxy } from "../ssh-agent-proxy.js";
 
@@ -114,35 +115,48 @@ async function launchProductShell(options: {
 				.replace(/\\e/g, "\u001b")
 		: undefined;
 	const host = createDefaultShellHost({ dense: options.dense, engine });
-	const code = await runInteractiveShell({
-		host,
-		hoboHome,
-		cwd: options.cwd ?? process.cwd(),
-		dense: options.dense,
-		reducedMotion:
-			process.env.HOBO_CODE_REDUCED_MOTION === "1" ||
-			process.env.HOBO_CODE_REDUCED_MOTION === "true",
-		...(Number.isFinite(maxMs) && maxMs > 0 ? { maxMs } : undefined),
-		...(scriptedKeys !== undefined ? { scriptedKeys } : undefined),
-		...(options.sessionId !== undefined
-			? { sessionId: options.sessionId }
-			: undefined),
-		...(options.messages !== undefined
-			? { messages: options.messages }
-			: undefined),
-		...(options.journal !== undefined
-			? { journal: options.journal }
-			: undefined),
-	});
-	await host.dispose?.();
+	// A terminal that has gone (its window closed) fails every write after
+	// it: what is written on the way out must not end hobo-code before the
+	// host has closed what the shell holds.
+	for (const stream of [process.stdout, process.stderr]) {
+		stream.on("error", (error: Error) => {
+			if (!isTerminalGone(error)) throw error;
+		});
+	}
+	let code: number;
+	try {
+		code = await runInteractiveShell({
+			host,
+			hoboHome,
+			cwd: options.cwd ?? process.cwd(),
+			dense: options.dense,
+			reducedMotion:
+				process.env.HOBO_CODE_REDUCED_MOTION === "1" ||
+				process.env.HOBO_CODE_REDUCED_MOTION === "true",
+			...(Number.isFinite(maxMs) && maxMs > 0 ? { maxMs } : undefined),
+			...(scriptedKeys !== undefined ? { scriptedKeys } : undefined),
+			...(options.sessionId !== undefined
+				? { sessionId: options.sessionId }
+				: undefined),
+			...(options.messages !== undefined
+				? { messages: options.messages }
+				: undefined),
+			...(options.journal !== undefined
+				? { journal: options.journal }
+				: undefined),
+		});
+	} finally {
+		await host.dispose?.();
+	}
 	if (engine) {
 		await engine.dispose();
 		process.stdout.write(
 			`sandbox kept: ${engine.sandboxRoot}\npromote (audited): hobo-code promote --run ${engine.runId}\n`,
 		);
 	}
-	// A signal that came while a verb held a Station authorization ends the
-	// shell by that signal, now that dispose has closed what was open.
+	// A signal that came while a verb held a Station authorization (or the
+	// terminal's hangup) ends the shell by that signal, now that dispose has
+	// closed what was open.
 	const signal = host.exitSignal?.();
 	return signal !== undefined ? signalStatus(signal) : code;
 }

@@ -58,8 +58,11 @@ SIGINT, SIGTERM, SIGHUP and SIGQUIT on to it, the SIGHUP of a closing terminal
 included, waits for it to end, and exits with its status, or 128+n when it
 ends by signal n. Killed outright (SIGKILL), the launcher passes nothing on:
 the child sees its IPC channel to the launcher close and quits as on SIGHUP.
-On Windows the child shares the console, and only SIGINT and SIGTERM are
-passed on.
+On Windows the launcher passes nothing on: the child shares its console and
+gets Ctrl-C itself, and passing a signal on there is a forced kill
+(TerminateProcess) that would race the child's own handling and skip its exit
+listeners. The launcher only keeps the console's Ctrl-C and Ctrl-Break from
+ending it before its child, and waits.
 
 | Binary | Product |
 |---|---|

@@ -174,7 +174,8 @@ function printReports(dir: string): void {
  * What the emulator recorded. A journal that cannot be read fails the lane
  * (`MIRROR_JOURNAL_UNREADABLE`, thrown to the caller): a mirror that exits
  * while it is read drops the read, and the read's error can arrive before the
- * child's `close` settles `lost`, so only the read's own failure decides.
+ * child's `close` settles `lost`, so only the read's own failure decides, and
+ * the caller does not look at `lost` after it.
  */
 async function printJournal(mirror: RunningMirror): Promise<void> {
 	const summary = await summarizeJournal(mirror);
@@ -333,8 +334,10 @@ try {
 	}
 	if (signalled !== undefined) throw new Error("stopped by a signal");
 	if (lostError !== undefined) throw lostError;
+	// Once the read begins `lost` is not looked at again: a mirror that exits
+	// while its journal is read drops the read, and the read's own failure
+	// (MIRROR_JOURNAL_UNREADABLE) decides.
 	await printJournal(mirror);
-	if (lostError !== undefined) throw lostError;
 	printReports(reportDir);
 	for (const result of results) {
 		console.log(

@@ -27,8 +27,8 @@ import { createResolverBackedIacProvider } from "../src/resolver-iac-provider.js
 // A Secrets Manager secret scheduled for deletion, through the resolver-backed
 // IacProvider: what preview, drift and apply say about it (ADR-0175).
 //
-// DeleteSecret only schedules a deletion, and until the date the secret keeps
-// its name; CreateSecret refuses it. So the resolver's read() reports it as
+// DeleteSecret only schedules a deletion, and through the recovery window the
+// secret keeps its name; CreateSecret refuses it. So the resolver's read() reports it as
 // being deleted (action `delete`) and preview must not say "apply would create
 // it". Apply fails closed unless the plan declares `restoreScheduled: true`.
 //
@@ -40,7 +40,7 @@ const CREDENTIAL_REF = "secret://camp/aws-deploy";
 const NAME = "stripe-key";
 const NOW_MS = Date.parse("2026-03-04T05:06:07.000Z");
 const DELETED_DATE_SECONDS = NOW_MS / 1000 + 30 * 24 * 60 * 60;
-const UNTIL = new Date(DELETED_DATE_SECONDS * 1000).toISOString();
+const DELETED_DATE = new Date(DELETED_DATE_SECONDS * 1000).toISOString();
 
 let openStores: RuntimeLocalEventStore[] = [];
 afterEach(() => {
@@ -172,7 +172,7 @@ function driverFor(
 }
 
 describe("a secret scheduled for deletion, through the resolver-backed IacProvider", () => {
-	it("preview says it is being deleted until its date, not that apply would create it", async () => {
+	it("preview says it is being deleted, with its DeletedDate, not that apply would create it", async () => {
 		const account = scheduledAccount();
 		const store = await storeWith(
 			secretNode({ description: "payment provider key" }),
@@ -181,7 +181,9 @@ describe("a secret scheduled for deletion, through the resolver-backed IacProvid
 		const diff = await driverFor(store, account).preview(program("preview"));
 
 		expect(diff.summary).toContain("the provider is deleting it");
-		expect(diff.summary).toContain(`scheduled for deletion until ${UNTIL}`);
+		expect(diff.summary).toContain(
+			`scheduled for deletion (DeletedDate ${DELETED_DATE})`,
+		);
 		expect(diff.summary).toContain("apply refuses it");
 		expect(diff.summary).not.toContain("apply would create it");
 		expect(diff.changes).toBe(1);
@@ -199,9 +201,9 @@ describe("a secret scheduled for deletion, through the resolver-backed IacProvid
 		expect(report.drift).toBe(true);
 		expect(report.observed["hobo.resolver.drift.determined"]).toBe("true");
 		expect(report.observed["hobo.resolver.drift.reason"]).toContain(
-			`scheduled for deletion until ${UNTIL}`,
+			`scheduled for deletion (DeletedDate ${DELETED_DATE})`,
 		);
-		expect(report.observed.deletedDate).toBe(UNTIL);
+		expect(report.observed.deletedDate).toBe(DELETED_DATE);
 	});
 
 	it("apply refuses it by default and changes nothing", async () => {
@@ -212,7 +214,9 @@ describe("a secret scheduled for deletion, through the resolver-backed IacProvid
 
 		await expect(
 			driverFor(store, account).apply(program("apply")),
-		).rejects.toThrow(/scheduled for deletion until .*restoreScheduled: true/u);
+		).rejects.toThrow(
+			/scheduled for deletion \(DeletedDate .*restoreScheduled: true/u,
+		);
 		expect(account.targets).toEqual(["DescribeSecret"]);
 		expect(account.state.deletedDate).toBe(DELETED_DATE_SECONDS);
 	});

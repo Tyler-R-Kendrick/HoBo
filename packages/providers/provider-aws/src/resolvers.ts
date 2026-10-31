@@ -1705,6 +1705,13 @@ function scheduledForDeletion(record: JsonObject): boolean {
 /**
  * `DeletedDate` as an ISO 8601 instant. AWS's JSON protocol answers a timestamp
  * as epoch seconds; a string is passed through as the provider wrote it.
+ *
+ * Nothing more is read into it than the API says. DescribeSecret calls it "The
+ * date the secret is scheduled for deletion"; DeleteSecret's `DeletionDate`,
+ * the end of the recovery window, is "the date and time of the delete request
+ * plus the number of days in RecoveryWindowInDays", and the API does not say
+ * the two are equal. So the date is reported as `DeletedDate`, never as the
+ * day the secret will be gone.
  */
 function deletedDateOf(record: JsonObject): string {
 	const value = record.DeletedDate;
@@ -1734,10 +1741,10 @@ function scheduledNote(
 	context: AwsResolverContext,
 	record: JsonObject,
 ): string {
-	const until = `the secret is scheduled for deletion until ${deletedDateOf(record)}`;
+	const scheduled = `the secret is scheduled for deletion (DeletedDate ${deletedDateOf(record)})`;
 	return restoreDeclared(context)
-		? `${until}; apply will restore it, with its previous versions (restoreScheduled: true)`
-		: `${until}; apply refuses it: declare restoreScheduled: true to restore it with its previous versions, or destroy it with forceDelete: true to delete it now`;
+		? `${scheduled}; apply will restore it, with its previous versions (restoreScheduled: true)`
+		: `${scheduled}; apply refuses it: declare restoreScheduled: true to restore it with its previous versions, or destroy it with forceDelete: true to delete it now`;
 }
 
 function secretArn(record: JsonObject, label: string): string {
@@ -1828,7 +1835,7 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 			}
 			// RestoreSecret "Cancels the scheduled deletion of a secret by removing
 			// the DeletedDate time stamp", and keeps the versions written out of band.
-			const until = deletedDateOf(existing);
+			const deletedDate = deletedDateOf(existing);
 			jsonResult(
 				context,
 				await secretsCall(context, "RestoreSecret", {
@@ -1837,7 +1844,7 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 				`secretsmanager restore ${context.name}`,
 			);
 			diagnostics.push(
-				`restored the secret scheduled for deletion until ${until}, with its previous versions (restoreScheduled: true)`,
+				`restored the secret scheduled for deletion (DeletedDate ${deletedDate}), with its previous versions (restoreScheduled: true)`,
 			);
 			existing = (await readSecret(context)) ?? existing;
 			restored = true;

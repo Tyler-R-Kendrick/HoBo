@@ -20,8 +20,11 @@
 //    ResourceNotFoundException."
 //
 // So, for the resolver (ADR-0175): a scheduled secret still exists, and read
-// reports it as being deleted ("scheduled for deletion until <date>") rather
-// than absent. Someone deleted it on purpose, so reconcile fails closed unless
+// reports it as being deleted ("scheduled for deletion (DeletedDate <date>)")
+// rather than absent. The date is reported as DeletedDate and nothing more:
+// DeleteSecret's DeletionDate is "the date and time of the delete request plus
+// the number of days in RecoveryWindowInDays", and the API does not say
+// DescribeSecret's DeletedDate is the same instant. Someone deleted it on purpose, so reconcile fails closed unless
 // the declaration says `restoreScheduled: true`, which restores it with its
 // previous versions. A delete of it issues nothing more unless the declaration
 // asks for a forced delete.
@@ -225,8 +228,8 @@ function scheduledSecret(description?: string): Map<string, FakeSecret> {
 	]);
 }
 
-/** NOW plus the default 30-day recovery window, as an ISO instant. */
-const UNTIL = new Date(NOW_MS + 30 * DAY_SECONDS * 1000).toISOString();
+/** The fake's DeletedDate for a scheduled secret, as the ISO instant read() reports. */
+const DELETED_DATE = new Date(NOW_MS + 30 * DAY_SECONDS * 1000).toISOString();
 
 function liveSecret(description?: string): Map<string, FakeSecret> {
 	return new Map([[NAME, { description, deletedDate: undefined }]]);
@@ -240,9 +243,12 @@ describe("read of a secret scheduled for deletion", () => {
 
 		expect(observed?.action).toBe("delete");
 		expect(observed?.physicalId).toMatch(/^arn:aws:secretsmanager:/u);
-		expect(observed?.outputs.deletedDate).toBe(UNTIL);
+		expect(observed?.outputs.deletedDate).toBe(DELETED_DATE);
 		const note = observed?.diagnostics.join(" ") ?? "";
-		expect(note).toContain(`scheduled for deletion until ${UNTIL}`);
+		expect(note).toContain(
+			`scheduled for deletion (DeletedDate ${DELETED_DATE})`,
+		);
+		expect(note).not.toContain("until");
 		expect(note).toContain("apply refuses it");
 		expect(note).toContain("restoreScheduled: true");
 		expect(runner.aws.targets()).toEqual(["DescribeSecret"]);
@@ -275,7 +281,9 @@ describe("reconcile of a secret scheduled for deletion", () => {
 		expect(refusal instanceof ResolverError ? refusal.code : "").toBe(
 			"RESOLVER_PROVIDER_REJECTED",
 		);
-		expect(refusal?.message).toContain(`scheduled for deletion until ${UNTIL}`);
+		expect(refusal?.message).toContain(
+			`scheduled for deletion (DeletedDate ${DELETED_DATE})`,
+		);
 		expect(refusal?.message).toContain("restoreScheduled: true");
 		expect(refusal?.message).toContain("forceDelete: true");
 		expect(runner.aws.targets()).toEqual(["DescribeSecret"]);
@@ -301,7 +309,7 @@ describe("reconcile of a secret scheduled for deletion", () => {
 		expect(outcome.action).toBe("update");
 		expect(outcome.outputs.description).toBe("payment provider key");
 		expect(outcome.diagnostics.join(" ")).toContain(
-			`restored the secret scheduled for deletion until ${UNTIL}, with its previous versions`,
+			`restored the secret scheduled for deletion (DeletedDate ${DELETED_DATE}), with its previous versions`,
 		);
 		expect(runner.secrets.get(NAME)).toEqual({
 			description: "payment provider key",

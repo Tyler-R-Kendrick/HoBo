@@ -915,7 +915,7 @@ HoBo's Plan 09 pyramid specifies unit, conformance, integration, E2E, determinis
 - **(−)** The profile-claim check is only as good as the claims: a pack that keeps a profile id while degrading behind it passes. Conformance evidence, not this function, is what catches that.
 
 ## ADR-0175
-**A resource the provider is deleting is reported, not hidden: a resolver's `read()` answers it with action `delete` and says when and what apply will do, preview and drift show it, and apply of an AWS Secrets Manager secret scheduled for deletion fails closed unless the plan declares `restoreScheduled: true`.**
+**A resource the provider is deleting is reported, not hidden: a resolver's `read()` answers it with action `delete`, the provider's date and what apply will do, preview and drift show it, and apply of an AWS Secrets Manager secret scheduled for deletion fails closed unless the plan declares `restoreScheduled: true`.**
 
 **Status:** Accepted.
 
@@ -934,8 +934,10 @@ The `aws.secrets-manager/v1` resolver never read `DeletedDate`, so it handled a 
 1. **`read()` reports a resource the provider is deleting.** The outcome carries:
    - action `delete`, the member of the closed action set for "being deleted"; `reconcile()` never reports it;
    - the physical id;
-   - the outputs, plus the date (`deletedDate` for a secret, as an ISO 8601 instant);
-   - a diagnostic: "scheduled for deletion until <date>", then what apply will do.
+   - the outputs, plus the provider's date (for a secret, `deletedDate`: DescribeSecret's `DeletedDate` as an ISO 8601 instant);
+   - a diagnostic: "scheduled for deletion (DeletedDate <instant>)", then what apply will do.
+
+   The date is named for the field it came from, because the API gives it no more meaning than that. DescribeSecret calls `DeletedDate` "The date the secret is scheduled for deletion". DeleteSecret's `DeletionDate` is "the date and time of the delete request plus the number of days in RecoveryWindowInDays", and the API does not say the two are the same instant. The resolver uses `DeletedDate` only to tell that the secret is scheduled, which the API does say: the field is omitted otherwise.
 2. **The resolver-backed `IacProvider` shows it** (`packages/hobo/src/resolver-iac-provider.ts`).
    - Preview reads "exists as <id>, and the provider is deleting it." with the resolver's diagnostics, and `changes: 1`.
    - Drift is `true`, determined, with the same text. A resource on its way out is neither "would be created" nor "clean".

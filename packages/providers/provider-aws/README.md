@@ -212,7 +212,11 @@ different suffix — is refused rather than interpolated into a hostname.
   CreateSecret, UpdateSecret and a second unforced DeleteSecret for it
   ([ADR-0175](../../../docs/design/adr/07-portability-extensibility.md#adr-0175)).
   - `read` reports it with action `delete`, `outputs.deletedDate`, and a
-    diagnostic: "scheduled for deletion until <date>", then what apply will do.
+    diagnostic: "scheduled for deletion (DeletedDate <date>)", then what apply
+    will do. The date is DescribeSecret's `DeletedDate` as AWS reports it, not
+    a promise of when the secret is gone: the API calls it "the date the secret
+    is scheduled for deletion", and does not equate it with DeleteSecret's
+    `DeletionDate`, the end of the recovery window.
     Preview and drift say so; neither reports it absent.
   - `reconcile` **fails closed** by default (`RESOLVER_PROVIDER_REJECTED`): someone
     deleted it on purpose. Declare `restoreScheduled: true` to restore it with its

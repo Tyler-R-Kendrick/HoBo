@@ -22,6 +22,10 @@ export interface TarEntry {
 	readonly magic?: string;
 	/** The ustar prefix field (offset 345), written as given; `name` is then not split. */
 	readonly prefix?: string;
+	/** Header bytes written over the usual ones, as `[offset, latin1 text]`, before the checksum is summed. */
+	readonly raw?: readonly (readonly [number, string])[];
+	/** The checksum field's eight bytes for a header whose sum is `sum` (default: six octal digits, NUL, space). */
+	readonly checksum?: (sum: number) => string;
 }
 
 function put(block: Buffer, text: string, at: number, length: number): void {
@@ -55,10 +59,14 @@ function header(entry: TarEntry, size: number): Buffer {
 	put(block, type, 156, 1);
 	put(block, entry.linkname ?? "", 157, 100);
 	put(block, entry.magic ?? "ustar\u000000", 257, 8);
+	for (const [at, text] of entry.raw ?? []) put(block, text, at, text.length);
+	put(block, "        ", 148, 8);
 	let sum = 0;
 	for (const byte of block) sum += byte;
 	if (entry.badChecksum === true) sum += 1;
-	put(block, `${sum.toString(8).padStart(6, "0")}\0 `, 148, 8);
+	const checksum =
+		entry.checksum?.(sum) ?? `${sum.toString(8).padStart(6, "0")}\0 `;
+	put(block, checksum, 148, 8);
 	return block;
 }
 

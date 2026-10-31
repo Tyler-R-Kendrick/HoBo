@@ -53,6 +53,11 @@
  *
  * A directory's one trailing `/` is dropped before it is compared.
  *
+ * Every numeric field (mode, uid, gid, size, mtime, checksum, devmajor,
+ * devminor) is read in one form only, which GNU tar reads to the same number
+ * (`NUMERIC`); a field in any other form is refused. The checksum must be the
+ * unsigned sum; tar also takes the signed one, and that is refused too.
+ *
  * The scan ends at the two zero blocks that end the archive; what follows them
  * is not read, as `tar` does not read it. A single zero block followed by an
  * entry is refused.
@@ -99,20 +104,59 @@ function field(block: Buffer, start: number, length: number): string {
 	return raw.subarray(0, end === -1 ? length : end).toString("latin1");
 }
 
+/**
+ * The one form of a numeric field read: spaces, octal digits, then only NULs
+ * and spaces to the end of the field; or NULs only, which tar reads as 0.
+ * GNU tar's `from_header` reads each such field to the same number. It reads
+ * more than this (any C `isspace` byte before the digits, one NUL before
+ * them, anything after the byte that ends them, base-256), and all of that
+ * is refused here rather than modelled: a byte such as NBSP (0xA0), which a
+ * JavaScript `trim` would take for a space, is no space to tar, and a field
+ * tar cannot read makes it skip the header and read the next block as one.
+ */
+const NUMERIC = /^(?: *[0-7]+[ \0]*|\0+)$/u;
+
+/** The numeric fields of a ustar header, by offset and length. */
+const NUMERIC_FIELDS = [
+	["mode", 100, 8],
+	["uid", 108, 8],
+	["gid", 116, 8],
+	["size", 124, 12],
+	["mtime", 136, 12],
+	["checksum", 148, 8],
+	["devmajor", 329, 8],
+	["devminor", 337, 8],
+] as const;
+
+/** Bytes for a message: printable ASCII as it is, anything else as `\xNN`. */
+function shownBytes(text: string): string {
+	let shown = "";
+	for (const char of text) {
+		const code = char.charCodeAt(0);
+		shown +=
+			code > 0x20 && code < 0x7f && char !== "\\" && char !== '"'
+				? char
+				: `\\x${code.toString(16).padStart(2, "0")}`;
+	}
+	return `"${shown}"`;
+}
+
 function octal(
 	block: Buffer,
 	start: number,
 	length: number,
 	what: string,
+	archive: string,
 ): number {
-	const text = field(block, start, length).trim();
-	if (!/^[0-7]+$/u.test(text)) {
+	const text = block.subarray(start, start + length).toString("latin1");
+	if (!NUMERIC.test(text)) {
 		throw new PinsError(
 			"ARCHIVE_MALFORMED",
-			`a tar header's ${what} is not an octal number`,
+			`${archive} has a tar header whose ${what} field, ${shownBytes(text)}, is not octal digits between spaces and NULs; tar may read it otherwise`,
 		);
 	}
-	return Number.parseInt(text, 8);
+	const digits = text.replace(/[ \0]/gu, "");
+	return digits === "" ? 0 : Number.parseInt(digits, 8);
 }
 
 /**
@@ -163,7 +207,7 @@ export function foldName(name: string): string {
 }
 
 function parseHeader(block: Buffer, archive: string): TarHeader {
-	const stored = octal(block, 148, 8, "checksum");
+	const stored = octal(block, 148, 8, "checksum", archive);
 	let sum = 0;
 	for (let i = 0; i < BLOCK; i += 1) {
 		sum += i >= 148 && i < 156 ? 0x20 : (block[i] ?? 0);
@@ -201,7 +245,10 @@ function parseHeader(block: Buffer, archive: string): TarHeader {
 			`${archive} has a type ${JSON.stringify(type)} entry${kind === undefined ? "" : ` (${kind})`}, whose data tar reads as that entry's own; only regular files, devices, directories and FIFOs are read`,
 		);
 	}
-	const size = octal(block, 124, 12, "size");
+	for (const [what, start, length] of NUMERIC_FIELDS) {
+		octal(block, start, length, what, archive);
+	}
+	const size = octal(block, 124, 12, "size", archive);
 	const dataless = DATALESS.get(type);
 	if (dataless !== undefined && size !== 0) {
 		throw new PinsError(

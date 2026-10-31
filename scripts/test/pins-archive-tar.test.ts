@@ -8,27 +8,31 @@
  * machine without `tar`; only the comparison with `tar` needs one.
  */
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-import { PinsError } from "../lib/pins.ts";
-import { memberDigest } from "../lib/pins-archive.ts";
-import { scratch, sha256Hex } from "./support/pins-support.ts";
+import { scratch } from "./support/pins-support.ts";
+import {
+	accepted,
+	allDisagreements,
+	EVIL,
+	GOOD,
+	label,
+	noTar,
+	readerSays,
+} from "./support/tar-diff.ts";
 import { type TarEntry, tarGz } from "./support/tar-support.ts";
 
-const GOOD = Buffer.from("#!/bin/sh\necho GOOD\n");
-const EVIL = Buffer.from("#!/bin/sh\necho EVIL\n");
 /** GNU tar's magic and version, `ustar  \0`. */
 const GNU = "ustar  ";
+/** A header's sum as the checksum field writes it: six octal digits. */
+const oct6 = (sum: number): string => sum.toString(8).padStart(6, "0");
+/** NBSP, U+00A0, the byte 0xA0: a JavaScript `trim` strips it, C's `isspace` does not. */
+const NBSP = "\u00a0";
 /** A name as UTF-8 bytes, in the latin1 string the builder writes byte for byte. */
 const utf8 = (name: string): string =>
 	Buffer.from(name, "utf8").toString("latin1");
-const NAMES = new Map([
-	[sha256Hex(GOOD), "GOOD"],
-	[sha256Hex(EVIL), "EVIL"],
-]);
 
 interface Case {
 	readonly what: string;
@@ -285,6 +289,68 @@ const CASES: readonly Case[] = [
 		member: "bin/mirror",
 		reader: "ARCHIVE_UNSAFE",
 	},
+	// NBSP in a numeric field. tar cannot read the field, so it skips that
+	// header and reads the block after it as the next header.
+	{
+		what: "mirror, a header with NBSP before its checksum, a hidden mirror",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{
+				name: "pad",
+				claimedSize: 1024,
+				checksum: (sum) => `${NBSP}${oct6(sum)}\0`,
+			},
+			{ name: "mirror", body: EVIL },
+		],
+		reader: "ARCHIVE_MALFORMED",
+	},
+	{
+		what: "mirror, a header with NBSP after its checksum, a hidden mirror",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{
+				name: "pad",
+				claimedSize: 1024,
+				checksum: (sum) => `${oct6(sum)}${NBSP} `,
+			},
+			{ name: "mirror", body: EVIL },
+		],
+		reader: "ARCHIVE_MALFORMED",
+	},
+	{
+		what: "mirror, a header with NBSP before its size, a hidden mirror",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{ name: "pad", claimedSize: 1024, raw: [[124, `${NBSP}0000002000\0`]] },
+			{ name: "mirror", body: EVIL },
+		],
+		reader: "ARCHIVE_MALFORMED",
+	},
+	{
+		what: "mirror, a header with NBSP after its size, a hidden mirror",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{ name: "pad", claimedSize: 1024, raw: [[124, `0000002000${NBSP}\0`]] },
+			{ name: "mirror", body: EVIL },
+		],
+		reader: "ARCHIVE_MALFORMED",
+	},
+	{
+		what: "LICENSE, a header with NBSP before its size, a hidden mirror only tar sees",
+		entries: [
+			{ name: "LICENSE", body: "MIT\n" },
+			{ name: "pad", claimedSize: 1024, raw: [[124, `${NBSP}0000002000\0`]] },
+			{ name: "mirror", body: EVIL },
+		],
+		reader: "ARCHIVE_MALFORMED",
+	},
+	{
+		what: "a mirror whose size has NBSP before it, which tar cannot read at all",
+		entries: [
+			{ name: "mirror", body: GOOD, raw: [[124, `${NBSP}0000000024\0`]] },
+		],
+		reader: "ARCHIVE_MALFORMED",
+	},
 	// Names one file to a case-insensitive file system (macOS, Windows).
 	{
 		what: "mirror, then MIRROR",
@@ -355,18 +421,6 @@ function archiveOf(crafted: Case): string {
 	return path;
 }
 
-/** The reader's answer: the member's sha256, or the code it refused with. */
-async function readerSays(path: string, member: string): Promise<string> {
-	try {
-		return (await memberDigest(path, member)).member;
-	} catch (error) {
-		if (error instanceof PinsError) return error.code;
-		throw error;
-	}
-}
-
-const label = (answer: string): string => NAMES.get(answer) ?? answer;
-
 describe("crafted archives, as the reader reads them", () => {
 	for (const crafted of CASES) {
 		it(`${crafted.what}: ${crafted.reader === "GOOD" ? "names GOOD" : `refused, ${crafted.reader}`}`, async () => {
@@ -379,51 +433,19 @@ describe("crafted archives, as the reader reads them", () => {
 	}
 });
 
-const noTar =
-	spawnSync("tar", ["--version"]).status === 0
-		? false
-		: "no `tar` on PATH, so there is nothing to compare the reader with";
-
-/** What `tar` leaves at `member`: a regular file's sha256 or what is there instead, and its exit status when not 0. */
-function tarLeaves(path: string, member: string, named: boolean): string {
-	const into = join(scratch("tar-diff-out"), "x");
-	mkdirSync(into);
-	const args = ["-xzf", path, "-C", into, ...(named ? [member] : [])];
-	const run = spawnSync("tar", args, { encoding: "utf8" });
-	const at = join(into, member);
-	let found = "nothing";
-	try {
-		const stat = lstatSync(at);
-		found = stat.isFile()
-			? sha256Hex(readFileSync(at))
-			: stat.isDirectory()
-				? "a directory"
-				: "not a regular file";
-	} catch {
-		// Nothing at the member's path.
-	}
-	return run.status === 0 ? found : `${label(found)} (tar exit ${run.status})`;
-}
-
 describe("crafted archives, against the system tar", () => {
 	it("the reader refuses each, or names the bytes tar leaves at the member, extracting all or only the member", {
 		skip: noTar,
 	}, async () => {
-		const disagreements: string[] = [];
+		const compared = [];
 		for (const crafted of CASES) {
 			const path = archiveOf(crafted);
 			const member = crafted.member ?? "mirror";
 			const answer = await readerSays(path, member);
-			if (!/^[0-9a-f]{64}$/u.test(answer)) continue;
-			for (const named of [false, true]) {
-				const left = tarLeaves(path, member, named);
-				if (left !== answer) {
-					disagreements.push(
-						`${crafted.what} (${named ? `tar -xzf A ${member}` : "tar -xzf A"}): the reader names ${label(answer)}, tar leaves ${label(left)}`,
-					);
-				}
+			if (accepted(answer)) {
+				compared.push({ what: crafted.what, path, member, answer });
 			}
 		}
-		assert.deepEqual(disagreements, []);
+		assert.deepEqual(await allDisagreements(compared), []);
 	});
 });

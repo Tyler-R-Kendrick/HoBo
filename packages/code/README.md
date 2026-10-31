@@ -886,6 +886,11 @@ The Station authorization gates a lease-bound local SSH-agent socket backed by
 detach, expires with the authorization, and drains redemption/end facts to the
 Station's Yard audit feed. Private keys and session tokens are never copied
 into pane commands or remote hosts; a missing installed agent fails closed.
+Only the proxies of the panes mux created stay. If mux fails before then (a
+proxy that does not start, a gateway that does not close), it answers with
+`HOBO_CODE_MUX_AUTHORIZATION_FAILED`, stops every proxy it handed off, each
+writing its `pam.SessionEnded`, and ends any session the gateway still held
+with the reason `mux-failed`.
 
 `hobo-code session serve --host <machine> --port <n>` forwards the resident
 session browser over SSH under such an authorization, and closes the

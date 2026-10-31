@@ -96,7 +96,7 @@ function audit(hoboHome: string): readonly string[] {
 }
 
 /** The resident proxies running for sockets under `root`, by pid. */
-export function proxiesUnder(root: string): number[] {
+function proxiesUnder(root: string): number[] {
 	return readdirSync("/proc")
 		.filter((name) => /^\d+$/u.test(name))
 		.map(Number)
@@ -169,10 +169,11 @@ async function mux(
 			throw new Error("tmux is not reached here");
 		},
 	},
+	proxyEntry: string = ENTRY,
 ): Promise<Muxed> {
 	// The proxy is started as `process.argv[1] _station-agent …`.
 	const entry = process.argv[1];
-	process.argv[1] = ENTRY;
+	process.argv[1] = proxyEntry;
 	let handedOff = 0;
 	try {
 		const result = await runHoboCodeCli(
@@ -225,9 +226,9 @@ describe("mux --host, ending before its panes hold the leases", () => {
 			},
 		}));
 		expect(muxed.handedOff).toBe(1);
-		expect(String(muxed.error ?? muxed.result?.message)).toContain(
-			"audit sink EIO while closing",
-		);
+		expect(muxed.error).toBeUndefined();
+		expect(muxed.result?.code).toBe("HOBO_CODE_MUX_AUTHORIZATION_FAILED");
+		expect(muxed.result?.message).toContain("audit sink EIO while closing");
 		expect(audit(f.hoboHome)).toEqual([
 			"pam.GatewayStarted",
 			"pam.SessionStarted",
@@ -236,5 +237,25 @@ describe("mux --host, ending before its panes hold the leases", () => {
 		]);
 		expect(proxiesUnder(f.root)).toEqual([]);
 		expect(f.sockets()).toEqual([]);
+	}, 60_000);
+
+	it("answers a proxy that fails to start with a failure, not a crash, and ends the session", async () => {
+		// The proxy's own process exits at once: its socket never opens.
+		const f = await fixture();
+		const broken = join(f.root, "exits.mjs");
+		writeFileSync(broken, "process.exit(3);\n");
+		const muxed = await mux(f, (gateway) => gateway, undefined, broken);
+		expect(muxed.error).toBeUndefined();
+		expect(muxed.result?.code).toBe("HOBO_CODE_MUX_AUTHORIZATION_FAILED");
+		expect(muxed.result?.message).toContain(
+			"resident SSH agent exited before opening its socket",
+		);
+		expect(audit(f.hoboHome)).toEqual([
+			"pam.GatewayStarted",
+			"pam.SessionStarted",
+			"pam.SessionEnded(agent-proxy-start-failed)",
+			"pam.GatewayStopped",
+		]);
+		expect(proxiesUnder(f.root)).toEqual([]);
 	}, 60_000);
 });

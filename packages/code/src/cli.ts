@@ -1731,10 +1731,16 @@ interface OpenedAuthorization {
 	handedOff: boolean;
 }
 
-/** Close `gateway`, saying `reason`; the error, if closing failed. */
+/**
+ * The reason recorded on `pam.SessionEnded` for a session `mux --host` still
+ * held when it failed before handing every session to its agent proxy.
+ */
+const MUX_FAILED = "mux-failed";
+
+/** Close `gateway`, saying `reason` if any; the error, if closing failed. */
 async function closeAuthorization(
 	gateway: OpenedGateway,
-	reason: string,
+	reason?: string,
 ): Promise<Error | undefined> {
 	try {
 		await gateway.close(reason);
@@ -2814,6 +2820,7 @@ export async function runHoboCodeCli(
 					stationId: platform.station.stationId,
 					isolationClass: resolvedMachine.isolationClass,
 				});
+				let failure: Error | undefined;
 				try {
 					brokered = await brokerPanes(
 						placeable.map((a) => ({ machine: resolvedMachine, agentId: a.id })),
@@ -2826,23 +2833,43 @@ export async function runHoboCodeCli(
 								stop: async () => {},
 							}));
 						} else {
+							// Each one as it is handed off, so that the cleanup below
+							// stops it if a later one fails.
 							const identities: ResolvedSshIdentity[] = [];
-							try {
-								for (const pane of brokered.panes) {
-									identities.push(await gateway.handoffSshIdentity(pane));
-								}
-							} catch (error) {
-								await Promise.all(
-									identities.map((identity) => identity.stop()),
-								);
-								throw error;
-							}
 							resolvedIdentities = identities;
+							for (const pane of brokered.panes) {
+								identities.push(await gateway.handoffSshIdentity(pane));
+							}
 						}
 					}
 					brokerAudit = gateway.auditTypes();
-				} finally {
-					await gateway.close();
+				} catch (error) {
+					failure = error instanceof Error ? error : new Error(String(error));
+				}
+				const closeError = await closeAuthorization(
+					gateway,
+					failure === undefined ? undefined : MUX_FAILED,
+				);
+				// A failure here is an answer, not a crash: the gateway is closed,
+				// and every proxy handed off is stopped by the cleanup below.
+				if (failure !== undefined || closeError !== undefined) {
+					const answer = fail(
+						"HOBO_CODE_MUX_AUTHORIZATION_FAILED",
+						panel("✕ mux", [
+							failure !== undefined
+								? `handing the Station sessions on ${resolvedMachine.id} to their agent proxies failed: ${failure.message}`
+								: `closing the Station gateway failed: ${closeError?.message ?? "unknown"}`,
+							"No pane was opened, and every session handed off is ended.",
+						]),
+						["hobo-code auth status", "hobo-code mux --dry-run"],
+						{ machine: resolvedMachine },
+					);
+					return failure !== undefined && closeError !== undefined
+						? withCloseFailure(answer, closeError)
+						: answer;
+				}
+				if (brokered === undefined) {
+					throw new Error("mux brokered no panes and reported no failure");
 				}
 				if (brokered.panes.length === 0) {
 					return fail(

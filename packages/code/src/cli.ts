@@ -386,6 +386,13 @@ export interface HoboCodeCliDeps {
 	readonly openStationGateway?: (
 		context: Parameters<typeof openStationGateway>[0],
 	) => Promise<OpenedGateway>;
+	/**
+	 * Called just before `session serve --host` opens the Station authorization
+	 * its terminal action closes. The `hobo-code` entry holds the ending signals
+	 * from here (`src/signal-hold.ts`): with no listener, a signal's default
+	 * action ended the process with the authorization open.
+	 */
+	readonly beforeAuthorization?: () => void;
 	readonly muxRunner?: MuxRunner;
 	/** Injectable machine probes for `init` discovery (tests / harnesses). */
 	readonly machineProbes?: MachineDiscoveryProbes;
@@ -3759,6 +3766,7 @@ export async function runHoboCodeCli(
 						);
 					}
 
+					deps.beforeAuthorization?.();
 					const gateway = await (deps.openStationGateway ?? openStationGateway)(
 						{
 							hoboHome,

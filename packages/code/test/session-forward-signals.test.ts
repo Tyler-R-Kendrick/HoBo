@@ -4,6 +4,7 @@ import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	readdirSync,
 	readFileSync,
 	rmSync,
 	writeFileSync,
@@ -96,17 +97,60 @@ interface Forwarded {
 	readonly code: number | null;
 	/** The Station's durable audit types, in order. */
 	readonly audit: readonly string[];
+	/** Whether the stand-in `ssh` ever started. */
+	readonly sshRan: boolean;
+	/** No stand-in `ssh` is left running. */
 	readonly standInEnded: boolean;
 	readonly output: string;
 }
 
+/** The pids of stand-in `ssh` processes still running: `sh <path>` and its children. */
+function standInsRunning(ssh: string): number[] {
+	return readdirSync("/proc")
+		.filter((name) => /^\d+$/u.test(name))
+		.map(Number)
+		.filter((pid) => {
+			try {
+				return (
+					readFileSync(`/proc/${pid}/cmdline`, "utf8").includes(ssh) &&
+					running(pid)
+				);
+			} catch {
+				return false;
+			}
+		});
+}
+
 /**
- * Start the forward, and once the stand-in `ssh` runs, end hobo-code with
- * `signal`, or with "ssh ends" let the stand-in exit by itself.
+ * CommonJS preloads (NODE_OPTIONS=--require) that widen one window of
+ * hobo-code's, and write PROBE_MARKER when it opens, so a case signals inside
+ * it on that event rather than after a guess at a delay.
  */
-async function forwardThenEnd(
-	ending: NodeJS.Signals | "ssh ends",
-): Promise<Forwarded> {
+const PRELOADS = {
+	/** The Station authorization is open, and runHoboCodeCli has not returned. */
+	"authorization opening": `const fs = require("node:fs"); const { syncBuiltinESMExports } = require("node:module"); const append = fs.appendFileSync; fs.appendFileSync = function (path, data, ...rest) { const result = append.call(this, path, data, ...rest); if (String(path).endsWith("pam-audit.jsonl") && String(data).includes("pam.SessionStarted")) { fs.writeFileSync(process.env.PROBE_MARKER, ""); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1500); } return result; }; syncBuiltinESMExports();`,
+	/** The browser address is out, and ssh is being started. */
+	"ssh starting": `const cp = require("node:child_process"); const fs = require("node:fs"); const { syncBuiltinESMExports } = require("node:module"); const spawn = cp.spawn; cp.spawn = function (command, ...rest) { if (command === "ssh") { fs.writeFileSync(process.env.PROBE_MARKER, ""); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1500); } return spawn.call(this, command, ...rest); }; syncBuiltinESMExports();`,
+	/** ssh has ended, and the authorization is being closed. */
+	"authorization closing": `const net = require("node:net"); const fs = require("node:fs"); const close = net.Server.prototype.close; net.Server.prototype.close = function (callback) { fs.writeFileSync(process.env.PROBE_MARKER, ""); return close.call(this, (...args) => setTimeout(() => callback?.(...args), 1500)); };`,
+} as const;
+type Window = keyof typeof PRELOADS;
+
+interface Ending {
+	/** What ends hobo-code: one of its signals, or the stand-in ssh exiting. */
+	readonly by: NodeJS.Signals | "ssh ends";
+	/** Send the signal inside this window rather than once ssh runs. */
+	readonly inside?: Window;
+	/** Send the same signal again inside this window, after the first. */
+	readonly againInside?: Window;
+}
+
+/**
+ * Start the forward, and end it as `ending` says: by default, once the
+ * stand-in `ssh` runs, send hobo-code `ending.by`, or let the stand-in exit
+ * by itself.
+ */
+async function forwardThenEnd(ending: Ending): Promise<Forwarded> {
 	// Short paths: the Station's agent proxy is a Unix socket under HOBO_HOME.
 	const root = mkdtempSync(join(tmpdir(), "f"));
 	roots.push(root);
@@ -137,6 +181,16 @@ async function forwardThenEnd(
 		`#!/bin/sh\necho $$ > '${pidFile}'\nwhile [ ! -e '${release}' ]; do sleep 0.1; done\nexit 0\n`,
 	);
 	chmodSync(ssh, 0o755);
+	const marker = join(root, "window");
+	const windowOf = (window: Window | undefined): string | undefined => {
+		if (window === undefined) return undefined;
+		const preload = join(root, `${window.replace(/ /gu, "-")}.cjs`);
+		writeFileSync(preload, PRELOADS[window]);
+		return preload;
+	};
+	const preloads = [windowOf(ending.inside), windowOf(ending.againInside)]
+		.filter((preload) => preload !== undefined)
+		.map((preload) => `--require ${preload}`);
 
 	const run = spawn(
 		process.execPath,
@@ -162,6 +216,10 @@ async function forwardThenEnd(
 				HOBO_CODE_FROM_SOURCE: "0",
 				HOBO_CODE_SKIP_STALE_REBUILD: "1",
 				NODE_NO_WARNINGS: "1",
+				PROBE_MARKER: marker,
+				...(preloads.length > 0
+					? { NODE_OPTIONS: preloads.join(" ") }
+					: undefined),
 			},
 			stdio: ["ignore", "pipe", "pipe"],
 		},
@@ -179,16 +237,25 @@ async function forwardThenEnd(
 		code = status ?? (signal === null ? null : -1);
 		closed = true;
 	});
+	const inWindow = (): boolean => existsSync(marker);
+	const sshRuns = (): boolean =>
+		/^browser: /mu.test(output) && existsSync(pidFile);
 	const forwarded = await until(
-		() => closed || (/^browser: /mu.test(output) && existsSync(pidFile)),
+		() => closed || (ending.inside !== undefined ? inWindow() : sshRuns()),
 		FORWARD_DEADLINE_MS,
 	);
-	let standIn: number | undefined;
 	if (forwarded && !closed) {
-		standIn = Number.parseInt(readFileSync(pidFile, "utf8"), 10);
-		standIns.push(standIn);
-		if (ending === "ssh ends") writeFileSync(release, "");
-		else run.kill(ending);
+		if (ending.by === "ssh ends") writeFileSync(release, "");
+		else {
+			// The second window opens only after the first signal.
+			rmSync(marker, { force: true });
+			run.kill(ending.by);
+			if (
+				ending.againInside !== undefined &&
+				(await until(() => closed || inWindow(), END_GRACE_MS))
+			)
+				run.kill(ending.by);
+		}
 	}
 	if (!(await until(() => closed, END_GRACE_MS))) run.kill("SIGKILL");
 	await until(() => closed, END_GRACE_MS);
@@ -202,11 +269,14 @@ async function forwardThenEnd(
 					return isJsonString(type) ? type : "";
 				})
 		: [];
+	const left = standInsRunning(ssh);
+	standIns.push(...left);
 	return {
 		forwarded,
 		code,
 		audit,
-		standInEnded: standIn !== undefined && !running(standIn),
+		sshRan: existsSync(pidFile),
+		standInEnded: left.length === 0,
 		output,
 	};
 }
@@ -214,7 +284,7 @@ async function forwardThenEnd(
 describe.skipIf(process.platform !== "linux")(
 	"hobo-code forwarding a resident browser, ended",
 	() => {
-		for (const ending of [
+		for (const by of [
 			"SIGINT",
 			"SIGTERM",
 			"SIGHUP",
@@ -222,9 +292,9 @@ describe.skipIf(process.platform !== "linux")(
 			"ssh ends",
 		] as const) {
 			it(
-				`by ${ending}: closes the Station authorization, and ssh is gone`,
+				`by ${by}: closes the Station authorization, and ssh is gone`,
 				async () => {
-					const ended = await forwardThenEnd(ending);
+					const ended = await forwardThenEnd({ by });
 					expect(ended.forwarded, ended.output).toBe(true);
 					expect(ended.audit, ended.output).toContain("pam.SessionStarted");
 					expect(ended.audit, ended.output).toContain("pam.SessionEnded");
@@ -233,5 +303,44 @@ describe.skipIf(process.platform !== "linux")(
 				FORWARD_DEADLINE_MS + 3 * END_GRACE_MS,
 			);
 		}
+	},
+);
+
+describe.skipIf(process.platform !== "linux")(
+	"hobo-code forwarding a resident browser, signalled before the forward listened",
+	() => {
+		// Node acts on a signal only while something listens for it; otherwise
+		// its default action ends the process where it stands. Each window is
+		// widened by a preload, and the signal sent inside it.
+		it(
+			"while the authorization is opened: it is closed, and ssh never starts",
+			async () => {
+				const ended = await forwardThenEnd({
+					by: "SIGTERM",
+					inside: "authorization opening",
+				});
+				expect(ended.forwarded, ended.output).toBe(true);
+				expect(ended.audit, ended.output).toContain("pam.SessionEnded");
+				expect(ended.code, ended.output).toBe(143);
+				expect(ended.output).not.toMatch(/^browser: /mu);
+				expect(ended.sshRan).toBe(false);
+			},
+			FORWARD_DEADLINE_MS + 3 * END_GRACE_MS,
+		);
+
+		it(
+			"while ssh is started, its address already out: ssh is stopped, and the authorization closed",
+			async () => {
+				const ended = await forwardThenEnd({
+					by: "SIGTERM",
+					inside: "ssh starting",
+				});
+				expect(ended.forwarded, ended.output).toBe(true);
+				expect(ended.audit, ended.output).toContain("pam.SessionEnded");
+				expect(ended.code, ended.output).toBe(143);
+				expect(ended.standInEnded).toBe(true);
+			},
+			FORWARD_DEADLINE_MS + 3 * END_GRACE_MS,
+		);
 	},
 );

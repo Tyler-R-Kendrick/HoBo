@@ -14,7 +14,7 @@
  * not this coding harness.
  */
 import { spawn } from "node:child_process";
-import { constants as osConstants, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ENDING_SIGNALS } from "../../bin/ending-signals.mjs";
@@ -35,13 +35,11 @@ import { cleanupIsolation, createIsolationContext } from "../isolation.js";
 import { isJsonObject } from "../json.js";
 import { hangUpWhenLauncherGoes } from "../launcher-hangup.js";
 import { preferNamedEndpoint } from "../occupancy-endpoints.js";
-import {
-	authorizationLeaseDelay,
-	remoteSessionServeSshArgs,
-} from "../resident-session-cli.js";
 import { startSessionControlServer } from "../session-control-server.js";
+import { forwardResidentSessions } from "../session-forward.js";
 import type { ShellEngine } from "../shell-engine.js";
 import { createDefaultShellHost } from "../shell-host.js";
+import { endingSignalHold, signalStatus } from "../signal-hold.js";
 import { runResidentSshAgentProxy } from "../ssh-agent-proxy.js";
 
 // This is the process's entry point: when a `/hobo` verb composes HoBo here,
@@ -189,7 +187,16 @@ if (argv[0] === "_station-agent") {
 		process.exitCode = await launchProductShell({ dense });
 	}
 } else {
-	const result = await runHoboCodeCli(argv, { json, dense });
+	// `session serve --host` opens a Station authorization that the forward
+	// below closes. The ending signals are held from just before it is opened
+	// until it is closed, so that none ends hobo-code with it open
+	// (src/signal-hold.ts).
+	const signals = endingSignalHold();
+	const result = await runHoboCodeCli(argv, {
+		json,
+		dense,
+		beforeAuthorization: () => signals.hold(),
+	});
 	process.stdout.write(formatHoboCodeResult(result, { json, dense }));
 	const action =
 		result.data && isJsonObject(result.data)
@@ -275,63 +282,27 @@ if (argv[0] === "_station-agent") {
 		action.machine &&
 		action.port
 	) {
-		const { machine, port } = action;
-		process.stdout.write(
-			`browser: ${preferNamedEndpoint(`http://127.0.0.1:${port}/`, "sessions")}\nremote: ${machine.id} via Station-authorized SSH forwarding (${action.authorizationSessionId ?? "authorized"}; expires ${action.authorizationExpiresAt ?? "unknown"}; ${(action.auditTypes ?? []).join(", ") || "audited"})\nssh authentication: Station authorization gates ${action.identityAgent}; no key or token is copied\n`,
-		);
 		try {
-			const leaseMs = authorizationLeaseDelay(
-				action.authorizationExpiresAt ?? "",
+			process.exitCode = await forwardResidentSessions(
+				{
+					machine: action.machine,
+					port: action.port,
+					identityAgent: action.identityAgent,
+					...(action.authorizationSessionId !== undefined
+						? { authorizationSessionId: action.authorizationSessionId }
+						: undefined),
+					...(action.authorizationExpiresAt !== undefined
+						? { authorizationExpiresAt: action.authorizationExpiresAt }
+						: undefined),
+					...(action.auditTypes !== undefined
+						? { auditTypes: action.auditTypes }
+						: undefined),
+				},
+				signals,
 			);
-			process.exitCode = await new Promise<number>((resolve) => {
-				const child = spawn(
-					"ssh",
-					remoteSessionServeSshArgs(machine, port, action.identityAgent),
-					{
-						stdio: "inherit",
-					},
-				);
-				let expired = false;
-				let stoppedBy: NodeJS.Signals | undefined;
-				let hardStop: NodeJS.Timeout | undefined;
-				const stopSsh = (signal: NodeJS.Signals): void => {
-					child.kill(signal);
-					hardStop ??= setTimeout(() => child.kill("SIGKILL"), 5_000);
-				};
-				const expiration = setTimeout(() => {
-					expired = true;
-					stopSsh("SIGTERM");
-				}, leaseMs);
-				// A signal that ends hobo-code ends the forward, not the process
-				// straight away: ssh is stopped (it may have had the signal from
-				// the launcher's group already), and the authorization is closed
-				// below before hobo-code ends with 128+n.
-				const onSignal = (signal: NodeJS.Signals): void => {
-					stoppedBy ??= signal;
-					stopSsh(signal);
-				};
-				for (const signal of ENDING_SIGNALS) process.on(signal, onSignal);
-				const finish = (code: number): void => {
-					clearTimeout(expiration);
-					if (hardStop) clearTimeout(hardStop);
-					for (const signal of ENDING_SIGNALS) process.off(signal, onSignal);
-					resolve(code);
-				};
-				child.once("error", () => finish(1));
-				child.once("exit", (code, signal) =>
-					finish(
-						expired
-							? 124
-							: stoppedBy !== undefined
-								? 128 + osConstants.signals[stoppedBy]
-								: signal === "SIGINT"
-									? 130
-									: (code ?? 1),
-					),
-				);
-			});
 		} finally {
 			await action.closeAuthorization?.();
+			signals.release();
 		}
 	} else if (result.ok && action?.kind === "serve-sessions") {
 		const hoboHome =
@@ -374,4 +345,11 @@ if (argv[0] === "_station-agent") {
 	} else {
 		process.exitCode = result.exitCode;
 	}
+	// A signal held while the authorization was opened, which then went
+	// unused (the CLI failed after opening it, and closed it): it ends
+	// hobo-code now, as it would have, with the authorization closed.
+	if (signals.first !== undefined && action?.kind !== "forward-sessions") {
+		process.exitCode = signalStatus(signals.first);
+	}
+	signals.release();
 }

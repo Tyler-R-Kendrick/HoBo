@@ -374,6 +374,54 @@ describe("resident session remote browser", () => {
 		}
 	});
 
+	it("tells its caller just before it opens the Station authorization", async () => {
+		// The hobo-code entry holds the ending signals from there: until it
+		// listened, a signal ended the process with the authorization open.
+		const home = mkdtempSync(join(tmpdir(), "hobo-session-home-"));
+		const project = mkdtempSync(join(tmpdir(), "hobo-session-project-"));
+		writeFileSync(
+			join(project, DEV_MACHINES_FILE),
+			JSON.stringify({
+				machines: [
+					{
+						id: "build-box",
+						host: "build-box.ts.net",
+						isolationClass: "development",
+					},
+				],
+			}),
+		);
+		const order: string[] = [];
+		try {
+			const result = await runHoboCodeCli(
+				["session", "serve", "--host", "build-box", "--port", "4242"],
+				{
+					hoboHome: home,
+					cwd: project,
+					beforeAuthorization: () => order.push("hold signals"),
+					openStationGateway: async () => {
+						order.push("open the authorization");
+						return {
+							broker: {
+								registerTarget() {},
+								async brokerSession() {
+									throw new Error("policy denied");
+								},
+							},
+							auditTypes: () => ["pam.SessionDenied"],
+							close: async () => {},
+						};
+					},
+				},
+			);
+			expect(result.ok).toBe(false);
+			expect(order).toEqual(["hold signals", "open the authorization"]);
+		} finally {
+			rmSync(home, { recursive: true, force: true });
+			rmSync(project, { recursive: true, force: true });
+		}
+	});
+
 	it("refuses an undeclared machine before opening the Station gateway", async () => {
 		const home = mkdtempSync(join(tmpdir(), "hobo-session-home-"));
 		const project = mkdtempSync(join(tmpdir(), "hobo-session-project-"));

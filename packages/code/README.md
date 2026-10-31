@@ -884,7 +884,11 @@ into pane commands or remote hosts; a missing installed agent fails closed.
 session browser over SSH under such an authorization, and closes the
 authorization when the forward ends, however it ends: when ssh exits, or on
 SIGINT, SIGTERM, SIGHUP or SIGQUIT, which stop ssh first and then end
-hobo-code with 128+n.
+hobo-code with 128+n. hobo-code listens for those four from just before it
+opens the authorization (`src/signal-hold.ts`): a signal that comes while the
+authorization is being opened means ssh never starts, and one that comes
+while ssh is being started stops it once it has. Either way the authorization
+is closed before hobo-code ends.
 
 ## Package layout
 

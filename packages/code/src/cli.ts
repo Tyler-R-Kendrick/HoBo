@@ -168,6 +168,7 @@ import {
 	type ResourceKind,
 	recordDevDeployment,
 } from "./session-resources.js";
+import { type EndingSignalHold, letSignalsArrive } from "./signal-hold.js";
 import {
 	describeAuthedStationSession,
 	stationDevEnv,
@@ -387,12 +388,13 @@ export interface HoboCodeCliDeps {
 		context: Parameters<typeof openStationGateway>[0],
 	) => Promise<OpenedGateway>;
 	/**
-	 * Called just before `session serve --host` opens the Station authorization
-	 * its terminal action closes. The `hobo-code` entry holds the ending signals
-	 * from here (`src/signal-hold.ts`): with no listener, a signal's default
-	 * action ended the process with the authorization open.
+	 * The process's ending signals, which `session serve --host` and
+	 * `mux --host` hold from just before they open a Station authorization
+	 * (`src/signal-hold.ts`): with no listener, a signal's default action ended
+	 * the process with the authorization open. mux reads the first one held to
+	 * end what it opened; the `hobo-code` entry ends with 128+n afterwards.
 	 */
-	readonly beforeAuthorization?: () => void;
+	readonly signals?: Pick<EndingSignalHold, "hold" | "first">;
 	readonly muxRunner?: MuxRunner;
 	/** Injectable machine probes for `init` discovery (tests / harnesses). */
 	readonly machineProbes?: MachineDiscoveryProbes;
@@ -1737,6 +1739,12 @@ interface OpenedAuthorization {
  */
 const MUX_FAILED = "mux-failed";
 
+/**
+ * The reason recorded on `pam.SessionEnded` for a session `mux --host` still
+ * held when an ending signal stopped it before its panes held their sessions.
+ */
+const MUX_INTERRUPTED = "mux-interrupted";
+
 /** Close `gateway`, saying `reason` if any; the error, if closing failed. */
 async function closeAuthorization(
 	gateway: OpenedGateway,
@@ -2813,20 +2821,41 @@ export async function runHoboCodeCli(
 		// Every pane identity handed off is stopped below unless its pane was
 		// created, whatever ends the verb: a gateway that fails to close
 		// included, which used to skip this and leave the proxy running.
+		// The first ending signal held since mux --host began to open its Station
+		// authorization, once any already sent has reached the hold. mux stops
+		// at the next of these checks rather than open more than it must end.
+		const interruption = async (): Promise<NodeJS.Signals | undefined> => {
+			if (deps.signals === undefined) return undefined;
+			await letSignalsArrive();
+			return deps.signals.first;
+		};
+		const interrupted = (signal: NodeJS.Signals): HoboCodeCliResult =>
+			fail(
+				"HOBO_CODE_MUX_INTERRUPTED",
+				panel("✕ mux", [
+					`${signal} before the panes held their Station sessions`,
+					"Every session mux opened is ended; no pane keeps one.",
+				]),
+				[`hobo-code mux --host ${requestedHost ?? "<machine>"}`],
+				{ signal },
+			);
 		try {
 			if (resolvedMachine) {
+				deps.signals?.hold();
 				const gateway = await (deps.openStationGateway ?? openStationGateway)({
 					hoboHome,
 					stationId: platform.station.stationId,
 					isolationClass: resolvedMachine.isolationClass,
 				});
 				let failure: Error | undefined;
+				let signal: NodeJS.Signals | undefined;
 				try {
 					brokered = await brokerPanes(
 						placeable.map((a) => ({ machine: resolvedMachine, agentId: a.id })),
 						{ broker: gateway.broker, subject: "hobo-code", ttlSeconds: 3600 },
 					);
-					if (brokered.panes.length > 0) {
+					signal = await interruption();
+					if (signal === undefined && brokered.panes.length > 0) {
 						if (flags["dry-run"] === true) {
 							resolvedIdentities = brokered.panes.map((pane) => ({
 								pane: { ...pane, identityAgent: "<station-agent-socket>" },
@@ -2839,6 +2868,8 @@ export async function runHoboCodeCli(
 							resolvedIdentities = identities;
 							for (const pane of brokered.panes) {
 								identities.push(await gateway.handoffSshIdentity(pane));
+								signal = await interruption();
+								if (signal !== undefined) break;
 							}
 						}
 					}
@@ -2848,7 +2879,11 @@ export async function runHoboCodeCli(
 				}
 				const closeError = await closeAuthorization(
 					gateway,
-					failure === undefined ? undefined : MUX_FAILED,
+					failure !== undefined
+						? MUX_FAILED
+						: signal !== undefined
+							? MUX_INTERRUPTED
+							: undefined,
 				);
 				// A failure here is an answer, not a crash: the gateway is closed,
 				// and every proxy handed off is stopped by the cleanup below.
@@ -2868,6 +2903,7 @@ export async function runHoboCodeCli(
 						? withCloseFailure(answer, closeError)
 						: answer;
 				}
+				if (signal !== undefined) return interrupted(signal);
 				if (brokered === undefined) {
 					throw new Error("mux brokered no panes and reported no failure");
 				}
@@ -3000,6 +3036,10 @@ export async function runHoboCodeCli(
 							detail: "dry run — no tmux invoked",
 						}
 					: await applyMux(plan, deps.muxRunner ?? tmuxRunner());
+			// A signal held until now ends what mux opened rather than leave it
+			// to the panes: no proxy is retained, so the cleanup stops them all.
+			const signal = await interruption();
+			if (signal !== undefined) return interrupted(signal);
 			const created = new Set(applied.created);
 			if (flags["dry-run"] !== true) {
 				for (const identity of resolvedIdentities) {
@@ -3851,7 +3891,7 @@ export async function runHoboCodeCli(
 							);
 						}
 
-						deps.beforeAuthorization?.();
+						deps.signals?.hold();
 						const gateway = await (
 							deps.openStationGateway ?? openStationGateway
 						)({

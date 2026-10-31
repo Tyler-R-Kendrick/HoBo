@@ -3,7 +3,7 @@
  * browser over ssh, under the Station authorization the CLI opened for it.
  *
  * The entry point holds the ending signals from before that authorization is
- * opened (`beforeAuthorization`, `src/signal-hold.ts`) until it has closed the
+ * opened (the `signals` dep, `src/signal-hold.ts`) until it has closed the
  * authorization, once this returns. Here a signal ends the forward, not the
  * process: ssh is stopped (SIGKILL after 5 s if it holds on), and the status
  * is 128+n. A signal that came before the forward began, while the
@@ -11,14 +11,17 @@
  * no ssh.
  */
 import { spawn } from "node:child_process";
-import { setImmediate as nextTurn } from "node:timers/promises";
 import type { DevMachine } from "./dev-machines.js";
 import { preferNamedEndpoint } from "./occupancy-endpoints.js";
 import {
 	authorizationLeaseDelay,
 	remoteSessionServeSshArgs,
 } from "./resident-session-cli.js";
-import { type EndingSignalHold, signalStatus } from "./signal-hold.js";
+import {
+	type EndingSignalHold,
+	letSignalsArrive,
+	signalStatus,
+} from "./signal-hold.js";
 
 export interface SessionForward {
 	readonly machine: DevMachine;
@@ -45,17 +48,6 @@ const startSsh = (args: readonly string[]): StartedSsh =>
 /** How long ssh gets to end on the signal it was passed before it is killed. */
 const SSH_STOP_GRACE_MS = 5_000;
 
-/**
- * Let an ending signal sent while the process was busy (opening the
- * authorization) reach its listeners. Node hands a signal to them when the
- * event loop next polls, and two turns of `setImmediate` pass through at
- * least one poll wherever they start.
- */
-async function handleSignalsAlreadySent(): Promise<void> {
-	await nextTurn();
-	await nextTurn();
-}
-
 /** What the forward says where the browser is, before it starts ssh. */
 export function forwardBanner(forward: SessionForward): string {
 	return `browser: ${preferNamedEndpoint(`http://127.0.0.1:${forward.port}/`, "sessions")}\nremote: ${forward.machine.id} via Station-authorized SSH forwarding (${forward.authorizationSessionId ?? "authorized"}; expires ${forward.authorizationExpiresAt ?? "unknown"}; ${(forward.auditTypes ?? []).join(", ") || "audited"})\nssh authentication: Station authorization gates ${forward.identityAgent}; no key or token is copied\n`;
@@ -74,7 +66,9 @@ export async function forwardResidentSessions(
 	} = {},
 ): Promise<number> {
 	signals.hold();
-	await handleSignalsAlreadySent();
+	// One sent while the authorization was being opened, when the process was
+	// busy, may not have reached the hold yet.
+	await letSignalsArrive();
 	if (signals.first !== undefined) return signalStatus(signals.first);
 	const { machine, port } = forward;
 	(io.stdout ?? process.stdout).write(forwardBanner(forward));
@@ -120,7 +114,7 @@ export async function forwardResidentSessions(
 			// the two reach different threads. Let that signal reach its
 			// listener before the status is decided, or it was ssh's (1).
 			ended = true;
-			void handleSignalsAlreadySent().then(() =>
+			void letSignalsArrive().then(() =>
 				finish(
 					expired
 						? 124

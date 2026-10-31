@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import {
 	chmodSync,
 	existsSync,
@@ -35,6 +36,7 @@ import {
 	type ResolvedSshIdentity,
 } from "../src/machine-sessions.js";
 import type { MuxRunner } from "../src/mux.js";
+import { testEnv } from "./test-env.js";
 
 // `hobo-code mux --host <machine>` brokers a Station session per pane and
 // hands each to a resident SSH-agent proxy, a detached `_station-agent`
@@ -258,4 +260,124 @@ describe("mux --host, ending before its panes hold the leases", () => {
 		]);
 		expect(proxiesUnder(f.root)).toEqual([]);
 	}, 60_000);
+});
+
+/**
+ * A preload that sends this process `SIGTERM` at one point of mux: right
+ * after pam.SessionStarted is written, or as the first tmux command is
+ * started (by then a pane's session is with its proxy).
+ */
+const SIGNAL_AT = `import cp from "node:child_process";
+import fs from "node:fs";
+import { syncBuiltinESMExports } from "node:module";
+const at = process.env.SIGNAL_AT;
+let sent = false;
+const send = () => {
+	if (sent) return;
+	sent = true;
+	process.kill(process.pid, "SIGTERM");
+};
+const append = fs.appendFileSync;
+fs.appendFileSync = function (path, data, ...rest) {
+	const result = append.call(this, path, data, ...rest);
+	if (at === "session started" && String(path).endsWith("pam-audit.jsonl") && String(data).includes('"pam.SessionStarted"')) send();
+	return result;
+};
+const start = cp.spawn;
+cp.spawn = function (command, ...rest) {
+	if (at === "tmux" && command === "tmux") send();
+	return start.call(this, command, ...rest);
+};
+syncBuiltinESMExports();
+`;
+
+interface Ended {
+	readonly code: number | null;
+	readonly signal: NodeJS.Signals | null;
+	readonly output: string;
+}
+
+/** Run hobo-code's `mux --host box` as a process, signalled at `at`. */
+async function muxSignalled(
+	f: Fixture,
+	at: "session started" | "tmux",
+): Promise<Ended> {
+	const preload = join(f.root, "signal-at.mjs");
+	writeFileSync(preload, SIGNAL_AT);
+	const run = spawn(
+		process.execPath,
+		[
+			"--import",
+			preload,
+			ENTRY,
+			"mux",
+			"--host",
+			"box",
+			"--station",
+			STATION,
+			"--session",
+			"t",
+		],
+		{
+			cwd: f.project,
+			env: {
+				...testEnv({
+					PATH: `${f.bin}:/usr/bin:/bin`,
+					HOME: f.home,
+					HOBO_HOME: f.hoboHome,
+					TMPDIR: tmpdir(),
+					SSH_AUTH_SOCK: f.agentSocket,
+					NODE_NO_WARNINGS: "1",
+					SIGNAL_AT: at,
+				}),
+				// mux places agents only when seating is on.
+				HOBO_CODE_SEAT_AGENTS: "1",
+			},
+			stdio: ["ignore", "pipe", "pipe"],
+		},
+	);
+	let output = "";
+	run.stdout.on("data", (chunk) => {
+		output = `${output}${chunk}`;
+	});
+	run.stderr.on("data", (chunk) => {
+		output = `${output}${chunk}`;
+	});
+	const [code, signal] = await new Promise<
+		[number | null, NodeJS.Signals | null]
+	>((resolve) => run.once("close", (c, s) => resolve([c, s])));
+	return { code, signal, output };
+}
+
+describe("mux --host, signalled before its panes hold the leases", () => {
+	it("right after a session starts: ends it, closes the gateway, and ends by the signal", async () => {
+		const f = await fixture();
+		const ended = await muxSignalled(f, "session started");
+		expect(ended.signal, ended.output).toBeNull();
+		expect(ended.code, ended.output).toBe(143);
+		expect(ended.output).toContain("HOBO_CODE_MUX_INTERRUPTED");
+		expect(audit(f.hoboHome)).toEqual([
+			"pam.GatewayStarted",
+			"pam.SessionStarted",
+			"pam.SessionEnded(mux-interrupted)",
+			"pam.GatewayStopped",
+		]);
+		expect(proxiesUnder(f.root)).toEqual([]);
+		expect(f.sockets()).toEqual([]);
+	}, 90_000);
+
+	it("while tmux is set up, a pane's session with its proxy: stops the proxy, and ends by the signal", async () => {
+		const f = await fixture();
+		const ended = await muxSignalled(f, "tmux");
+		expect(ended.signal, ended.output).toBeNull();
+		expect(ended.code, ended.output).toBe(143);
+		expect(audit(f.hoboHome)).toEqual([
+			"pam.GatewayStarted",
+			"pam.SessionStarted",
+			"pam.GatewayStopped",
+			"pam.SessionEnded(launcher-stop)",
+		]);
+		expect(proxiesUnder(f.root)).toEqual([]);
+		expect(f.sockets()).toEqual([]);
+	}, 90_000);
 });

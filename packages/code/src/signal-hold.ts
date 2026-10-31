@@ -14,6 +14,7 @@
  * the one holding it decides what the signal ends, and when.
  */
 import { constants } from "node:os";
+import { setImmediate as nextTurn } from "node:timers/promises";
 import { ENDING_SIGNALS } from "../bin/ending-signals.mjs";
 
 /** The part of a process a hold listens on; `process` is one. */
@@ -70,6 +71,16 @@ export function endingSignalHold(
 			for (const signal of ENDING_SIGNALS) proc.off(signal, onSignal);
 		},
 	};
+}
+
+/**
+ * Let an ending signal sent while the process was busy reach its listeners.
+ * Node hands a signal to them when the event loop next polls, and two turns
+ * of `setImmediate` pass through at least one poll wherever they start.
+ */
+export async function letSignalsArrive(): Promise<void> {
+	await nextTurn();
+	await nextTurn();
 }
 
 /** A process's status when signal `signal` ended it: 128+n, as a shell reports it. */

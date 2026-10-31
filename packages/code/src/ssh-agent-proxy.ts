@@ -324,6 +324,10 @@ export async function startResidentSshAgentProxy(
 	return {
 		socketPath: payload.socketPath,
 		async stop() {
+			// Unreferenced so a launcher that keeps it can end; one that stops it
+			// waits for its exit (its pam.SessionEnded), which an unreferenced
+			// child left to an event loop that could end first.
+			child.ref();
 			if (child.exitCode === null) child.kill("SIGTERM");
 			await exit;
 		},

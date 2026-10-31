@@ -398,7 +398,12 @@ describe("resident session remote browser", () => {
 				{
 					hoboHome: home,
 					cwd: project,
-					beforeAuthorization: () => order.push("hold signals"),
+					signals: {
+						hold: () => {
+							order.push("hold signals");
+						},
+						first: undefined,
+					},
 					openStationGateway: async () => {
 						order.push("open the authorization");
 						return {

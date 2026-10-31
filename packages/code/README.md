@@ -890,7 +890,11 @@ Only the proxies of the panes mux created stay. If mux fails before then (a
 proxy that does not start, a gateway that does not close), it answers with
 `HOBO_CODE_MUX_AUTHORIZATION_FAILED`, stops every proxy it handed off, each
 writing its `pam.SessionEnded`, and ends any session the gateway still held
-with the reason `mux-failed`.
+with the reason `mux-failed`. Like `session serve --host` below, mux holds
+SIGINT, SIGTERM, SIGHUP and SIGQUIT from just before it opens the
+authorization: one that comes before the panes hold their sessions ends mux
+with `HOBO_CODE_MUX_INTERRUPTED`, and hobo-code with 128+n, once every proxy
+is stopped and the gateway has ended what it held with `mux-interrupted`.
 
 `hobo-code session serve --host <machine> --port <n>` forwards the resident
 session browser over SSH under such an authorization, and closes the

@@ -187,16 +187,12 @@ if (argv[0] === "_station-agent") {
 		process.exitCode = await launchProductShell({ dense });
 	}
 } else {
-	// `session serve --host` opens a Station authorization that the forward
-	// below closes. The ending signals are held from just before it is opened
-	// until it is closed, so that none ends hobo-code with it open
-	// (src/signal-hold.ts).
+	// `session serve --host` and `mux --host` open a Station authorization.
+	// The ending signals are held from just before it is opened until what was
+	// opened is closed or handed over (the forward below closes its own), so
+	// that none ends hobo-code with it open (src/signal-hold.ts).
 	const signals = endingSignalHold();
-	const result = await runHoboCodeCli(argv, {
-		json,
-		dense,
-		beforeAuthorization: () => signals.hold(),
-	});
+	const result = await runHoboCodeCli(argv, { json, dense, signals });
 	process.stdout.write(formatHoboCodeResult(result, { json, dense }));
 	const action =
 		result.data && isJsonObject(result.data)

@@ -224,7 +224,7 @@ const KNOB_DEFS: readonly KnobDef[] = [
 		kind: "env",
 		stacks: ["harness-pi-flue", "agent-native"],
 		purpose:
-			"Seat the agent CLIs found on PATH in the shell's tmux panes (0, false, no or off: no seats, no tmux session)",
+			"Seat the agent CLIs found on PATH in tmux, from the shell's panes and mux (0, false, no or off: no seats, no tmux session)",
 		example: "0",
 		secret: false,
 	},

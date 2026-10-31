@@ -353,7 +353,8 @@ for runtimes the SDK does not ship yet. CLI plugins carry `runtime.prompt`
 one-shot argv so Cursor/Copilot/Gemini/Aider/Goose still run without a
 builtin SDK package. TTY seating still uses mux. `HOBO_CODE_SEAT_AGENTS=0`
 (or `false`, `no`, `off`) turns seating off: the shell then starts no tmux
-session and no agent CLI. `hobo-code config` lists it.
+session and no agent CLI, and neither does `hobo-code mux`, which answers that
+seating is off. `hobo-code config` lists it.
 Programmatic turns use `createHarnessV1(spec)` or `createHarnessAgent(spec)`
 (AI SDK `HarnessAgent` + just-bash for host adapters; bridge adapters need
 an injected network sandbox).
@@ -923,9 +924,11 @@ the checkout being committed. It also gives each test file a tmux server of its
 own (`TMUX_TMPDIR` under the test TMPDIR, `TMUX` cleared, and the server on that
 socket killed after the file, by the socket's path) and sets
 `HOBO_CODE_SEAT_AGENTS=0`, so no test reaches the developer's tmux or starts
-their agent CLIs (`test/isolate-tmux.ts`). A test that starts a process with an
-environment of its own builds it with `testEnv` (`test/test-env.ts`), which
-carries both. Tests still set those variables explicitly for
+their agent CLIs, from the shell's panes or from `mux` (`test/isolate-tmux.ts`).
+A test that starts a process or runs a verb with an environment of its own
+builds it with `testEnv` (`test/test-env.ts`), which carries both; the verb
+sweep (`cli-verb-sweep.test.ts`) also fails if a verb left a process working
+in its HOBO_HOME. Tests still set those variables explicitly for
 their own temporary repositories. Set `HOBO_TEST_MAX_WORKERS` to bound Vitest
 workers on slow or memory-constrained hosts and `HOBO_TEST_TIMEOUT` to adjust
 the default per-test and hook budgets. Turbo's strict environment passes both

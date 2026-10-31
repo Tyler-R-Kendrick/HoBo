@@ -95,6 +95,7 @@ import {
 } from "./harness-surface.js";
 import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
 import { runAliasCli, runHistoryCli } from "./history-cli.js";
+import { agentSeatingEnabled } from "./in-session-panes.js";
 import {
 	cleanupIsolation,
 	createIsolationContext,
@@ -2697,6 +2698,18 @@ export async function runHoboCodeCli(
 			return ok("HOBO_CODE_MUX", output, {
 				sessions: output.split("\n").filter((line) => line.length > 0),
 			});
+		}
+		// With agent seating off, mux, like the shell's own panes, starts no
+		// agent CLI: no tmux session, no workspace, no Station authorization.
+		if (!agentSeatingEnabled(env)) {
+			return ok(
+				"HOBO_CODE_MUX",
+				panel("mux", [
+					`agent seating is off (HOBO_CODE_SEAT_AGENTS=${env.HOBO_CODE_SEAT_AGENTS?.trim() ?? ""})`,
+					"no agent CLI and no tmux session were started",
+				]),
+				{ seating: false },
+			);
 		}
 		const probes = defaultProbes(env);
 		const agents = detectAgents(probes);

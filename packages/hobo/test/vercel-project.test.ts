@@ -411,26 +411,27 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 		});
 	});
 
-	it("cuts the 409 note only when it alone is longer than 500 characters", async () => {
+	it("cuts a long 409 reason at 200 characters, so the deployment refusal survives", async () => {
 		const { fetch } = scripted({
 			[DEPLOY]: [PROJECT_NOT_FOUND, PROJECT_NOT_FOUND],
 			[CREATE]: [
-				reply(409, { error: { code: "conflict", message: "y".repeat(5000) } }),
+				reply(409, { error: { code: "conflict", message: "y".repeat(2000) } }),
 			],
 		});
 		const provider = createVercelDeployProvider({ token: "tok", fetch });
 
-		const message = await provider
-			.apply(programFor("dep-1"))
-			.catch((error: Error) => error.message);
+		const pending = provider.apply(programFor("dep-1"));
 
-		expect(message).toHaveLength(501);
-		expect(
-			message.startsWith(
-				"(after create project was answered HTTP 409 conflict: yyy",
-			),
-		).toBe(true);
-		expect(message.endsWith("…")).toBe(true);
+		const message = await pending.catch((error: Error) => error.message);
+		expect(message).toBe(
+			`vercel-client: create deployment failed (HTTP 404): {"error":{"code":"not_found","message":"Project not found"}} (after create project was answered HTTP 409 conflict: ${"y".repeat(200)}…)`,
+		);
+		expect(message.length).toBeLessThanOrEqual(501);
+		await expect(pending).rejects.toMatchObject({
+			status: 404,
+			code: "not_found",
+			apiMessage: "Project not found",
+		});
 	});
 
 	it("propagates a refused create as a VercelApiError, and deploys no more", async () => {

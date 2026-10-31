@@ -354,14 +354,24 @@ refused rather than shadowed.
 - **`preview` never claims zero changes it did not verify.** `IacDiff.changes`
   is a bare count with no "unknown", so a preview that could not look reports
   `RESOLVER_PREVIEW_UNDETERMINED` (`-1`) and says so in the summary. It reports
-  `0` only when every declared parameter was observed *and* matched. A resolver
-  with no `read()` is always undetermined; so is a declared parameter the
-  provider's read surface has no counterpart for (the change count is then a
-  lower bound, and the summary says so).
+  `0` only when every declared parameter was observed *and* matched, except a
+  **directive** that `read()` reports nothing for. A directive is a parameter
+  the resolver lists in `ResourceResolver.directives` because it says how apply
+  or delete acts rather than what the resource is (`restoreScheduled`,
+  `forceDelete`; ADR-0175). Such a key is left out of the comparison, and the
+  summary names it ("every compared declared parameter matches … Not compared:
+  restoreScheduled …"). A directive key that `read()` does report is compared
+  like any other. A resolver with no `read()` is always undetermined; so is a
+  declared parameter that is not a directive and that the provider's read
+  surface has no counterpart for (the change count is then a lower bound, and
+  the summary says so).
 - **`refresh` errs toward drift.** `IacDriftReport.drift` is a boolean with no
   "unknown" and `drift: false` is the claim "I looked and it matches", so
   anything unverified is reported as drift with
-  `hobo.resolver.drift.determined = "false"` and a reason.
+  `hobo.resolver.drift.determined = "false"` and a reason. The one exception is
+  the same as preview's: a directive that `read()` reports nothing for is not
+  state, so it is left out and named in `hobo.resolver.drift.reason` ("Not
+  compared: …") instead of turning the report into drift.
 - **No state of its own.** This driver threads no `physicalId`, so convergence
   rests entirely on each resolver's deterministic-name lookup. The visible
   consequence is that a re-apply reports `adopt` rather than `noop` — honest,

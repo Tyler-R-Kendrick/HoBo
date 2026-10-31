@@ -1762,18 +1762,57 @@ function canonicalFraction(digits: string): string {
 	return fraction;
 }
 
+/** The years 0000 to 9999 in epoch seconds: from the first second, up to the end. */
+const FIRST_SECOND = -62167219200n;
+const END_SECOND = 253402300800n;
+
 /**
- * Epoch seconds, AWS's JSON-protocol timestamp, as the canonical instant. A
- * binary number carries no more than milliseconds reliably, and AWS writes no
- * more (`1523477145.729`), so it is rounded to the millisecond. `undefined`
- * outside the years 0000 to 9999, or for a value that is not a finite number.
+ * A JSON number (RFC 8259 section 6) in decimal parts: sign, whole digits,
+ * fraction digits, exponent. Bounded at 40 digits a part and three exponent
+ * digits, far past any epoch seconds in the years 0000 to 9999, so the exact
+ * arithmetic below stays small.
  */
-function instantFromEpochSeconds(seconds: number): string | undefined {
-	const ms = Math.round(seconds * 1000);
-	if (!Number.isFinite(ms) || ms < FIRST_INSTANT_MS || ms > LAST_INSTANT_MS) {
+const JSON_NUMBER =
+	/^(-?)(0|[1-9]\d{0,39})(?:\.(\d{1,40}))?(?:[eE]([+-]?\d{1,3}))?$/u;
+
+/**
+ * Epoch seconds, AWS's JSON-protocol timestamp, as the canonical instant,
+ * computed from the number's decimal text, not from the binary double it
+ * parses to (which would make `1523477145.72949999` round as `.7295`).
+ *
+ * The exact value must lie in the years 0000 to 9999 before it is rounded, so
+ * `-62167219200.0004` is refused. It is then rounded half up, toward +∞, to
+ * the millisecond: `.7295` is `.730`, and `-1.0005` is `-1.000`. The rounded
+ * instant must still be in 9999, so `253402300799.9995` is refused. AWS writes
+ * at most milliseconds (`1523477145.729`). `undefined` for anything else,
+ * including text that is not a JSON number (`Infinity`).
+ */
+function instantFromEpochSeconds(text: string): string | undefined {
+	const match = JSON_NUMBER.exec(text);
+	if (match === null) return undefined;
+	const exponent = Number(match[4] ?? "0");
+	if (Math.abs(exponent) > 40) return undefined;
+	const fraction = match[3] ?? "";
+	// The value is exactly digits / 10^scale.
+	const digits = BigInt(`${match[1] ?? ""}${match[2] ?? "0"}${fraction}`);
+	const scale = fraction.length - exponent;
+	const whole = Math.max(scale, 0);
+	const scaled = digits * 10n ** BigInt(whole - scale);
+	const unit = 10n ** BigInt(whole);
+	if (scaled < FIRST_SECOND * unit || scaled >= END_SECOND * unit) {
 		return undefined;
 	}
-	return new Date(ms).toISOString();
+	const msScale = scale - 3;
+	let ms = digits * 10n ** BigInt(Math.max(-msScale, 0));
+	if (msScale > 0) {
+		const divisor = 10n ** BigInt(msScale);
+		const floor =
+			digits >= 0n ? digits / divisor : -((-digits + divisor - 1n) / divisor);
+		const halfOrMore = 2n * (digits - floor * divisor) >= divisor;
+		ms = floor + (halfOrMore ? 1n : 0n);
+	}
+	if (ms > BigInt(LAST_INSTANT_MS)) return undefined;
+	return new Date(Number(ms)).toISOString();
 }
 
 /**
@@ -1890,20 +1929,25 @@ function parseDeletedDate(
 ): string | undefined {
 	const value = described.record.DeletedDate;
 	if (value === undefined || value === null) return undefined;
-	const instant = isJsonNumber(value)
-		? instantFromEpochSeconds(value)
-		: isJsonString(value)
-			? instantFromRfc3339(value)
-			: undefined;
+	// A number is read from its decimal text, as the response wrote it; a
+	// runtime without JSON.parse source text access falls back to the number's
+	// shortest decimal form.
+	const numberText = isJsonNumber(value)
+		? (memberSource(described.body, "DeletedDate") ?? String(value))
+		: undefined;
+	const instant =
+		numberText !== undefined
+			? instantFromEpochSeconds(numberText)
+			: isJsonString(value)
+				? instantFromRfc3339(value)
+				: undefined;
 	if (instant !== undefined) return instant;
 	// A number is quoted as the response wrote it, because JSON.parse cannot
 	// hold every number (1e400 reads back as Infinity and is written as null)
 	// and a number's text has no escapes. Anything else is quoted as the value
 	// it parsed to: its source text could spell a credential in \u escapes,
 	// which neither the exact-match nor the token scrub would see.
-	const written = isJsonNumber(value)
-		? (memberSource(described.body, "DeletedDate") ?? JSON.stringify(value))
-		: JSON.stringify(value);
+	const written = numberText ?? JSON.stringify(value);
 	const leapSecond =
 		isJsonString(value) && RFC3339_DATE_TIME.exec(value)?.[6] === "60";
 	const what = leapSecond

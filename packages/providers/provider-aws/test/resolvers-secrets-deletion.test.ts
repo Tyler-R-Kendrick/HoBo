@@ -818,6 +818,53 @@ describe("DeletedDate as a provider answers it", () => {
 		expect(refusal?.message).not.toContain(credential.slice(0, 12));
 	});
 
+	// Epoch seconds are read from the number's decimal text: the double
+	// 1523477145.72949999 parses to is 1523477145.7295, which would round up.
+	// The exact value is bounded to 0000-9999 before rounding (half up, toward
+	// +∞), and the rounded instant must still fall in 9999.
+	it.each([
+		["1523477145.72949999", "2018-04-11T20:05:45.729Z", "just under a half"],
+		["1523477145.7295", "2018-04-11T20:05:45.730Z", "a half, rounded up"],
+		[
+			"1.524085349095E9",
+			"2018-04-18T21:02:29.095Z",
+			"an exponent, as AWS writes one",
+		],
+		[
+			"-1.0005",
+			"1969-12-31T23:59:59.000Z",
+			"a negative half, rounded toward +∞",
+		],
+		["-62167219200", "0000-01-01T00:00:00.000Z", "the first second of 0000"],
+		[
+			"253402300799.9994",
+			"9999-12-31T23:59:59.999Z",
+			"the last millisecond of 9999",
+		],
+	])("reads the epoch-seconds text %s as %s (%s)", async (raw, instant) => {
+		const runner = harness(liveSecret(), { rawDeletedDate: raw });
+
+		const observed = await runner.read();
+
+		expect(observed?.outputs.deletedDate).toBe(instant);
+	});
+
+	it.each([
+		["-62167219200.0004", "before 0000, though it rounds into it"],
+		["253402300799.9995", "in 9999, but it rounds into 10000"],
+		["253402300800", "the first second of 10000"],
+		["1e41", "an exponent past the bound"],
+	])("refuses the epoch-seconds text %s (%s)", async (raw) => {
+		const runner = harness(liveSecret(), { rawDeletedDate: raw });
+
+		const refusal = await refusalOf(runner.read());
+
+		expect(refusal instanceof ResolverError ? refusal.code : "").toBe(
+			"RESOLVER_OUTPUT_UNPARSEABLE",
+		);
+		expect(refusal?.message).toContain(`AWS returned a DeletedDate (${raw})`);
+	});
+
 	// The reviver sees a nested DeletedDate (inside Tags here) before the
 	// top-level one, so the quote must come from the member whose holder is the
 	// body itself. Numbers only: a string is never quoted by its source.

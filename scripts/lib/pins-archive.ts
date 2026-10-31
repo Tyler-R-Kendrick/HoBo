@@ -9,8 +9,9 @@
  *
  * Nothing else in the archive is written anywhere, and no name in the archive
  * ever becomes a path: the member's bytes go to the cache path the pin's
- * `entry` names, so a member called `../../.bashrc` or `/etc/passwd` can only
- * fail to match. What the reader accepts and refuses is `pins-tar.ts`; here:
+ * `entry` names. A name such as `../../.bashrc` or `/etc/passwd` is refused
+ * outright. What the reader accepts and refuses, and why, is `pins-tar.ts`;
+ * here:
  *
  * - inflating stops at the archive's end blocks (the file is still read to
  *   its end, to hash it), so bytes past the end are never decompressed;

@@ -20,8 +20,9 @@
  * The member's path must be a file in a tree of directories: an entry under
  * the member (`mirror/x`, a directory `mirror/sub/`) makes `tar` turn the
  * member into a directory, and anything but a directory at one of its parents
- * (a file or FIFO `bin` above `bin/mirror`) leaves `tar` nowhere to put it.
- * Both are refused. Directories elsewhere, and above the member, are read.
+ * (a file or FIFO `bin` beside `bin/mirror`) cannot be extracted with it:
+ * `tar` fails on one of the two. Both are refused. Directories elsewhere, and
+ * above the member, are read.
  *
  * A GNU header (`ustar  \0`) is refused, and so is any other magic. Where
  * POSIX keeps a name prefix (bytes 345 to 500), a GNU header keeps times and
@@ -327,7 +328,7 @@ export class TarScan {
 		if (type !== "5" && this.#member.startsWith(`${name}/`)) {
 			throw new PinsError(
 				"ARCHIVE_UNSAFE",
-				`${this.#archive} has a ${kind} at ${name}, where ${this.#member} needs a directory, so tar cannot put the member there; refusing it`,
+				`${this.#archive} has a ${kind} at ${name}, where ${this.#member} needs a directory, so tar cannot extract both; refusing it`,
 			);
 		}
 	}

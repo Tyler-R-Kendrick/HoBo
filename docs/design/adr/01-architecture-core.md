@@ -907,13 +907,19 @@ Before this decision one sibling was pinned, by a gitlink, and obtained by a com
   - **One read.** The archive is read once. Every compressed byte is hashed as it streams, and the member is kept only if those bytes hash to the pin, so the bytes unpacked are the bytes verified.
   - **Inflating stops at the end blocks.** Inflating stops at the archive's two end-of-archive blocks, and entries after them are not read, as `tar` does not read them. The file is still read to its end, to hash it.
   - **How the member is written.** Its bytes go to the pin's `entry` through a private partial file (`O_CREAT|O_EXCL`, `0600`); they are fsynced, made `0755` through the descriptor and renamed into place.
-  - **No name becomes a path.** `../../.bashrc` or `/etc/passwd` can only fail to match, and nothing else in the archive is written. Names are compared as `tar` writes them out: repeated slashes collapsed, any leading `./` and a trailing `/` removed.
-- **The refusals.** Each leaves nothing at `entry`:
-  - a member the archive does not hold, or holds twice, including the same name spelled two ways (`mirror` and `.//mirror`);
-  - a member that is not a regular file: a hard or symbolic link, a device, a directory, a FIFO;
-  - any entry whose type is not a regular file (`0` or the old `\0`) or one of the data-less types `1` to `6`. A `7` contiguous file, a GNU `D` dumpdir or `S` sparse file carries data that `tar` reads as that entry's own; a reader that skipped it, or parsed it as headers, would find a member `tar` never extracts. GNU tar 1.35 lists such an archive as the one decoy entry. Pax and GNU long-name headers (`x`, `g`, `L`, `K`) rename the entry after them, and are refused for the same reason;
-  - a data-less entry (`1` to `6`) that claims data;
-  - a header without the ustar magic (POSIX `ustar\0` or GNU `ustar `);
+  - **No name becomes a path.** Only the member's bytes are written, and only to `entry`. A name is compared byte for byte with `member`, in the one spelling that GNU tar both extracts as written and finds when asked for it by name (`tar -xzf A mirror`); an entry spelled any other way is refused, as the list below says.
+- **The refusals.** Each leaves nothing at `entry`. They exist so that the reader never names other bytes than `tar -xzf` leaves at the member, whether `tar` extracts the whole archive or only the member. Where only some entries of a kind are dangerous (links, GNU headers), the whole kind is refused, since mirror's archives use none. `scripts/test/pins-archive-tar.test.ts` extracts every crafted case with the system `tar` (GNU tar 1.35 here) and checks the reader's answer against it:
+  - a member the archive does not hold, or holds twice;
+  - a member that is not a regular file: a device, a directory, a FIFO;
+  - an entry whose name, prefix included, starts with `/`, since tar strips the `/` and `/mirror` overwrites `mirror`;
+  - an entry with a `..` segment, which tar will not extract;
+  - an entry with a `.` or empty segment (`./mirror`, `bin//mirror`, `bin/./mirror`). Tar extracts it where the plain name goes, so it can overwrite the member, but `tar -xzf A mirror` does not find it;
+  - a regular file whose name ends in `/`, which tar extracts as a directory;
+  - a hard or symbolic link (`1`, `2`) anywhere in the archive. `d -> .` makes `d/mirror` overwrite `mirror`, and `bin -> real` makes `real/mirror` overwrite `bin/mirror`; mirror's archives hold no link;
+  - an entry under the member (`mirror/x`, a directory `mirror/sub/`), which makes tar turn the member into a directory or fail, and anything but a directory at one of the member's parents (a file or FIFO `bin` beside `bin/mirror`), since tar cannot extract both and fails on one. Directories above the member, and devices, FIFOs and directories elsewhere, are read;
+  - any entry whose type is not a regular file (`0` or the old `\0`) or one of the data-less types `3` to `6`. A `7` contiguous file, a GNU `D` dumpdir or `S` sparse file carries data that `tar` reads as that entry's own; a reader that skipped it, or parsed it as headers, would find a member `tar` never extracts. GNU tar 1.35 lists such an archive as the one decoy entry. Pax and GNU long-name headers (`x`, `g`, `L`, `K`) rename the entry after them, and are refused for the same reason;
+  - a data-less entry that claims data;
+  - a header whose magic is not POSIX `ustar\0`: a v7 header, or a GNU one (`ustar  \0`). Where POSIX keeps a name prefix, a GNU header keeps times, and tar never reads a name there; mirror's archives are made with `tar --format=ustar`;
   - a header whose checksum is wrong, a single zero block followed by an entry, a truncated archive, or a corrupt gzip;
   - a member over 2 GiB;
   - archive bytes that do not hash to the pin;

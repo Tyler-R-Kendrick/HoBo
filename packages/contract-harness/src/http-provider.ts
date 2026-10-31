@@ -269,7 +269,9 @@ export function exchangeHttp(
 		);
 	}
 	const base = new URL(parsed.baseUrl);
-	const where = `${request.method} ${parsed.baseUrl}${request.path}`;
+	// The path without its query: a query can carry a token, and this text
+	// ends up in error messages and test reports.
+	const where = `${request.method} ${parsed.baseUrl}${request.path.split("?", 1)[0]}`;
 	const timeoutMs = parsed.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 	const cap = parsed.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
 	const tls = base.protocol === "https:";

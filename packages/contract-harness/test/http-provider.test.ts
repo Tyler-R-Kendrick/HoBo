@@ -281,6 +281,59 @@ describe("exchangeHttp", () => {
 	});
 });
 
+describe("what an exchange's refusal says about the request", () => {
+	const SECRET = "tok_query_secret_8c1f";
+
+	it("names the path and drops the query, so a token in it never reaches an error message", async () => {
+		const port = await closedPort();
+		const slow = await listen(() => {
+			// Never answer: the deadline is what is under test.
+		});
+		const big = await listen((_seen, response) => {
+			response.writeHead(200, { "content-type": "text/plain" });
+			response.end("x".repeat(4096));
+		});
+		const path = `/v9/projects?teamId=t&token=${SECRET}`;
+		const refusals = [
+			{
+				code: "HTTP_PROVIDER_UNREACHABLE",
+				attempt: () =>
+					exchangeHttp(
+						{ baseUrl: `http://127.0.0.1:${port}` },
+						{ method: "GET", path },
+					),
+			},
+			{
+				code: "HTTP_PROVIDER_TIMEOUT",
+				attempt: () =>
+					exchangeHttp(
+						{ baseUrl: slow.baseUrl, timeoutMs: 50 },
+						{ method: "GET", path },
+					),
+			},
+			{
+				code: "HTTP_PROVIDER_RESPONSE_TOO_LARGE",
+				attempt: () =>
+					exchangeHttp(
+						{ baseUrl: big.baseUrl, maxResponseBytes: 1024 },
+						{ method: "GET", path },
+					),
+			},
+		];
+
+		for (const { code, attempt: start } of refusals) {
+			const attempt = start();
+			await expect(attempt).rejects.toMatchObject({ code });
+			// The path, then a space: nothing of the query follows it.
+			await expect(attempt).rejects.toThrow(
+				/ GET http:\/\/127\.0\.0\.1:\d+\/v9\/projects /u,
+			);
+			await expect(attempt).rejects.not.toThrow(SECRET);
+			await expect(attempt).rejects.not.toThrow("teamId");
+		}
+	});
+});
+
 describe("parseHttpProviderTarget", () => {
 	it.each([
 		[{ name: "Ok", baseUrl: "ftp://127.0.0.1:1" }, /http or https/u],

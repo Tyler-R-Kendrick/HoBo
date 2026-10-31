@@ -196,14 +196,18 @@ function entryPath(raw: string, type: string, archive: string): string {
 
 /**
  * A name as a case-insensitive, normalisation-insensitive file system sees it:
- * its bytes read as UTF-8, put in NFC and case-folded. Folding is
- * `toUpperCase().toLowerCase()`, which joins more names than macOS or Windows
- * do (`ß` with `ss`), and bytes that are not UTF-8 all read as U+FFFD; both
- * can only refuse more.
+ * its bytes read as UTF-8, put in NFC and case-folded by
+ * `toLowerCase().toUpperCase().toLowerCase()`. That joins every pair Unicode's
+ * full case folding joins under canonical equivalence (`ẞ`, `ß` and `ss`, as
+ * Linux casefold directories and APFS do) and every pair NTFS's simple
+ * uppercase joins; `pins-archive-fold.test.ts` checks both for every code
+ * point against a Unicode 15.1 table. It also joins some names those keep
+ * apart (`ı` with `i`), and bytes that are not UTF-8 all read as U+FFFD: both
+ * only refuse more.
  */
 export function foldName(name: string): string {
 	const text = Buffer.from(name, "latin1").toString("utf8").normalize("NFC");
-	return text.toUpperCase().toLowerCase().normalize("NFC");
+	return text.toLowerCase().toUpperCase().toLowerCase().normalize("NFC");
 }
 
 function parseHeader(block: Buffer, archive: string): TarHeader {

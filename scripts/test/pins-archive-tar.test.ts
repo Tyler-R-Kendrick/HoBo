@@ -379,6 +379,15 @@ const CASES: readonly Case[] = [
 		reader: "ARCHIVE_UNSAFE",
 	},
 	{
+		what: "ssh, then \u1e9eH (capital sharp s), one file under full case folding",
+		entries: [
+			{ name: "ssh", body: GOOD },
+			{ name: utf8("\u1e9eH"), body: EVIL },
+		],
+		member: "ssh",
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
 		what: "MIRROR/x, then mirror",
 		entries: [
 			{ name: "MIRROR/x", body: EVIL },

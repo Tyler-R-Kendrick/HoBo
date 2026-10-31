@@ -31,7 +31,12 @@ export function launcherSignals(platform) {
  * session of its own, so that whatever it started without detaching (a
  * `/hobo` command, the `--pi` TUI, `tmux attach`, `ssh`) gets the signal too.
  * Sent to the child alone, the signal orphaned them wherever the child had no
- * handler for it. A child that leads no such group, or is gone, gets it alone.
+ * handler for it. When the group cannot be signalled (ESRCH: the child leads
+ * none, or is gone; or any other failure), the child gets it alone.
+ *
+ * This runs in the launcher's signal handler, so it never throws: a throw
+ * there ended the launcher before its child, and passed the signal on to no
+ * one.
  *
  * @param {{ readonly pid?: number | undefined; kill(signal: NodeJS.Signals): unknown }} child
  * @param {NodeJS.Signals} signal
@@ -45,8 +50,13 @@ export function forwardSignal(
 	if (child.pid === undefined) return;
 	try {
 		kill(-child.pid, signal);
-	} catch (error) {
-		if (error?.code !== "ESRCH") throw error;
+		return;
+	} catch {
+		// The group could not be signalled: the child alone, below.
+	}
+	try {
 		child.kill(signal);
+	} catch {
+		// Nothing is left to pass the signal on to.
 	}
 }

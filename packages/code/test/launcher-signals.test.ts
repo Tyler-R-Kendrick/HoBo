@@ -62,13 +62,29 @@ describe("how hobo-code's launcher passes a signal on", () => {
 		expect(target.killed).toEqual(["SIGHUP"]);
 	});
 
-	it("lets any other failure through", () => {
+	it("signals the child alone on any other failure, and never throws", () => {
+		// It runs in the launcher's signal handler: a throw there ended the
+		// launcher before its child, with the signal passed on to no one.
 		const target = child();
 		expect(() =>
 			forwardSignal(target, "SIGINT", () => {
 				throw Object.assign(new Error("kill EPERM"), { code: "EPERM" });
 			}),
-		).toThrow("EPERM");
-		expect(target.killed).toEqual([]);
+		).not.toThrow();
+		expect(target.killed).toEqual(["SIGINT"]);
+	});
+
+	it("never throws when the child cannot be signalled alone either", () => {
+		const target = {
+			pid: 4242,
+			kill: (): never => {
+				throw Object.assign(new Error("kill ENOSYS"), { code: "ENOSYS" });
+			},
+		};
+		expect(() =>
+			forwardSignal(target, "SIGHUP", () => {
+				throw Object.assign(new Error("kill EPERM"), { code: "EPERM" });
+			}),
+		).not.toThrow();
 	});
 });

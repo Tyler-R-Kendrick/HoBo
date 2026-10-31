@@ -44,8 +44,8 @@
  *   cannot see: a path assembled across files or behind a name, one with no
  *   literal anchor, and what a child process loads. Every test task that loads a declared file must have those builds, and a
  *   declaration no test task reaches, that names no workspace package, or
- *   that names no build of a package other than the file's own (an empty
- *   `needs`), fails too, as does a file declared twice, and one whose needs
+ *   whose needs name no package other than that of some task that loads the
+ *   file (an empty `needs`), fails too, as does a file declared twice, and one whose needs
  *   leave out a package the reader sees it reach (a need the reader sees no
  *   reach for may stand: it cannot see every reach). A path rooted at a
  *   temporary directory is a stub tree, and needs no build; a file whose only
@@ -892,12 +892,21 @@ export function scanTestWorkspaceDeps(
 				`"${from}" reaches ${name} ("${shownPath(text)}"), and its entry does not name "${name}#build"`,
 			);
 		// An entry that needs nothing of another package's would silence the
-		// reach it declares: a task builds its own package anyway.
-		const own = owner(from)?.name;
+		// reach it declares: a task builds its own package anyway. A need counts
+		// where it is another package for at least one task that loads the file
+		// (a's test helper, which b's test loads too, may need @s/a#build).
+		const loaders = new Set(
+			[...(running.get(from) ?? [])].map((key) => tasks.get(key)!.pkg.name),
+		);
+		if (loaders.size === 0) loaders.add(owner(from)?.name ?? "");
 		if (
 			!needs.some((need) => {
 				const name = neededBuild(need);
-				return name !== undefined && byName.has(name) && name !== own;
+				return (
+					name !== undefined &&
+					byName.has(name) &&
+					[...loaders].some((loader) => loader !== name)
+				);
 			})
 		)
 			staleness(

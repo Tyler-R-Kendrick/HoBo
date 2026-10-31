@@ -1584,6 +1584,68 @@ describe("checkTestWorkspaceDeps", () => {
 		);
 	});
 
+	it("counts a need on a file's own package where another package's test loads the file", () => {
+		// packages/a/test/helpers.ts, which a#test and b#test both load.
+		const helper = (
+			target: string,
+			needs: string[] | undefined,
+			tasks: Record<string, { dependsOn?: string[] }>,
+		) => {
+			const files = {
+				...base,
+				"turbo.json": turbo(tasks),
+				"packages/a/package.json": manifest("@s/a"),
+				"packages/b/package.json": manifest("@s/b"),
+				"packages/hobo/package.json": manifest("@s/hobo"),
+				"packages/a/test/helpers.ts": `${SPAWN}${JOIN}export const run = (root: string) => spawn(process.execPath, [join(root, "packages", "${target}", "dist", "x.js")]);\n`,
+				"packages/a/test/a.test.ts": 'import "./helpers.js";\n',
+				"packages/b/test/b.test.ts": 'import "../../a/test/helpers.js";\n',
+				// An empty registry declares nothing, as no registry does.
+				[REGISTRY]: JSON.stringify({
+					reaches:
+						needs === undefined
+							? []
+							: [{ from: "packages/a/test/helpers.ts", needs, why: "spawns" }],
+				}),
+			};
+			return within(files, (dir) => {
+				const report = scanTestWorkspaceDeps(dir);
+				return [
+					...report.violations.map(
+						(item) =>
+							`violation ${item.package}#${item.task} -> ${item.imports}`,
+					),
+					...[...report.unmodelled, ...report.stale].map((item) => item.reason),
+				];
+			});
+		};
+		const bOnA = { "@s/b#test": { dependsOn: ["build", "@s/a#build"] } };
+		// H1: a's own build is another package's for b#test, so it counts.
+		assert.deepEqual(helper("a", ["@s/a#build"], bOnA), []);
+		// H1b: undeclared, the reach fails.
+		assert.deepEqual(helper("a", undefined, bOnA), [
+			`reaches @s/a at run time through a path it assembles ("*/packages/a/dist/x.js"), which this check cannot follow; declare what it needs in ${REGISTRY}`,
+		]);
+		// H2: a#test is not ordered on hobo's build.
+		assert.deepEqual(
+			helper("hobo", ["@s/hobo#build"], {
+				"@s/b#test": { dependsOn: ["build", "@s/hobo#build"] },
+			}),
+			["violation @s/a#test -> @s/hobo"],
+		);
+		// H3: hobo is ordered for both, but the entry names lib only.
+		const both = { dependsOn: ["build", "@s/hobo#build", "@s/lib#build"] };
+		assert.deepEqual(
+			helper("hobo", ["@s/lib#build"], {
+				"@s/a#test": both,
+				"@s/b#test": both,
+			}),
+			[
+				'"packages/a/test/helpers.ts" reaches @s/hobo ("*/packages/hobo/dist/x.js"), and its entry does not name "@s/hobo#build"',
+			],
+		);
+	});
+
 	it("refuses a file the registry declares more than once", () => {
 		const entry = (needs: string[]) => ({
 			from: "packages/app/src/run.ts",

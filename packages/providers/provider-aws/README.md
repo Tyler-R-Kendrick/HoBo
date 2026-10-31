@@ -217,7 +217,9 @@ different suffix — is refused rather than interpolated into a hostname.
   - `reconcile` **fails closed** by default (`RESOLVER_PROVIDER_REJECTED`): someone
     deleted it on purpose. Declare `restoreScheduled: true` to restore it with its
     previous versions (`RestoreSecret`, reported as `update`), or destroy it with
-    `forceDelete: true` to delete it now.
+    `forceDelete: true` to delete it now. Both are `SecretsManagerOptions`
+    fields: `secretsManager({ restoreScheduled: true })`,
+    `secretsManager({ forceDelete: true })`. A forced delete cannot be undone.
   - `delete` issues nothing more for it, and a `forceDelete: true` delete still
     deletes it at once. An `InvalidRequestException` because someone scheduled it
     between the describe and the delete counts as done.

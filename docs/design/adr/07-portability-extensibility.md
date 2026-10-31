@@ -945,7 +945,7 @@ The `aws.secrets-manager/v1` resolver never read `DeletedDate`, so it handled a 
 
    With the flag, preview and drift say "apply will restore it, with its previous versions".
 4. **Delete converges.** `delete()` describes first and sends nothing more for a secret that is already scheduled. A declared `forceDelete: true` still deletes it at once. An `InvalidRequestException` after which a fresh describe finds the secret scheduled (someone deleted it between the two calls) counts as done; any other `InvalidRequestException` is still refused.
-5. **`restoreScheduled` and `forceDelete` are directives, not state.** Each is a declared realization parameter, never a default. A directive says how `reconcile()` or `delete()` acts on the secret, never what the secret is, so `read()` has nothing to report for it:
+5. **`restoreScheduled` and `forceDelete` are directives, not state.** Each is a declared realization parameter, never a default. Both are typed fields of `SecretsManagerOptions`, so a Yard row declares them as `secretsManager({ restoreScheduled: true })` or `secretsManager({ forceDelete: true })`. A directive says how `reconcile()` or `delete()` acts on the secret, never what the secret is, so `read()` has nothing to report for it:
    - `restoreScheduled` changes what `reconcile()` does only for a secret scheduled for deletion;
    - `forceDelete` changes only what `delete()` does.
 

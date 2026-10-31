@@ -40,6 +40,7 @@ import {
 	awsResolverRegistry,
 	awsResolvers,
 	guardedAwsTransport,
+	secretsManager,
 } from "../src/index.js";
 import {
 	isJsonString,
@@ -430,5 +431,34 @@ describe("the Secrets Manager directives", () => {
 		expect(declared).toEqual([
 			[AWS_SECRETS_MANAGER_PRODUCT_ID, ["forceDelete", "restoreScheduled"]],
 		]);
+	});
+});
+
+// The options a Yard row declares are the realization parameters the resolver
+// is handed, so each directive the refusal names must be declarable through the
+// typed factory (a misspelt or missing field fails to compile here).
+describe("the directives, declared through secretsManager()", () => {
+	it("carries forceDelete: true to the resolver's delete", async () => {
+		const binding = secretsManager({ forceDelete: true });
+		const runner = harness(scheduledSecret());
+
+		await runner.remove(binding.properties);
+
+		expect(binding.properties).toEqual({ forceDelete: true });
+		expect(runner.aws.targets()).toEqual(["DescribeSecret", "DeleteSecret"]);
+		expect(runner.aws.calls[1]?.payload.ForceDeleteWithoutRecovery).toBe(true);
+		expect(runner.secrets.has(NAME)).toBe(false);
+	});
+
+	it("carries restoreScheduled: true to the resolver's reconcile", async () => {
+		const binding = secretsManager({ restoreScheduled: true });
+		const runner = harness(scheduledSecret());
+
+		const outcome = await runner.reconcile(binding.properties);
+
+		expect(binding.properties).toEqual({ restoreScheduled: true });
+		expect(outcome.action).toBe("update");
+		expect(runner.aws.targets()).toContain("RestoreSecret");
+		expect(runner.secrets.get(NAME)?.deletedDate).toBeUndefined();
 	});
 });

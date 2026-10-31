@@ -12,9 +12,10 @@ import type {
 
 import {
 	createVercelClient,
+	isProjectNotFound,
 	type VercelDeploymentFile,
+	type VercelDeploymentResult,
 	type VercelFetch,
-	type VercelProjectResult,
 } from "./vercel-client.js";
 
 // @hobo/hobo — the REAL Vercel deploy provider (composition/app layer).
@@ -22,12 +23,14 @@ import {
 // This implements the SAME `IacProvider` port the @hobo/cloud Executor drives
 // (preview/apply/destroy/refresh over the kernel's shape-A `IacProgram`), but
 // instead of the in-memory Pulumi stand-in it forms a REAL Vercel Create
-// Deployment request. On `apply` it first makes sure the project exists
-// (`ensureProject`: a lookup, and a create when Vercel answers 404, so the first
-// deploy from an account that has never seen the project does not fail), then
-// reads the committed, known-good Vercel file tree
-// (packages/hobo/fixtures/deploy/vercel/), posts it via `createVercelClient`,
+// Deployment request. On `apply` it reads the committed, known-good Vercel file
+// tree (packages/hobo/fixtures/deploy/vercel/), posts it via `createVercelClient`,
 // and maps the returned deployment URL into the kernel's `IacOutputs` (`outputs.url`).
+// Only when Vercel answers that the project does not exist (404 `not_found`,
+// "Project not found": the first deploy from a fresh account) does it create the
+// project and deploy once more; any other refusal, and a second one, propagates
+// as a `VercelApiError`. A deploy to an existing project makes no other call, so
+// a credential scoped to deployments alone keeps working.
 //
 // HONEST SCOPE: the live Vercel call is credential-gated (activates only when a
 // real `VERCEL_TOKEN` reaches `createVercelClient`) and is NOT exercised in this
@@ -77,7 +80,7 @@ export interface VercelDeployProviderOptions {
 	// The transport. Defaults to global `fetch`; injected in tests.
 	readonly fetch?: VercelFetch;
 	// The Vercel project/deployment name. Defaults to "hobo-hello-bindle". The
-	// project is created on the first apply when the account has none by that name.
+	// project is created when a deploy finds the account has none by that name.
 	readonly projectName?: string;
 	// The team id, when the token is a team token.
 	readonly teamId?: string;
@@ -102,17 +105,6 @@ export function createVercelDeployProvider(
 		...(options.teamId !== undefined ? { teamId: options.teamId } : undefined),
 	});
 
-	// The project is made sure of once per provider. A failed attempt is not
-	// kept, so the next apply asks again.
-	let projectReady: Promise<VercelProjectResult> | undefined;
-	const ensureProject = (): Promise<VercelProjectResult> => {
-		projectReady ??= client.ensureProject(projectName).catch((error) => {
-			projectReady = undefined;
-			throw error;
-		});
-		return projectReady;
-	};
-
 	// One Vercel deployment realizes the whole bindle. The Executor drives the port
 	// once per resource, so memoize by deploymentId: the first resource's apply
 	// creates the deployment; the rest reuse its outputs. Keeps `hobo up` to a
@@ -133,13 +125,18 @@ export function createVercelDeployProvider(
 			if (cached !== undefined) {
 				return cached;
 			}
-			await ensureProject();
 			const files = readVercelFileTree(templateDir);
-			const result = await client.createDeployment({
-				name: projectName,
-				files,
-				target,
-			});
+			const request = { name: projectName, files, target };
+			let result: VercelDeploymentResult;
+			try {
+				result = await client.createDeployment(request);
+			} catch (error) {
+				if (!(error instanceof Error) || !isProjectNotFound(error)) throw error;
+				// A 409 here means someone made it meanwhile: it exists either way.
+				await client.createProject(projectName);
+				// Once only: a refusal of this deployment propagates.
+				result = await client.createDeployment(request);
+			}
 			const outputs: IacOutputs = {
 				url: result.url,
 				deploymentId: result.id,

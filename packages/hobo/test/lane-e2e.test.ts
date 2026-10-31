@@ -1,7 +1,7 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { must } from "@hobo/core/total-access";
+import { first, must } from "@hobo/core/total-access";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -153,17 +153,14 @@ describe("hobo up drives the REAL deploy lane end to end (injected transport)", 
 			expect(up.ok).toBe(true);
 			expect(up.status).toBe("deployed");
 
-			// The executor actually reached the REAL Vercel provider's HTTP calls:
-			// a lookup of the project (answered 200 here, so nothing is created),
-			// then exactly one Create-Deployment POST (memoized per deployment),
-			// each with the Bearer token that came from the injected env.
-			expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual([
-				"GET https://api.vercel.com/v9/projects/hobo-hello-bindle",
-				"POST https://api.vercel.com/v13/deployments",
-			]);
-			for (const call of calls) {
-				expect(call.headers.Authorization).toBe("Bearer tok_e2e");
-			}
+			// The executor actually reached the REAL Vercel provider's HTTP call:
+			// exactly one Create-Deployment POST (memoized per deployment), with the
+			// Bearer token that came from the injected env.
+			expect(calls.length).toBe(1);
+			const call = first(calls);
+			expect(call.url).toBe("https://api.vercel.com/v13/deployments");
+			expect(call.method).toBe("POST");
+			expect(call.headers.Authorization).toBe("Bearer tok_e2e");
 		});
 	});
 

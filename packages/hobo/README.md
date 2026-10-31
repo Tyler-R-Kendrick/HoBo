@@ -129,12 +129,16 @@ as a live deployment. IaC selection lives in `src/compose.ts`:
 | Live Cloudflare Workers | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` |
 | Live Vercel | `VERCEL_TOKEN` |
 
-The live Vercel provider (`src/vercel-deploy-provider.ts`) makes sure its project
-exists before the first deployment: `GET /v9/projects/{name}`, and on a 404
-`POST /v9/projects` with the name (a 409 there means it was made meanwhile, and
-is read again). So the first `hobo up` from an account that has never seen the
-project deploys instead of failing. A credential binding's scope for it needs
-`GET` and `POST` on `/v9/projects` as well as `POST` on `/v13/deployments`.
+The live Vercel provider (`src/vercel-deploy-provider.ts`) deploys first, with
+one `POST /v13/deployments`. Only when Vercel refuses that because the project
+does not exist (404 `not_found`, "Project not found") does it create the project
+with `POST /v9/projects` (a 409 there means it was made meanwhile) and deploy
+once more. So the first `hobo up` from an account that has never seen the
+project deploys instead of failing, and a deploy to an existing project is one
+request. Any other refusal, or a second one, is a `VercelApiError` carrying
+Vercel's status, `error.code` and `error.message`. A credential binding's scope
+needs `POST` on `/v13/deployments`, and `POST` on `/v9/projects` for that first
+deploy; it needs no `GET` on the project.
 
 **Credentials from OpenSesame (`HOBO_CREDENTIALS=opensesame`, [ADR-0170](../../docs/design/adr/02-identity-security.md#adr-0170)).**
 The composed `hobo` then relaunches itself once, before composing anything, as

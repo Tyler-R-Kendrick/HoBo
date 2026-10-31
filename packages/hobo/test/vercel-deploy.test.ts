@@ -62,16 +62,6 @@ function mockFetch(responseBody: JsonObject, status = 200) {
 	return { fetch, calls };
 }
 
-// The Create Deployment requests among `calls`; the provider makes sure of its
-// project first (GET /v9/projects/{name}, answered 200 by the canned body here).
-function deploymentsIn(
-	calls: readonly RecordedCall[],
-): readonly RecordedCall[] {
-	return calls.filter(
-		(call) => new URL(call.url).pathname === "/v13/deployments",
-	);
-}
-
 function programFor(deploymentId: string, resourceId: string): IacProgram {
 	return {
 		programId: `prog-${resourceId}`,
@@ -173,10 +163,7 @@ describe("createVercelDeployProvider (mocked fetch, no network)", () => {
 
 		const outputs = await provider.apply(programFor("dep-1", "service"));
 
-		expect(calls.map((call) => new URL(call.url).pathname)).toEqual([
-			"/v9/projects/hobo-hello-bindle",
-			"/v13/deployments",
-		]);
+		expect(calls.length).toBe(1);
 		expect(outputs.url).toBe("https://hobo-hello-bindle-xyz.vercel.app");
 		expect(outputs.deploymentId).toBe("dpl_apply");
 		expect(outputs.provider).toBe("vercel");
@@ -185,7 +172,7 @@ describe("createVercelDeployProvider (mocked fetch, no network)", () => {
 		// The deploy payload is the committed artifact tree (the known-good source
 		// of truth): the three core files are present as base64 inline files.
 		// SAFETY: assertion required at this I/O or test boundary.
-		const sent = JSON.parse(first(deploymentsIn(calls)).body) as {
+		const sent = JSON.parse(first(calls).body) as {
 			files: Array<{ file: string; encoding: string }>;
 		};
 		const names = sent.files.map((f) => f.file).sort();
@@ -203,10 +190,8 @@ describe("createVercelDeployProvider (mocked fetch, no network)", () => {
 		const b = await provider.apply(programFor("dep-2", "sessions"));
 		const c = await provider.apply(programFor("dep-2", "assets"));
 
-		// Executor drives the port once per resource; only ONE deployment is created,
-		// after one lookup of its project.
-		expect(deploymentsIn(calls).length).toBe(1);
-		expect(calls.length).toBe(2);
+		// Executor drives the port once per resource; only ONE deployment is created.
+		expect(calls.length).toBe(1);
 		expect(a).toEqual(b);
 		expect(b).toEqual(c);
 	});

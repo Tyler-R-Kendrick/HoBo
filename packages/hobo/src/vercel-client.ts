@@ -12,13 +12,14 @@
 //   body: { name, project?, files:[{file,data,encoding}], target?, projectSettings? }
 //   (docs: vercel.com/docs/rest-api/reference/endpoints/deployments/create-a-new-deployment)
 //
-// and, for `ensureProject`, Find a project by id or name and Create a new project:
-//   GET  https://api.vercel.com/v9/projects/{idOrName}   (404 when there is none)
+// Create Deployment answers 404 `{"error":{"code":"not_found","message":"Project
+// not found"}}` when the project it names does not exist. For that case,
+// `createProject` calls Create a new project:
 //   POST https://api.vercel.com/v9/projects   body: { name }   (409 when the name is taken)
-//   (docs: vercel.com/docs/rest-api/reference/endpoints/projects/find-a-project-by-id-or-name
-//    and .../projects/create-a-new-project, whose current version is /v11). /v9 is
-//   the version @hobo/provider-vercel's project resolver speaks, and one
-//   `/v9/projects` prefix is the scope a credential binding already names for it.
+//   (docs: vercel.com/docs/rest-api/reference/endpoints/projects/create-a-new-project,
+//   whose current version is /v11). /v9 is the version @hobo/provider-vercel's
+//   project resolver speaks, and `/v9/projects` is the prefix a credential
+//   binding's scope already names.
 //
 // `fetch` is INJECTED so tests exercise the exact request formation against a
 // mocked transport with no network. HONEST SCOPE: the live call is credential-
@@ -33,6 +34,7 @@ import {
 	isJsonString,
 	type JsonObject,
 	type JsonValue,
+	parseJsonObject,
 } from "./json.js";
 
 interface VercelFetchInit {
@@ -63,7 +65,7 @@ export interface CreateDeploymentInput {
 }
 
 export interface VercelProjectResult {
-	// The project id (Vercel `id`).
+	// The project id (Vercel `id`); empty when the create was answered 409.
 	readonly id: string;
 	// The project name (Vercel `name`).
 	readonly name: string;
@@ -93,8 +95,8 @@ export interface VercelFetchResponse {
 	json(): Promise<JsonValue>;
 }
 
-// A request with nothing to send (the project lookup, a GET) carries `body: ""`;
-// the default transport sends no body for it, as `fetch` requires of a GET.
+// A request with nothing to send carries `body: ""`; the default transport sends
+// no body for a GET or HEAD, as `fetch` requires.
 export type VercelFetch = (
 	url: string,
 	init: {
@@ -103,6 +105,39 @@ export type VercelFetch = (
 		readonly body: string;
 	},
 ) => Promise<VercelFetchResponse>;
+
+// A refusal from the Vercel API: a non-2xx status. `code` and `apiMessage` are
+// Vercel's `error.code` and `error.message` when the body carried them; `message`
+// names the call, the status and the body.
+export class VercelApiError extends Error {
+	readonly status: number;
+	readonly code: string | undefined;
+	readonly apiMessage: string | undefined;
+
+	constructor(
+		message: string,
+		status: number,
+		code?: string,
+		apiMessage?: string,
+	) {
+		super(message);
+		this.name = "VercelApiError";
+		this.status = status;
+		this.code = code;
+		this.apiMessage = apiMessage;
+	}
+}
+
+// Create Deployment's answer when the project it names does not exist: 404,
+// `{"error":{"code":"not_found","message":"Project not found"}}`.
+export function isProjectNotFound(error: Error): boolean {
+	return (
+		error instanceof VercelApiError &&
+		error.status === 404 &&
+		error.code === "not_found" &&
+		/project not found/iu.test(error.apiMessage ?? "")
+	);
+}
 
 export interface VercelClientOptions {
 	// The Vercel access token, sent as `Authorization: Bearer <token>`.
@@ -120,10 +155,9 @@ export interface VercelClient {
 	createDeployment(
 		input: CreateDeploymentInput,
 	): Promise<VercelDeploymentResult>;
-	// Make sure the project `name` exists, creating it when Vercel has none:
-	// a lookup, and on 404 a create. Idempotent: a project that exists is left as
-	// it is, and a create answered 409 (made meanwhile) is looked up again.
-	ensureProject(name: string): Promise<VercelProjectResult>;
+	// Create the project `name`. A 409 (the name is taken: someone made it
+	// meanwhile) answers `created: false` rather than failing.
+	createProject(name: string): Promise<VercelProjectResult>;
 }
 
 const DEFAULT_BASE_URL = "https://api.vercel.com";
@@ -167,25 +201,27 @@ function normalizeUrl(raw: JsonValue | undefined): string {
 async function failure(
 	what: string,
 	response: VercelFetchResponse,
-): Promise<Error> {
+): Promise<VercelApiError> {
 	const detail = await response.text().catch(() => "");
-	return new Error(
+	const error = parseJsonObject(detail).error;
+	const code =
+		isJsonObject(error) && isJsonString(error.code) ? error.code : undefined;
+	const apiMessage =
+		isJsonObject(error) && isJsonString(error.message)
+			? error.message
+			: undefined;
+	return new VercelApiError(
 		`vercel-client: ${what} failed (HTTP ${response.status})${detail ? `: ${detail}` : ""}`,
+		response.status,
+		code,
+		apiMessage,
 	);
 }
 
-async function projectFrom(
-	response: VercelFetchResponse,
-	name: string,
-	created: boolean,
-): Promise<VercelProjectResult> {
+// The JSON object a 2xx answer carries, or `{}` when it carries something else.
+async function payloadOf(response: VercelFetchResponse): Promise<JsonObject> {
 	const parsed = await response.json();
-	const payload = isJsonObject(parsed) ? parsed : {};
-	return {
-		id: isJsonString(payload.id) ? payload.id : "",
-		name: isJsonString(payload.name) ? payload.name : name,
-		created,
-	};
+	return isJsonObject(parsed) ? parsed : {};
 }
 
 // Create the REAL Vercel deployment client. No network call happens at
@@ -201,38 +237,28 @@ export function createVercelClient(options: VercelClientOptions): VercelClient {
 		options.teamId !== undefined
 			? `?teamId=${encodeURIComponent(options.teamId)}`
 			: "";
-	// One request to `path` under the base URL, team-scoped like every other.
-	const send = (
-		method: "GET" | "POST",
-		path: string,
-		body?: string,
-	): Promise<VercelFetchResponse> =>
+	// One JSON POST to `path` under the base URL, team-scoped like every other.
+	const post = (path: string, body: string): Promise<VercelFetchResponse> =>
 		fetchImpl(`${baseUrl}${path}${query}`, {
-			method,
-			headers:
-				body === undefined
-					? { Authorization: `Bearer ${token}` }
-					: {
-							Authorization: `Bearer ${token}`,
-							"Content-Type": "application/json",
-						},
-			body: body ?? "",
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${token}`,
+				"Content-Type": "application/json",
+			},
+			body,
 		});
-	const lookUp = (name: string): Promise<VercelFetchResponse> =>
-		send("GET", `/v9/projects/${encodeURIComponent(name)}`);
 
 	return {
-		async ensureProject(name: string): Promise<VercelProjectResult> {
-			const found = await lookUp(name);
-			if (found.ok) return projectFrom(found, name, false);
-			if (found.status !== 404) throw await failure("look up project", found);
-			const made = await send("POST", "/v9/projects", JSON.stringify({ name }));
-			if (made.ok) return projectFrom(made, name, true);
-			if (made.status !== 409) throw await failure("create project", made);
-			// Taken between the lookup and the create: it exists, so read it.
-			const again = await lookUp(name);
-			if (again.ok) return projectFrom(again, name, false);
-			throw await failure("look up project", again);
+		async createProject(name: string): Promise<VercelProjectResult> {
+			const made = await post("/v9/projects", JSON.stringify({ name }));
+			if (made.status === 409) return { id: "", name, created: false };
+			if (!made.ok) throw await failure("create project", made);
+			const payload = await payloadOf(made);
+			return {
+				id: isJsonString(payload.id) ? payload.id : "",
+				name: isJsonString(payload.name) ? payload.name : name,
+				created: true,
+			};
 		},
 
 		async createDeployment(
@@ -250,18 +276,13 @@ export function createVercelClient(options: VercelClientOptions): VercelClient {
 				projectSettings: input.projectSettings ?? { framework: null },
 			};
 
-			const response = await send(
-				"POST",
-				"/v13/deployments",
-				JSON.stringify(body),
-			);
+			const response = await post("/v13/deployments", JSON.stringify(body));
 
 			if (!response.ok) {
 				throw await failure("create deployment", response);
 			}
 
-			const parsed = await response.json();
-			const payload = isJsonObject(parsed) ? parsed : {};
+			const payload = await payloadOf(response);
 			const id = isJsonString(payload.id) ? payload.id : "";
 			return {
 				url: normalizeUrl(payload.url),

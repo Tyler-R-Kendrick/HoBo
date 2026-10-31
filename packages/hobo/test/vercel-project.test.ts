@@ -712,6 +712,65 @@ describe("a refusal's text (scripted transport, no network)", () => {
 		expectNoToken(error, token, forms);
 	});
 
+	// The same token broken up by whitespace between two of its characters, in a
+	// JSON body (escaped there, so a real newline once parsed) and in a body
+	// that is not JSON.
+	const split = (text: string, by: string, at = 10) =>
+		`${text.slice(0, at)}${by}${text.slice(at)}`;
+
+	it.each([
+		["a newline", TOKEN, split(TOKEN, "\n"), []],
+		["\\r\\n", TOKEN, split(TOKEN, "\r\n"), []],
+		["several spaces", TOKEN, split(TOKEN, "     "), []],
+		["spaces between every character", TOKEN, [...TOKEN].join(" "), []],
+		[
+			"a newline in its base64",
+			TOKEN,
+			split(base64(TOKEN), "\n", 16),
+			[base64(TOKEN)],
+		],
+		[
+			"a newline in its percent-encoding",
+			TOKEN,
+			split(percent, "\n", 20),
+			[percent],
+		],
+	])("carries no token broken up by %s", async (_case, token, sent, forms) => {
+		const json = JSON.stringify({
+			error: { code: "not_found", message: `you sent ${sent}` },
+		});
+		const inJson = await refusedBy(() => plainReply(404, json), token);
+		const raw = await refusedBy(
+			() => plainReply(404, `you sent ${sent} back`),
+			token,
+		);
+
+		expectNoToken(inJson, token, forms);
+		expectNoToken(raw, token, forms);
+		expect(inJson.apiMessage).toBe("you sent [redacted]");
+	});
+
+	it("stays linear on a long hostile body: 100 kB of whitespace and near-misses", async () => {
+		// Every character of the token but the last, each followed by a run of
+		// whitespace, over and over: each try runs nearly to the end and fails.
+		const nearMiss = Array.from(TOKEN.slice(0, -1)).join(" \r\n\t ");
+		let hostile = "";
+		while (hostile.length < 100_000)
+			hostile += `${nearMiss}${" ".repeat(64)}\n`;
+		const body = JSON.stringify({
+			error: { code: "not_found", message: hostile },
+			raw: hostile,
+		});
+
+		const started = performance.now();
+		const error = await refusedBy(() => plainReply(404, body));
+		const took = performance.now() - started;
+
+		expect(hostile.length).toBeGreaterThanOrEqual(100_000);
+		expect(error.message.length).toBeLessThanOrEqual(501);
+		expect(took).toBeLessThan(1000);
+	});
+
 	it("carries no token sent back JSON-escaped as the code", async () => {
 		const body = `{"error":{"code":"${escaped}","message":"x"}}`;
 		const error = await refusedBy(() => plainReply(404, body));
@@ -740,7 +799,13 @@ describe("a refusal's text (scripted transport, no network)", () => {
 			`executor.apply_failed: ${error.message}`,
 		];
 		for (const text of printed) {
-			for (const form of [token, ...forms]) expect(text).not.toContain(form);
+			// Whitespace, and JSON's escapes for it, taken out: a token broken up
+			// by a newline or spaces is still the token.
+			const squeezed = text.replace(/\\[nrt]|\s/gu, "");
+			for (const form of [token, ...forms]) {
+				expect(text).not.toContain(form);
+				expect(squeezed).not.toContain(form);
+			}
 			for (const run of text.match(/[A-Za-z0-9+/]{16,}={0,2}/gu) ?? []) {
 				expect(Buffer.from(run, "base64").toString("latin1")).not.toContain(
 					token.slice(2, -2),

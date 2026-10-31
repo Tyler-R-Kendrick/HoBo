@@ -33,6 +33,7 @@
 import { redactProviderText } from "@hobo/provider-vercel";
 
 import {
+	isJsonArray,
 	isJsonObject,
 	isJsonString,
 	type JsonObject,
@@ -214,8 +215,7 @@ const REFUSAL_TEXT_LIMIT = 500;
 // and as the part of any base64 that depends on the token's bytes alone, at
 // each of the three alignments (which covers `Bearer token` too). Longest
 // first, so a whole form goes before a part of it; a derived piece shorter than
-// four characters is left out. A token broken by other text (a newline, say) is
-// not found.
+// four characters is left out.
 function tokenForms(token: string): readonly string[] {
 	const bytes = Buffer.from(token, "utf8");
 	const percent = [...bytes]
@@ -243,24 +243,70 @@ function tokenForms(token: string): readonly string[] {
 	return [...forms].sort((a, b) => b.length - a.length);
 }
 
+// A regular-expression source matching `char` itself.
+function literal(char: string): string {
+	return /[\\^$.*+?()[\]{}|/]/u.test(char) ? `\\${char}` : char;
+}
+
+// Each form of the client's own token (`tokenForms`) as a pattern that also
+// finds it broken up by whitespace (`\s*`: a newline, `\r\n`, spaces, tabs)
+// between any two of its characters. Built from the form's characters, each
+// escaped, never from the token as a pattern. No form holds whitespace, so each
+// `\s*` meets a literal it cannot match and gives back at most its own run:
+// a search is linear in the text for a token of bounded length.
+function tokenPatterns(token: string): readonly RegExp[] {
+	return tokenForms(token).map(
+		(form) => new RegExp(Array.from(form, literal).join("\\s*"), "gu"),
+	);
+}
+
+// `text` with every form of the token, whole or broken up by whitespace, as
+// `[redacted]`.
+function withoutToken(text: string, secrets: readonly RegExp[]): string {
+	let out = text;
+	for (const secret of secrets) out = out.replace(secret, "[redacted]");
+	return out;
+}
+
 // A response body can echo the request, Authorization header included, and the
 // executor persists an error's message (`exec.Failed.reason`). So every form of
-// the client's own token (`tokenForms`), and anything bearer- or
+// the client's own token (`tokenPatterns`), and anything bearer- or
 // credential-shaped, becomes `[redacted]` (`redactProviderText` is the
 // redaction @hobo/provider-vercel's resolvers use), and the text is cut at
 // REFUSAL_TEXT_LIMIT characters.
-function refusalText(text: string, secrets: readonly string[]): string {
-	let out = text;
-	for (const secret of secrets) out = out.replaceAll(secret, "[redacted]");
-	return redactProviderText(out, REFUSAL_TEXT_LIMIT);
+function refusalText(text: string, secrets: readonly RegExp[]): string {
+	return redactProviderText(withoutToken(text, secrets), REFUSAL_TEXT_LIMIT);
 }
 
-// A body as `message` shows it: a JSON body written back out by
-// `JSON.stringify`, which undoes its escapes (a `\u`-escaped token reads as the
-// token, and is then found), any other body as sent.
-function bodyText(detail: string): string {
+// A JSON value with the token taken out of every string in it, keys included.
+function withoutTokenInJson(
+	value: JsonValue,
+	secrets: readonly RegExp[],
+): JsonValue {
+	if (isJsonString(value)) return withoutToken(value, secrets);
+	if (isJsonArray(value)) {
+		return value.map((item) => withoutTokenInJson(item, secrets));
+	}
+	if (isJsonObject(value)) {
+		return Object.fromEntries(
+			Object.entries(value).map(([key, item]) => [
+				withoutToken(key, secrets),
+				withoutTokenInJson(item, secrets),
+			]),
+		);
+	}
+	return value;
+}
+
+// A body as `message` shows it: a JSON body parsed, which undoes its escapes (a
+// `\u`-escaped token, or a `\n` inside one, is then the token, or a real
+// newline in it), the token taken out of its strings, and written back out with
+// `JSON.stringify`; any other body as sent.
+function bodyText(detail: string, secrets: readonly RegExp[]): string {
 	const parsed = parseJsonValue(detail);
-	return parsed === null ? detail : JSON.stringify(parsed);
+	return parsed === null
+		? detail
+		: JSON.stringify(withoutTokenInJson(parsed, secrets));
 }
 
 // Vercel's `error.code` is an identifier (`not_found`, `forbidden`). One that
@@ -271,7 +317,7 @@ const REFUSAL_CODE = /^[A-Za-z0-9_.-]{1,64}$/u;
 
 function refusalCode(
 	code: string,
-	secrets: readonly string[],
+	secrets: readonly RegExp[],
 ): string | undefined {
 	return REFUSAL_CODE.test(code) && refusalText(code, secrets) === code
 		? code
@@ -281,7 +327,7 @@ function refusalCode(
 async function failure(
 	what: string,
 	response: VercelFetchResponse,
-	secrets: readonly string[],
+	secrets: readonly RegExp[],
 ): Promise<VercelApiError> {
 	const detail = await response.text().catch(() => "");
 	const error = parseJsonObject(detail).error;
@@ -295,7 +341,7 @@ async function failure(
 			: undefined;
 	return new VercelApiError(
 		refusalText(
-			`vercel-client: ${what} failed (HTTP ${response.status})${detail ? `: ${bodyText(detail)}` : ""}`,
+			`vercel-client: ${what} failed (HTTP ${response.status})${detail ? `: ${bodyText(detail, secrets)}` : ""}`,
 			secrets,
 		),
 		response.status,
@@ -351,7 +397,7 @@ export function createVercelClient(options: VercelClientOptions): VercelClient {
 	if (!token) {
 		throw new TypeError("createVercelClient: token is required");
 	}
-	const secrets = tokenForms(token);
+	const secrets = tokenPatterns(token);
 	const fetchImpl = options.fetch ?? globalFetch;
 	const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
 	const query =

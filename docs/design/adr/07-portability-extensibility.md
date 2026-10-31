@@ -960,7 +960,7 @@ The `aws.secrets-manager/v1` resolver never read `DeletedDate`, so it handled a 
    - `restoreScheduled` changes what `reconcile()` does only for a secret scheduled for deletion;
    - `forceDelete` changes only what `delete()` does.
 
-   Both are boolean flags, parsed where the request enters the resolver: absent is off, and any value but `true` or `false` (`"true"`, `1`, `null`) is refused with `RESOLVER_PROVIDER_REJECTED`, naming the key and the type it must have, before any call. Read loosely, `forceDelete: "true"` would preview clean and then delete without force.
+   Both are boolean flags, parsed where the request enters the resolver: absent is off, and any value but `true` or `false` (`"true"`, `1`, `null`) is refused before any call. The code is `RESOLVER_PRODUCT_UNSUPPORTED`, as for every other `desired` setting of the wrong type, and the message has the same form ("aws.secrets-manager/v1: desired.forceDelete must be a boolean (true or false), received \"true\""). Read loosely, `forceDelete: "true"` would preview clean and then delete without force.
 
    The resolver names its directives in the `directives` field of `ResourceResolver` (`@hobo/core`). `parseResolverDirectives` parses the list wherever it is read. `createResolverRegistry` registers a frozen copy, so changing the original array changes nothing afterwards. The resolver-backed `IacProvider` parses the list again, because its registry is structural and need not be core's. Anything but a list of distinct parameter names is a typed `RESOLVER_PRODUCT_UNSUPPORTED`, never a `TypeError`.
 

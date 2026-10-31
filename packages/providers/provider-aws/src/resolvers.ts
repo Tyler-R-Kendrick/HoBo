@@ -2394,9 +2394,11 @@ function parseDirectives(
 		if (!Object.hasOwn(desired, name)) continue;
 		const value = desired[name];
 		if (!isJsonBoolean(value)) {
+			// A `desired` setting of the wrong type is RESOLVER_PRODUCT_UNSUPPORTED,
+			// in the same words as every other one this file refuses.
 			throw new ResolverError(
-				"RESOLVER_PROVIDER_REJECTED",
-				`aws resolver for ${productId}: ${name} is a directive and must be a boolean (true or false), but the declaration gives ${redactAwsText(JSON.stringify(value), undefined, 80)}`,
+				"RESOLVER_PRODUCT_UNSUPPORTED",
+				`${productId}: desired.${name} must be a boolean (true or false), received ${redactAwsText(JSON.stringify(value), undefined, 80)}`,
 				productId,
 			);
 		}

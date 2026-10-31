@@ -246,7 +246,8 @@ different suffix — is refused rather than interpolated into a hostname.
     of the comparison and say so. A plan that keeps either one previews and
     refreshes a live secret as clean as it would without it. Each is a boolean:
     any other value (`"true"`, `1`, `null`) is refused with
-    `RESOLVER_PROVIDER_REJECTED`, naming the key, before `read`, `reconcile` or
+    `RESOLVER_PRODUCT_UNSUPPORTED` (like any wrong-type `desired` setting:
+    `desired.forceDelete must be a boolean`), before `read`, `reconcile` or
     `delete` makes a call.
 - Secrets Manager secrets are created **without a version**, and SSM
   `SecureString` parameters are **refused**: in both cases the value is

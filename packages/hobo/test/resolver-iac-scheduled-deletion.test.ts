@@ -336,7 +336,7 @@ describe("a directive that is not a boolean, through the resolver-backed IacProv
 			driver.destroy(program("destroy")),
 		]) {
 			await expect(call).rejects.toThrow(
-				`${name} is a directive and must be a boolean (true or false)`,
+				`${AWS_SECRETS_MANAGER_PRODUCT_ID}: desired.${name} must be a boolean (true or false)`,
 			);
 		}
 		expect(account.targets).toEqual([]);

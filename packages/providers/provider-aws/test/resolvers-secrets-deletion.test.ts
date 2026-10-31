@@ -528,12 +528,11 @@ describe("a directive that is not a boolean", () => {
 			const refusal = await refusalOf(call);
 			expect(refusal).toBeInstanceOf(ResolverError);
 			expect(refusal instanceof ResolverError ? refusal.code : "").toBe(
-				"RESOLVER_PROVIDER_REJECTED",
+				"RESOLVER_PRODUCT_UNSUPPORTED",
 			);
-			expect(refusal?.message).toContain(
-				`${name} is a directive and must be a boolean (true or false)`,
+			expect(refusal?.message).toBe(
+				`${AWS_SECRETS_MANAGER_PRODUCT_ID}: desired.${name} must be a boolean (true or false), received ${JSON.stringify(value)}`,
 			);
-			expect(refusal?.message).toContain(JSON.stringify(value));
 		}
 		expect(runner.aws.targets()).toEqual([]);
 		expect(runner.secrets.get(NAME)?.deletedDate).toBeDefined();

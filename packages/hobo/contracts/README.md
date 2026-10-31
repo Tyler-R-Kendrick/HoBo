@@ -36,9 +36,10 @@ the CLI does not introduce a parallel event journal or read model.
 `HoboVercelDeploy` to `VercelApi`: what the composed hobo's two Vercel paths
 send (the resolver plane's project lookup and create, the deploy provider's
 `POST /v13/deployments`) and the answers they read, including Vercel's 404
-envelope for a project nobody created and for a deployment to one. The
-interactions run in order; the provider state is that neither `hobo-pact-site`
-nor `hobo-pact-missing` exists before the first.
+envelope for a project nobody created and for a deployment to one. Each
+interaction names its Pact v3 provider state (`providerStates`: whether
+`hobo-pact-site` or `hobo-pact-missing` exists), so none leans on the one
+before it.
 
 - Consumer: `test/hobo-vercel-api.contract.test.ts` (default lane) runs the
   real resolver and client against `createMockProviderFromPact`; every request
@@ -47,7 +48,9 @@ nor `hobo-pact-missing` exists before the first.
 - Provider: `test/mirror/hobo-vercel-api.provider.mirror.test.ts` (the mirror
   lane, `pnpm run test:mirror` at the root, ADR-0174) sends each interaction
   over real HTTP to a mirror.cloud emulator and runs `verifyPact` on its
-  answers. The ids Vercel generates are admitted by the pact's Pact v3 `regex`
+  answers, after setting up the interaction's provider state through the
+  emulator's own API (`stateHandlers`). It verifies the pact as written and
+  reversed. The ids Vercel generates are admitted by the pact's Pact v3 `regex`
   matching rules and nothing else. That is mirror's reading of Vercel's OpenAPI
   document, not `api.vercel.com`.
 

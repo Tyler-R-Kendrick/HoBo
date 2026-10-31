@@ -64,6 +64,13 @@ export {
 	PactParseError,
 	parsePactDocument,
 } from "./pact.js";
+export {
+	type InteractionProviderStates,
+	type PactProviderState,
+	ProviderStateError,
+	type ProviderStateHandler,
+	parseProviderStates,
+} from "./provider-states.js";
 export { isRecursiveSubset, subsetMismatchPath } from "./subset.js";
 export type {
 	InteractionFailure,

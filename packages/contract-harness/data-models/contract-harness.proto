@@ -14,10 +14,16 @@ message PactResponse {
   map<string, string> headers = 2;
   google.protobuf.Struct body = 3;
 }
+// A Pact v3 provider state an interaction needs (src/provider-states.ts).
+message PactProviderState {
+  string name = 1;
+  google.protobuf.Struct params = 2;
+}
 message PactInteraction {
   string description = 1;
   PactRequest request = 2;
   PactResponse response = 3;
+  repeated PactProviderState provider_states = 4;
 }
 message PactSpecification { string version = 1; }
 message PactMetadata { PactSpecification pact_specification = 1; }

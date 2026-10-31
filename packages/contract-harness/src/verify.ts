@@ -4,6 +4,10 @@ import {
 	type PactJsonValue,
 } from "./matching.js";
 import type { PactDocument, PactRequest, PactResponse } from "./pact.js";
+import type {
+	InteractionProviderStates,
+	ProviderStateHandler,
+} from "./provider-states.js";
 import { isRecursiveSubset } from "./subset.js";
 
 export interface ProviderStub {
@@ -31,27 +35,63 @@ export interface VerifyPactOptions {
 	 * them (`matchResponseBody`), every other by value.
 	 */
 	readonly responseMatchingRules?: readonly InteractionMatchingRules[];
+	/**
+	 * Pact v3 provider states, `parseProviderStates` of the same document. Each
+	 * interaction's states are set up by `stateHandlers`, in order and with
+	 * their params, before it is sent; a state without a handler, or whose
+	 * handler throws, fails that interaction, which is then not sent. Without
+	 * this option states are not set up, as before.
+	 */
+	readonly providerStates?: readonly InteractionProviderStates[];
+	readonly stateHandlers?: Readonly<Record<string, ProviderStateHandler>>;
 }
 
-/** The rules read for each interaction, or why they cannot be used with this pact. */
-function rulesByInteraction(
+/** What a per-interaction reading of the document must agree with: the request it was read from. */
+interface ReadFromInteraction {
+	readonly request: Pick<PactRequest, "method" | "path">;
+}
+
+/** `read`, one per interaction of `pact`, or why it was read from another pact. */
+function alignedWith<T extends ReadFromInteraction>(
 	pact: PactDocument,
-	read: readonly InteractionMatchingRules[] | undefined,
-): readonly (InteractionMatchingRules | undefined)[] | string {
+	read: readonly T[] | undefined,
+	what: string,
+): readonly (T | undefined)[] | string {
 	if (read === undefined) return pact.interactions.map(() => undefined);
 	if (read.length !== pact.interactions.length) {
-		return `matching rules were read from another pact: ${read.length} interactions, this pact has ${pact.interactions.length}`;
+		return `${what} were read from another pact: ${read.length} interactions, this pact has ${pact.interactions.length}`;
 	}
-	const stranger = read.findIndex((rules, index) => {
+	const stranger = read.findIndex((entry, index) => {
 		const request = pact.interactions[index]?.request;
 		return (
-			request?.method !== rules.request.method ||
-			request.path !== rules.request.path
+			request?.method !== entry.request.method ||
+			request.path !== entry.request.path
 		);
 	});
 	return stranger === -1
 		? read
-		: `matching rules were read from another pact: interaction ${stranger} is ${read[stranger]?.request.method} ${read[stranger]?.request.path} there`;
+		: `${what} were read from another pact: interaction ${stranger} is ${read[stranger]?.request.method} ${read[stranger]?.request.path} there`;
+}
+
+/** Set up every state `declared` names; the first that cannot be is the reason. */
+async function setUpStates(
+	declared: InteractionProviderStates | undefined,
+	handlers: Readonly<Record<string, ProviderStateHandler>>,
+): Promise<string | undefined> {
+	for (const state of declared?.states ?? []) {
+		const handler = Object.hasOwn(handlers, state.name)
+			? handlers[state.name]
+			: undefined;
+		if (handler === undefined) {
+			return `provider state ${JSON.stringify(state.name)} has no handler`;
+		}
+		try {
+			await handler(state.params);
+		} catch (error) {
+			return `provider state ${JSON.stringify(state.name)} could not be set up: ${error instanceof Error ? error.message : String(error)}`;
+		}
+	}
+	return undefined;
 }
 
 export async function verifyPact(
@@ -68,19 +108,36 @@ export async function verifyPact(
 		});
 	}
 
-	const matching = rulesByInteraction(pact, options.responseMatchingRules);
+	const matching = alignedWith(
+		pact,
+		options.responseMatchingRules,
+		"matching rules",
+	);
+	const states = alignedWith(pact, options.providerStates, "provider states");
 	if (!Array.isArray(matching)) {
-		return {
-			providerName: provider.name,
-			ok: false,
-			failures: [
-				...failures,
-				{ description: "matching rules", reason: String(matching) },
-			],
-		};
+		failures.push({ description: "matching rules", reason: String(matching) });
+	}
+	if (!Array.isArray(states)) {
+		failures.push({ description: "provider states", reason: String(states) });
+	}
+	if (!Array.isArray(matching) || !Array.isArray(states)) {
+		return { providerName: provider.name, ok: false, failures };
 	}
 
 	for (const [index, interaction] of pact.interactions.entries()) {
+		if (options.providerStates !== undefined) {
+			const unready = await setUpStates(
+				states[index],
+				options.stateHandlers ?? {},
+			);
+			if (unready !== undefined) {
+				failures.push({
+					description: interaction.description,
+					reason: unready,
+				});
+				continue;
+			}
+		}
 		const actual = await provider.handle(interaction.request);
 		const expected = interaction.response;
 

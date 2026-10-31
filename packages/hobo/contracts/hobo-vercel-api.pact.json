@@ -4,6 +4,7 @@
 	"interactions": [
 		{
 			"description": "a project nobody created is a 404 with Vercel's error envelope",
+			"providerStates": [{ "name": "no project hobo-pact-site exists" }],
 			"request": {
 				"method": "GET",
 				"path": "/v9/projects/hobo-pact-site",
@@ -16,6 +17,7 @@
 		},
 		{
 			"description": "create the project",
+			"providerStates": [{ "name": "no project hobo-pact-site exists" }],
 			"request": {
 				"method": "POST",
 				"path": "/v9/projects",
@@ -42,6 +44,7 @@
 		},
 		{
 			"description": "deploy inline files to that project",
+			"providerStates": [{ "name": "project hobo-pact-site exists" }],
 			"request": {
 				"method": "POST",
 				"path": "/v13/deployments",
@@ -87,6 +90,7 @@
 		},
 		{
 			"description": "a deployment that names a project nobody created is a 404",
+			"providerStates": [{ "name": "no project hobo-pact-missing exists" }],
 			"request": {
 				"method": "POST",
 				"path": "/v13/deployments",
@@ -116,7 +120,6 @@
 	],
 	"metadata": {
 		"pactSpecification": { "version": "3.0.0" },
-		"providerStates": "The interactions run in order: no project hobo-pact-site or hobo-pact-missing exists before the first. The provider test deletes both first.",
 		"verifiedAgainst": "the mirror.cloud emulator (pnpm run test:mirror, ADR-0174): mirror's reading of Vercel's OpenAPI document, never compared with api.vercel.com"
 	}
 }

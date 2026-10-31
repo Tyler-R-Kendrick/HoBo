@@ -19,10 +19,17 @@ package contract_harness
 	body?: _
 }
 
+// Pact v3 "Allow multiple provider states with parameters" (src/provider-states.ts).
+#PactProviderState: {
+	name:    string & !=""
+	params?: {[string]: _}
+}
+
 #PactInteraction: {
-	description: string & !=""
-	request:    #PactRequest
-	response:   #PactResponse
+	description:     string & !=""
+	providerStates?: [...#PactProviderState]
+	request:         #PactRequest
+	response:        #PactResponse
 }
 
 #PactSpecification: {

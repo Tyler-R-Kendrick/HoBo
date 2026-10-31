@@ -1,10 +1,12 @@
 /**
  * Provider side of contracts/hobo-vercel-api.pact.json, verified against the
- * mirror.cloud emulator (ADR-0174): each interaction is sent over real HTTP,
- * in order, with `Host: api.vercel.com`, and `verifyPact` reads what the
- * emulator answered. Generated ids are admitted only by the pact's own Pact v3
- * matching rules (`responseMatchingRules`); every other declared field is
- * compared by value.
+ * mirror.cloud emulator (ADR-0174): each interaction is sent over real HTTP
+ * with `Host: api.vercel.com`, and `verifyPact` reads what the emulator
+ * answered. Before each, the provider state it names (Pact v3
+ * `providerStates`) is set up through the emulator's own API, so the pact
+ * verifies in any order: it is verified as written and reversed. Generated
+ * ids are admitted only by the pact's own Pact v3 matching rules
+ * (`responseMatchingRules`); every other declared field is compared by value.
  *
  * The consumer side is test/hobo-vercel-api.contract.test.ts (default lane).
  * This file's name keeps it out of the `.contract.test.ts` categories, which
@@ -14,13 +16,16 @@ import {
 	createHttpProviderStub,
 	exchangeHttp,
 	mirrorLaneEndpoint,
+	type PactJsonValue,
+	type ProviderStateHandler,
 	parseHttpProviderTarget,
 	parsePactDocument,
+	parseProviderStates,
 	parseResponseMatchingRules,
 	recordMirrorLaneReport,
 	verifyPact,
 } from "@hobo/contract-harness";
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import pactJson from "../../contracts/hobo-vercel-api.pact.json" with {
 	type: "json",
@@ -28,7 +33,6 @@ import pactJson from "../../contracts/hobo-vercel-api.pact.json" with {
 
 const pact = parsePactDocument(pactJson);
 const endpoint = mirrorLaneEndpoint(process.env);
-const responseMatchingRules = parseResponseMatchingRules(pactJson);
 const vercelApi = createHttpProviderStub(
 	parseHttpProviderTarget({
 		name: pact.provider.name,
@@ -37,37 +41,86 @@ const vercelApi = createHttpProviderStub(
 	}),
 );
 
-describe("hobo-vercel-api.pact.json, provider side, against the emulator", () => {
-	beforeAll(async () => {
-		// Provider state: neither project exists (the pact's metadata says so).
-		for (const name of ["hobo-pact-site", "hobo-pact-missing"]) {
-			const gone = await exchangeHttp(
-				{ ...endpoint, host: "api.vercel.com" },
-				{
-					method: "DELETE",
-					path: `/v9/projects/${name}`,
-					headers: { authorization: "Bearer hobo_pact_token" },
-				},
-			);
-			expect([204, 404]).toContain(gone.status);
-		}
+/** One call to the emulator's Vercel API, as the pact's consumer makes it. */
+function vercel(
+	method: "GET" | "POST" | "DELETE",
+	path: string,
+	body?: string,
+) {
+	return exchangeHttp(
+		{ ...endpoint, host: "api.vercel.com" },
+		{
+			method,
+			path,
+			headers: {
+				authorization: "Bearer hobo_pact_token",
+				...(body === undefined
+					? undefined
+					: { "content-type": "application/json" }),
+			},
+			...(body === undefined ? undefined : { body }),
+		},
+	);
+}
+
+async function noProject(name: string): Promise<void> {
+	const gone = await vercel("DELETE", `/v9/projects/${name}`);
+	if (gone.status !== 204 && gone.status !== 404) {
+		throw new Error(`DELETE /v9/projects/${name} answered ${gone.status}`);
+	}
+}
+
+async function project(name: string): Promise<void> {
+	const found = await vercel("GET", `/v9/projects/${name}`);
+	if (found.status === 200) return;
+	const made = await vercel("POST", "/v9/projects", JSON.stringify({ name }));
+	if (made.status !== 200) {
+		throw new Error(`POST /v9/projects answered ${made.status}`);
+	}
+}
+
+/** How the emulator is put in each state the pact names. */
+const stateHandlers = {
+	"no project hobo-pact-site exists": () => noProject("hobo-pact-site"),
+	"no project hobo-pact-missing exists": () => noProject("hobo-pact-missing"),
+	"project hobo-pact-site exists": () => project("hobo-pact-site"),
+} satisfies Readonly<Record<string, ProviderStateHandler>>;
+
+/** Verify `document` (the pact, or a reordering of it) and leave its report for the runner. */
+async function verifyAgainstEmulator(document: PactJsonValue, report: string) {
+	const parsed = parsePactDocument(document);
+	const outcome = await verifyPact(parsed, vercelApi, {
+		responseMatchingRules: parseResponseMatchingRules(document),
+		providerStates: parseProviderStates(document),
+		stateHandlers,
 	});
+	recordMirrorLaneReport(process.env, report, {
+		consumer: parsed.consumer.name,
+		provider: parsed.provider.name,
+		interactions: parsed.interactions.length,
+		ok: outcome.ok,
+		failures: outcome.failures,
+	});
+	return outcome;
+}
 
-	it("the emulator honours every interaction, in order", async () => {
-		const report = await verifyPact(pact, vercelApi, { responseMatchingRules });
-
-		recordMirrorLaneReport(process.env, "hobo-vercel-api", {
-			consumer: pact.consumer.name,
-			provider: pact.provider.name,
-			interactions: pact.interactions.length,
-			ok: report.ok,
-			failures: report.failures,
-		});
-		expect(report).toEqual({
+describe("hobo-vercel-api.pact.json, provider side, against the emulator", () => {
+	it("the emulator honours every interaction, each from the state it names", async () => {
+		expect(await verifyAgainstEmulator(pactJson, "hobo-vercel-api")).toEqual({
 			providerName: "VercelApi",
 			ok: true,
 			failures: [],
 		});
+	});
+
+	it("verifies in reverse order too: no interaction leans on the one before it", async () => {
+		const reversed = {
+			...pactJson,
+			interactions: [...pactJson.interactions].reverse(),
+		};
+		expect(
+			await verifyAgainstEmulator(reversed, "hobo-vercel-api-reversed"),
+		).toEqual({ providerName: "VercelApi", ok: true, failures: [] });
 	});
 
 	it("an interaction for a path the emulator does not serve fails verification with its 501", async () => {

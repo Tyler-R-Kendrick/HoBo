@@ -3,14 +3,14 @@
  * browser over ssh, under the Station authorization the CLI opened for it.
  *
  * The entry point holds the ending signals from before that authorization is
- * opened (`beforeAuthorization`, `src/signal-hold.ts`), and closes the
- * authorization once this returns. Here a signal ends the forward, not the
+ * opened (`beforeAuthorization`, `src/signal-hold.ts`) until it has closed the
+ * authorization, once this returns. Here a signal ends the forward, not the
  * process: ssh is stopped (SIGKILL after 5 s if it holds on), and the status
  * is 128+n. A signal that came before the forward began, while the
  * authorization was being opened, means it never begins: no browser address,
  * no ssh.
  */
-import { type ChildProcess, spawn as spawnProcess } from "node:child_process";
+import { spawn } from "node:child_process";
 import { setImmediate as nextTurn } from "node:timers/promises";
 import type { DevMachine } from "./dev-machines.js";
 import { preferNamedEndpoint } from "./occupancy-endpoints.js";
@@ -28,6 +28,19 @@ export interface SessionForward {
 	readonly authorizationExpiresAt?: string;
 	readonly auditTypes?: readonly string[];
 }
+
+/** What the forward needs of the ssh it starts; a ChildProcess is one. */
+export interface StartedSsh {
+	kill(signal: NodeJS.Signals): unknown;
+	once(event: "error", listener: (error: Error) => void): unknown;
+	once(
+		event: "exit",
+		listener: (code: number | null, signal: NodeJS.Signals | null) => void,
+	): unknown;
+}
+
+const startSsh = (args: readonly string[]): StartedSsh =>
+	spawn("ssh", [...args], { stdio: "inherit" });
 
 /** How long ssh gets to end on the signal it was passed before it is killed. */
 const SSH_STOP_GRACE_MS = 5_000;
@@ -52,7 +65,7 @@ export async function forwardResidentSessions(
 	signals: EndingSignalHold,
 	io: {
 		readonly stdout?: NodeJS.WritableStream;
-		readonly spawn?: typeof spawnProcess;
+		readonly startSsh?: (args: readonly string[]) => StartedSsh;
 	} = {},
 ): Promise<number> {
 	signals.hold();
@@ -65,7 +78,7 @@ export async function forwardResidentSessions(
 	const leaseMs = authorizationLeaseDelay(forward.authorizationExpiresAt ?? "");
 	const args = remoteSessionServeSshArgs(machine, port, forward.identityAgent);
 	return new Promise<number>((resolve) => {
-		let child: ChildProcess | undefined;
+		let child: StartedSsh | undefined;
 		let expired = false;
 		let stoppedBy: NodeJS.Signals | undefined;
 		let hardStop: NodeJS.Timeout | undefined;
@@ -81,7 +94,7 @@ export async function forwardResidentSessions(
 			stoppedBy ??= signal;
 			stopSsh(signal);
 		});
-		child = (io.spawn ?? spawnProcess)("ssh", args, { stdio: "inherit" });
+		child = (io.startSsh ?? startSsh)(args);
 		const expiration = setTimeout(() => {
 			expired = true;
 			stopSsh("SIGTERM");
@@ -90,8 +103,11 @@ export async function forwardResidentSessions(
 			ended = true;
 			clearTimeout(expiration);
 			if (hardStop) clearTimeout(hardStop);
+			// ssh is gone: a signal from here on stops nothing, and arms no
+			// SIGKILL. The signals stay held, only recorded, until the caller
+			// has closed the authorization and releases them; released here, a
+			// second signal ended hobo-code before pam.SessionEnded was written.
 			stopReacting();
-			signals.release();
 			resolve(code);
 		};
 		child.once("error", () => finish(1));

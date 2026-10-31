@@ -344,3 +344,26 @@ describe.skipIf(process.platform !== "linux")(
 		);
 	},
 );
+
+describe.skipIf(process.platform !== "linux")(
+	"hobo-code forwarding a resident browser, signalled again while it closes the authorization",
+	() => {
+		// ssh is gone and the authorization is being closed (widened by a
+		// preload): a second signal must wait for that, not end hobo-code
+		// before pam.SessionEnded is written.
+		it(
+			"is held until the authorization is closed",
+			async () => {
+				const ended = await forwardThenEnd({
+					by: "SIGINT",
+					againInside: "authorization closing",
+				});
+				expect(ended.forwarded, ended.output).toBe(true);
+				expect(ended.audit, ended.output).toContain("pam.SessionEnded");
+				expect(ended.code, ended.output).toBe(130);
+				expect(ended.standInEnded).toBe(true);
+			},
+			FORWARD_DEADLINE_MS + 3 * END_GRACE_MS,
+		);
+	},
+);

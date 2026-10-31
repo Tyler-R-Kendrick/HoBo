@@ -888,7 +888,8 @@ hobo-code with 128+n. hobo-code listens for those four from just before it
 opens the authorization (`src/signal-hold.ts`): a signal that comes while the
 authorization is being opened means ssh never starts, and one that comes
 while ssh is being started stops it once it has. Either way the authorization
-is closed before hobo-code ends.
+is closed before hobo-code ends, and they stay held until it is: a second
+signal while it is being closed is only recorded.
 
 ## Package layout
 

@@ -10,7 +10,11 @@
  *      (ADR-0169, item 7), and reported as unverified when it runs.
  *   2. The `mirror` asset pin in `tools/pins/siblings.json`, from the
  *      machine-wide cache, re-hashed before it is trusted
- *      (`pnpm run pins:fetch mirror` puts it there).
+ *      (`pnpm run pins:fetch mirror` puts it there). Mirror releases are
+ *      archives, so the pin is one member of one (`"archive": { "format":
+ *      "tar.gz", "member": "mirror" }`): `verifyCached` re-hashes the archive
+ *      and checks the member, `cachedPath` names the member, and anything but
+ *      `ok` is `MIRROR_NOT_FETCHED` with `pins:fetch mirror` as the fix.
  *   3. Neither: `MIRROR_BIN_REQUIRED`, with the build command. The lane fails;
  *      it never skips.
  *
@@ -89,7 +93,7 @@ export const MIRROR_LANE_SERVICES = Object.freeze([
 export const MIRROR_LANE_SEED = "hobo-contract";
 
 const BUILD_HELP =
-	"build one from a mirror.cloud checkout with `CGO_ENABLED=0 go build -o <dir>/mirror ./cmd/mirror` and set MIRROR_BIN=<dir>/mirror (an unverified local build), or pin a release in tools/pins/siblings.json and run `pnpm run pins:fetch mirror`";
+	'build one from a mirror.cloud checkout with `CGO_ENABLED=0 go build -o <dir>/mirror ./cmd/mirror` and set MIRROR_BIN=<dir>/mirror (an unverified local build), or pin a mirror release with `pnpm run pins:bump mirror <tag>` and run `pnpm run pins:fetch mirror`: mirror publishes each release as mirror_<tag>_<os>_<arch>.tar.gz, so each target\'s pin is that archive\'s sha256 and size with "entry": "mirror", "archive": { "format": "tar.gz", "member": "mirror" } (asset pins that unpack an archive: ADR-0174, residuals)';
 
 export interface MirrorBinary {
 	readonly path: string;

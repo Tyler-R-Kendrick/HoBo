@@ -153,7 +153,12 @@ describe("resolveMirrorBin", () => {
 			(error: Error) =>
 				error instanceof MirrorLaneError &&
 				error.code === "MIRROR_BIN_REQUIRED" &&
-				/go build -o <dir>\/mirror \.\/cmd\/mirror/u.test(error.message),
+				/go build -o <dir>\/mirror \.\/cmd\/mirror/u.test(error.message) &&
+				// mirror publishes archives: the pin is the archive's `mirror` member.
+				error.message.includes(
+					'"archive": { "format": "tar.gz", "member": "mirror" }',
+				) &&
+				/pins:bump mirror <tag>/u.test(error.message),
 		);
 	});
 

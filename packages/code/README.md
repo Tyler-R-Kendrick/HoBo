@@ -69,11 +69,14 @@ and skip its exit listeners. The launcher only keeps the console's Ctrl-C and
 Ctrl-Break from ending it before its child, and waits. A launcher killed
 outright on Windows leaves the child running.
 
-`nohup hobo-code …` does not keep hobo-code running after a hangup. The
-launcher listens for SIGHUP itself, which overrides the ignore `nohup` sets,
-and passes it on: a hangup is how hobo-code learns its terminal is gone, and
-the shell, or `session serve`, then stops and removes what it made rather
-than run on with no terminal. Run it under tmux or screen to keep it running.
+`nohup hobo-code …` does not keep hobo-code running after a hangup, and never
+did: Node clears an ignored SIGHUP when it starts, so the ignore `nohup` sets
+is gone before the launcher's first line. A bare `nohup node -e …` ends with
+129 on `kill -HUP` the same way. The launcher listens for SIGHUP and passes
+the hangup on to its child: a hangup is how hobo-code learns its terminal is
+gone, and the shell, or `session serve`, then stops and removes what it made
+rather than run on with no terminal. Run it under tmux or screen to keep it
+running.
 
 | Binary | Product |
 |---|---|

@@ -16,7 +16,7 @@
  *
  * Erasable TypeScript with node builtins only, like the pins it reads.
  */
-import { type ChildProcess, spawn } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 import {
 	constants,
 	existsSync,
@@ -32,6 +32,7 @@ import { type AddressInfo, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 
+import { LaneChildren } from "./lane-children.ts";
 import { PINS_FILE, parsePins } from "./pins.ts";
 import { refuseOverridesInCi } from "./pins-asset-ops.ts";
 import {
@@ -189,6 +190,12 @@ export interface MirrorOptions {
 	readonly startTimeoutMs?: number;
 	/** Tests only: the port to bind instead of a fresh free one. */
 	readonly port?: number;
+	/**
+	 * Where the emulator's process is tracked from the moment it is spawned,
+	 * so the runner can stop it during start-up too. Default: a registry of
+	 * its own.
+	 */
+	readonly children?: LaneChildren;
 }
 
 export interface RunningMirror {
@@ -201,7 +208,7 @@ export interface RunningMirror {
 	readonly args: readonly string[];
 	/** What it printed so far (stdout and stderr, interleaved), bounded. */
 	output(): string;
-	/** SIGTERM, then SIGKILL after 5 s; resolves once the process is gone. */
+	/** SIGTERM to its process group, SIGKILL after 5 s; resolves once the process is gone. */
 	stop(): Promise<void>;
 }
 
@@ -240,12 +247,6 @@ function get(
 		outgoing.on("error", reject);
 		outgoing.end();
 	});
-}
-
-function exited(child: ChildProcess): Promise<void> {
-	return child.exitCode !== null || child.signalCode !== null
-		? Promise.resolve()
-		: new Promise((resolveExit) => child.once("exit", () => resolveExit()));
 }
 
 /**
@@ -408,11 +409,18 @@ async function startOnce(
 	// An empty directory of its own: mirror reads `.mirror/config.json` and
 	// keeps `.mirror/cassettes` relative to where it runs.
 	const cwd = mkdtempSync(join(tmpdir(), "hobo-mirror-cwd-"));
-	const child = spawn(options.bin, args, {
-		cwd,
-		env: mirrorEnv(options.env),
-		stdio: ["ignore", "pipe", "pipe"],
-	});
+	const children = options.children ?? new LaneChildren();
+	let child: ChildProcess;
+	try {
+		child = children.spawn(options.bin, args, {
+			cwd,
+			env: mirrorEnv(options.env),
+			stdio: ["ignore", "pipe", "pipe"],
+		});
+	} catch (error) {
+		rmSync(cwd, { recursive: true, force: true });
+		throw error;
+	}
 	let output = "";
 	const keep = (chunk: Buffer) => {
 		output = `${output}${chunk.toString("utf8")}`.slice(-OUTPUT_LIMIT);
@@ -429,12 +437,7 @@ async function startOnce(
 		options.tlsDir === undefined ? undefined : join(options.tlsDir, "ca.pem");
 	const gone = () => child.exitCode !== null || child.signalCode !== null;
 	const stop = async () => {
-		if (child.pid !== undefined && !gone()) {
-			child.kill("SIGTERM");
-			const killer = setTimeout(() => child.kill("SIGKILL"), 5_000);
-			await exited(child);
-			clearTimeout(killer);
-		}
+		await children.stop(child);
 		rmSync(cwd, { recursive: true, force: true });
 	};
 	const printed = () => output.trim().slice(-2_000);

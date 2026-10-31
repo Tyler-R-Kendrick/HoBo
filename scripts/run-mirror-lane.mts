@@ -9,7 +9,9 @@
  * `MIRROR_CLOCK=controllable`, `MIRROR_VERCEL_FAULTS=1`) on a free loopback
  * port, sets `HOBO_MIRROR_URL` (and `HOBO_MIRROR_CA` with `--tls`), runs each
  * package's own `test:mirror` script one after another, always stops the
- * emulator, prints what its journal recorded and the pact verification
+ * emulator and any package run (each in its own process group, tracked from
+ * the moment it is spawned, so SIGINT or SIGTERM during start-up stops mirror
+ * too), prints what its journal recorded and the pact verification
  * reports the tests left in `HOBO_MIRROR_REPORTS`, and exits 1 if any package
  * failed.
  *
@@ -26,7 +28,6 @@
  * Exit: 0 every package passed, 1 a package failed or the emulator could not
  * run, 2 wrong usage.
  */
-import { spawn } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -35,6 +36,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 import { commandForPlatform, sanitizeNodeOptions } from "./lib/env.ts";
+import { LaneChildren } from "./lib/lane-children.ts";
 import {
 	MIRROR_LANE_SEED,
 	MIRROR_LANE_SERVICES,
@@ -86,6 +88,9 @@ function readArgs(): LaneOptions {
 	}
 }
 
+/** Every process the lane starts: a signal or the runner's exit stops each, process group included. */
+const children = new LaneChildren();
+
 function runPackage(name: string, env: NodeJS.ProcessEnv): Promise<number> {
 	const { command, args } = commandForPlatform("pnpm", [
 		"--filter",
@@ -94,10 +99,11 @@ function runPackage(name: string, env: NodeJS.ProcessEnv): Promise<number> {
 		"test:mirror",
 	]);
 	return new Promise((resolveRun) => {
-		const child = spawn(command, args, {
+		const child = children.spawn(command, args, {
 			cwd: root,
 			env,
-			stdio: "inherit",
+			// Nothing reads the terminal: a child in its own process group must not.
+			stdio: ["ignore", "inherit", "inherit"],
 			shell: false,
 		});
 		child.once("error", (error) => {
@@ -149,27 +155,44 @@ async function printJournal(mirror: RunningMirror): Promise<void> {
 }
 
 const options = readArgs();
-let mirror: RunningMirror | undefined;
+/** The emulator's start, in flight or done: what cleanUp waits on and stops. */
+let starting: Promise<RunningMirror> | undefined;
 let tlsDir: string | undefined;
 let reportDir: string | undefined;
+/** Set by SIGINT or SIGTERM: the exit code, and that nothing more may start. */
+let signalled: number | undefined;
+let cleaning: Promise<void> | undefined;
 
-async function cleanUp(): Promise<void> {
-	await mirror?.stop();
-	mirror = undefined;
-	if (tlsDir !== undefined) rmSync(tlsDir, { recursive: true, force: true });
-	tlsDir = undefined;
-	if (reportDir !== undefined) {
-		rmSync(reportDir, { recursive: true, force: true });
-	}
-	reportDir = undefined;
+/** Stop every child (the emulator, a package run) and remove the lane's directories; once. */
+function cleanUp(): Promise<void> {
+	cleaning ??= (async () => {
+		await children.stopAll();
+		// A start the stop interrupted settles once it has cleaned up after itself.
+		await starting?.then(
+			(running) => running.stop(),
+			() => undefined,
+		);
+		if (tlsDir !== undefined) rmSync(tlsDir, { recursive: true, force: true });
+		tlsDir = undefined;
+		if (reportDir !== undefined) {
+			rmSync(reportDir, { recursive: true, force: true });
+		}
+		reportDir = undefined;
+	})();
+	return cleaning;
 }
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
 	process.once(signal, () => {
-		console.error(`mirror-lane: ${signal}: stopping the emulator`);
-		void cleanUp().finally(() => process.exit(signal === "SIGINT" ? 130 : 143));
+		signalled = signal === "SIGINT" ? 130 : 143;
+		console.error(
+			`mirror-lane: ${signal}: stopping the emulator and any package run`,
+		);
+		void cleanUp().finally(() => process.exit(signalled));
 	});
 }
+// The last word, which cannot wait: no group the lane started outlives it.
+process.once("exit", () => children.killAllNow());
 
 let status = 1;
 try {
@@ -177,11 +200,13 @@ try {
 	console.log(`mirror-lane: mirror ${binary.path}`);
 	console.log(`mirror-lane:   from ${binary.origin}`);
 	if (options.tls) tlsDir = mkdtempSync(join(tmpdir(), "hobo-mirror-tls-"));
-	mirror = await startMirror({
+	starting = startMirror({
 		bin: binary.path,
 		env: process.env,
+		children,
 		...(tlsDir === undefined ? undefined : { tlsDir }),
 	});
+	const mirror = await starting;
 	console.log(
 		`mirror-lane: mirror up on ${mirror.url} (port ${mirror.port}, pid ${mirror.pid}, seed ${MIRROR_LANE_SEED}; ${MIRROR_LANE_SERVICES.join(", ")})`,
 	);
@@ -199,9 +224,11 @@ try {
 	});
 	const results: { readonly name: string; readonly code: number }[] = [];
 	for (const name of options.packages) {
+		if (signalled !== undefined) break;
 		console.log(`mirror-lane: ${name} test:mirror`);
 		results.push({ name, code: await runPackage(name, env) });
 	}
+	if (signalled !== undefined) throw new Error("stopped by a signal");
 	await printJournal(mirror);
 	printReports(reportDir);
 	for (const result of results) {
@@ -216,11 +243,14 @@ try {
 			: "mirror-lane: failed",
 	);
 } catch (error) {
-	console.error(
-		`fail  test:mirror — ${error instanceof Error ? error.message : String(error)}`,
-	);
+	// After a signal the refusal is the signal's doing, not the lane's verdict.
+	if (signalled === undefined) {
+		console.error(
+			`fail  test:mirror — ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
 	status = 1;
 } finally {
 	await cleanUp();
 }
-process.exit(status);
+process.exit(signalled ?? status);

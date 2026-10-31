@@ -36,70 +36,13 @@ import {
 } from "../lib/mirror-lane.ts";
 import { PinsError } from "../lib/pins.ts";
 import { cachedPath } from "../lib/pins-assets.ts";
+import { fakeMirror, TLS_FIXTURES } from "./support/mirror-fakes.ts";
 import {
 	REPO_ROOT,
 	scratch,
 	sha256Hex,
 	writeManifest,
 } from "./support/pins-support.ts";
-
-const FAKE_MIRROR = `#!/usr/bin/env node
-const { createServer } = require("node:http");
-const { createServer: createTlsServer } = require("node:https");
-const { copyFileSync, existsSync, readFileSync, writeFileSync } = require("node:fs");
-const { join } = require("node:path");
-const args = process.argv.slice(2);
-const bind = args[args.indexOf("--bind") + 1];
-const [host, port] = bind.split(":");
-const mode = process.env.FAKE_MIRROR_MODE ?? "ok";
-if (process.env.FAKE_MIRROR_PIDFILE) writeFileSync(process.env.FAKE_MIRROR_PIDFILE, String(process.pid));
-// --tls-self-signed <dir>: like mirror, write the CA into <dir> and serve
-// HTTPS; the certificates are the test-only ones in FAKE_MIRROR_TLS_FIXTURES.
-const tlsAt = args.indexOf("--tls-self-signed");
-const tlsDir = tlsAt === -1 || mode === "plain" ? undefined : args[tlsAt + 1];
-const fixtures = process.env.FAKE_MIRROR_TLS_FIXTURES;
-if (tlsDir !== undefined) copyFileSync(join(fixtures, "ca.pem"), join(tlsDir, "ca.pem"));
-const scheme = tlsDir === undefined ? "http" : "https";
-if (mode === "exit") { console.error("mirror: cannot load specs"); process.exit(3); }
-if (mode === "busy-once" && !existsSync(process.env.FAKE_MIRROR_MARK)) {
-	writeFileSync(process.env.FAKE_MIRROR_MARK, "x");
-	console.error("listen tcp " + bind + ": bind: address already in use");
-	process.exit(1);
-}
-const serve = (handler) => tlsDir === undefined
-	? createServer(handler)
-	: createTlsServer({ key: readFileSync(join(fixtures, "loopback.key")), cert: readFileSync(join(fixtures, "loopback.pem")) }, handler);
-const server = serve((request, response) => {
-	if (mode === "unhealthy") { response.writeHead(503); response.end("{}"); return; }
-	response.writeHead(200, { "content-type": "application/json" });
-	if (request.url === "/_mirror/health") { response.end('{"status":"ok","uptime_ms":0,"version":"fake"}'); return; }
-	const mirrorEnv = Object.keys(process.env).filter((key) => key.startsWith("MIRROR_")).sort().map((key) => key + "=" + process.env[key]);
-	response.end(JSON.stringify({ args, clock: process.env.MIRROR_CLOCK, faults: process.env.MIRROR_VERCEL_FAULTS, mirrorEnv, cwd: process.cwd(), cwdEntries: require("node:fs").readdirSync("."), readsConfig: existsSync(".mirror/config.json") }));
-});
-server.on("error", (error) => {
-	console.error("listen tcp " + bind + ": bind: " + (error.code === "EADDRINUSE" ? "address already in use" : error.message));
-	process.exit(1);
-});
-// Like mirror: the banner first, then (a moment later) the bind.
-if (mode !== "no-banner") console.error("mirror fake listening on " + scheme + "://" + bind);
-if (tlsDir !== undefined) console.error("tls ca: " + join(tlsDir, "ca.pem"));
-setTimeout(() => server.listen(Number(port), host), 50);
-process.on("SIGTERM", () => { console.log("mirror fake: SIGTERM"); process.exit(0); });
-`;
-
-/** The test-only certificates the stand-in serves TLS with (their README says what they are). */
-const TLS_FIXTURES = join(
-	REPO_ROOT,
-	"packages/contract-harness/test/fixtures/tls",
-);
-
-function fakeMirror(): string {
-	const dir = scratch("mirror-lane");
-	const bin = join(dir, "mirror");
-	writeFileSync(bin, FAKE_MIRROR);
-	chmodSync(bin, 0o755);
-	return bin;
-}
 
 function getJson(url: string): Promise<{
 	readonly args: readonly string[];

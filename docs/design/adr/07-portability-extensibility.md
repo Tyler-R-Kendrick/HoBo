@@ -944,7 +944,7 @@ The `aws.secrets-manager/v1` resolver never read `DeletedDate`, so it handled a 
    - Preview reads "exists as <id>, and the provider is deleting it." with the resolver's diagnostics, and `changes: 1`.
    - Drift is `true`, determined, with the same text. A resource on its way out is neither "would be created" nor "clean".
 3. **A scheduled secret fails closed.** `aws.secrets-manager/v1`'s `reconcile()` refuses it with `RESOLVER_PROVIDER_REJECTED` and names the two ways forward:
-   - declare `restoreScheduled: true` to restore it with its previous versions (`RestoreSecret`, reported as `update`). The same `reconcile()` then describes the restored secret and, as for any live secret, sends `UpdateSecret` for a declared `description` or `kmsKeyRef` that differs;
+   - declare `restoreScheduled: true` to restore it with its previous versions (`RestoreSecret`, reported as `update`). The same `reconcile()` then describes the restored secret and, as for any live secret, sends `UpdateSecret` for a declared `description` or `kmsKeyRef` that differs. A `RestoreSecret` success counts only when that describe agrees. If DescribeSecret still reports `DeletedDate`, or no longer finds the secret, `reconcile()` refuses with `RESOLVER_PROVIDER_REJECTED`, says the restore did not take effect, and sends nothing more;
    - or destroy it with `forceDelete: true` to delete it now.
 
    With the flag, preview and drift say "apply will restore it, with its previous versions".

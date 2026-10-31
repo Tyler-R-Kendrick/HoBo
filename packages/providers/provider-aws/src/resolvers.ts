@@ -1913,10 +1913,27 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 				}),
 				`secretsmanager restore ${context.name}`,
 			);
+			// A success is believed only once DescribeSecret agrees. If the secret
+			// is still scheduled (or gone), an UpdateSecret now would be refused
+			// for a reason the operator never sees, and an `update` outcome would
+			// claim a restore that did not happen; both are refused here instead.
+			const after = await readSecret(context);
+			const stillScheduled =
+				after === undefined ? undefined : deletedDateOf(context, after);
+			if (after === undefined || stillScheduled !== undefined) {
+				throw new ResolverError(
+					"RESOLVER_PROVIDER_REJECTED",
+					`secretsmanager restore ${context.name}: RestoreSecret answered success, but the restore did not take effect: DescribeSecret ${
+						after === undefined
+							? "no longer finds the secret"
+							: `still reports it scheduled for deletion (DeletedDate ${stillScheduled})`
+					}. Nothing more was sent; run apply again once DescribeSecret shows the secret restored`,
+				);
+			}
 			diagnostics.push(
 				`restored the secret scheduled for deletion (DeletedDate ${deletedDate}), with its previous versions (restoreScheduled: true)`,
 			);
-			existing = (await readSecret(context)) ?? existing;
+			existing = after;
 			restored = true;
 		}
 

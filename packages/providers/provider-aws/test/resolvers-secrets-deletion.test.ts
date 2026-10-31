@@ -87,6 +87,8 @@ interface FakeOptions {
 	readonly scheduleBeforeDelete?: boolean;
 	/** DeleteSecret answers InvalidRequestException for a cause other than a scheduled deletion. */
 	readonly refuseDelete?: boolean;
+	/** What RestoreSecret does after answering success: nothing, or remove the secret. */
+	readonly restore?: "takes-no-effect" | "secret-vanishes";
 }
 
 /** One account's Secrets Manager, holding secrets through their recovery window. */
@@ -177,7 +179,9 @@ function fakeSecretsManager(
 			case "RestoreSecret":
 				if (secret === undefined)
 					return fault("ResourceNotFoundException", NOT_FOUND);
-				secret.deletedDate = undefined;
+				if (options.restore === "secret-vanishes") secrets.delete(name);
+				else if (options.restore !== "takes-no-effect")
+					secret.deletedDate = undefined;
 				return reply(200, { ARN: arn(name), Name: name });
 			default:
 				return fault("UnknownOperationException", target);
@@ -339,6 +343,35 @@ describe("reconcile of a secret scheduled for deletion", () => {
 		]);
 		expect(outcome.action).toBe("update");
 		expect(runner.secrets.get(NAME)?.deletedDate).toBeUndefined();
+	});
+
+	it.each([
+		["takes-no-effect", "still reports it scheduled for deletion (DeletedDate"],
+		["secret-vanishes", "no longer finds the secret"],
+	] as const)("refuses, and sends nothing more, when RestoreSecret succeeds but %s", async (restore, observed) => {
+		const runner = harness(scheduledSecret("old description"), { restore });
+
+		const refusal = await runner
+			.reconcile({
+				description: "payment provider key",
+				restoreScheduled: true,
+			})
+			.then(
+				() => undefined,
+				(error: Error) => error,
+			);
+
+		expect(refusal).toBeInstanceOf(ResolverError);
+		expect(refusal instanceof ResolverError ? refusal.code : "").toBe(
+			"RESOLVER_PROVIDER_REJECTED",
+		);
+		expect(refusal?.message).toContain("the restore did not take effect");
+		expect(refusal?.message).toContain(observed);
+		expect(runner.aws.targets()).toEqual([
+			"DescribeSecret",
+			"RestoreSecret",
+			"DescribeSecret",
+		]);
 	});
 
 	it("leaves a secret that is not scheduled alone, whatever restoreScheduled says", async () => {

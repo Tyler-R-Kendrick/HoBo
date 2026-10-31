@@ -227,6 +227,10 @@ different suffix — is refused rather than interpolated into a hostname.
     `forceDelete: true` to delete it now. Both are `SecretsManagerOptions`
     fields: `secretsManager({ restoreScheduled: true })`,
     `secretsManager({ forceDelete: true })`. A forced delete cannot be undone.
+    A restore counts only when the DescribeSecret after it shows the secret
+    live. If it still shows `DeletedDate`, or no secret at all, `reconcile`
+    refuses and says the restore did not take effect, and sends no
+    `UpdateSecret`.
   - `delete` issues nothing more for it, and a `forceDelete: true` delete still
     deletes it at once. An `InvalidRequestException` because someone scheduled it
     between the describe and the delete counts as done.

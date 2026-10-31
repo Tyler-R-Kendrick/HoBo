@@ -286,8 +286,45 @@ export interface ApplyResult {
 	readonly ok: boolean;
 	readonly session: string;
 	readonly created: readonly string[];
+	/**
+	 * tmux's ids (`@n`) of the windows this run created, in order. A name can
+	 * come to mean another client's session or window; an id cannot.
+	 */
+	readonly createdWindows: readonly string[];
 	readonly existed: boolean;
 	readonly detail: string;
+}
+
+/** A window this run created: its name, and tmux's id for it when reported. */
+interface CreatedWindow {
+	readonly name: string;
+	readonly id?: string;
+}
+
+/** tmux's id from `-P -F` output, when it is one (`@n`, `$n`). */
+function tmuxId(
+	output: string | undefined,
+	sigil: "@" | "$",
+): string | undefined {
+	const id = output?.trim();
+	return id?.startsWith(sigil) === true ? id : undefined;
+}
+
+/**
+ * Remove the windows `ids` (tmux's `@n`), each by its id, never a name: a
+ * session the windows were the last of goes with them. The ids that could
+ * not be removed.
+ */
+export async function killWindows(
+	runner: MuxRunner,
+	ids: readonly string[],
+): Promise<readonly string[]> {
+	const left: string[] = [];
+	for (const id of [...ids].reverse()) {
+		const removed = await runner.run(["kill-window", "-t", id]);
+		if (removed.code !== 0) left.push(id);
+	}
+	return left;
 }
 
 /**
@@ -295,6 +332,9 @@ export interface ApplyResult {
  *
  * Idempotent: an existing session is reused and only missing windows are
  * added, so running this twice does not duplicate panes or kill your work.
+ * Once mux has the session, it names it by tmux's id, and it records each
+ * window it creates by id: another client may rename the session, or make
+ * one of the same name, meanwhile.
  */
 export async function applyMux(
 	plan: MuxPlan,
@@ -306,22 +346,31 @@ export async function applyMux(
 		exactSession(plan.session),
 	]);
 	const existed = has.code === 0;
-	const created: string[] = [];
+	const windows: CreatedWindow[] = [];
+	const result = (ok: boolean, detail: string): ApplyResult => ({
+		ok,
+		session: plan.session,
+		created: windows.map((window) => window.name),
+		createdWindows: windows.flatMap((window) =>
+			window.id === undefined ? [] : [window.id],
+		),
+		existed,
+		detail,
+	});
+	/** The session as a window target: by tmux's id once mux has it. */
+	let target = sessionTarget(plan.session);
 
 	if (!existed) {
 		const first = plan.targets[0];
 		if (!first) {
-			return {
-				ok: false,
-				session: plan.session,
-				created: [],
-				existed: false,
-				detail: "no agents detected — nothing to seat in a session",
-			};
+			return result(false, "no agents detected — nothing to seat in a session");
 		}
 		const start = await runner.run([
 			"new-session",
 			"-d",
+			"-P",
+			"-F",
+			"#{session_id} #{window_id}",
 			"-s",
 			plan.session,
 			"-n",
@@ -329,15 +378,16 @@ export async function applyMux(
 			targetCommand(first),
 		]);
 		if (start.code !== 0) {
-			return {
-				ok: false,
-				session: plan.session,
-				created: [],
-				existed: false,
-				detail: "tmux new-session failed (is tmux installed?)",
-			};
+			return result(false, "tmux new-session failed (is tmux installed?)");
 		}
-		created.push(safeWindowName(first.name));
+		const [sessionId, windowId] = start.stdout.trim().split(" ");
+		const session = tmuxId(sessionId, "$");
+		if (session !== undefined) target = `${session}:`;
+		const id = tmuxId(windowId, "@");
+		windows.push({
+			name: safeWindowName(first.name),
+			...(id !== undefined ? { id } : undefined),
+		});
 	}
 
 	// Only ask tmux what already exists when joining a session we did not just
@@ -345,12 +395,21 @@ export async function applyMux(
 	// session still being torn down, and those stale window names made us skip
 	// creating the real ones — the session silently came up with one pane
 	// instead of six.
-	const present = new Set<string>(created);
+	const present = new Set<string>(windows.map((window) => window.name));
 	if (existed) {
+		const named = await runner.run([
+			"display-message",
+			"-p",
+			"-t",
+			sessionTarget(plan.session),
+			"#{session_id}",
+		]);
+		const session = named.code === 0 ? tmuxId(named.stdout, "$") : undefined;
+		if (session !== undefined) target = `${session}:`;
 		const listed = await runner.run([
 			"list-windows",
 			"-t",
-			sessionTarget(plan.session),
+			target,
 			"-F",
 			"#{window_name}",
 		]);
@@ -360,60 +419,53 @@ export async function applyMux(
 		}
 	}
 
-	for (const target of plan.targets) {
-		const name = safeWindowName(target.name);
-		if (present.has(name) || created.includes(name)) continue;
+	for (const plannedTarget of plan.targets) {
+		const name = safeWindowName(plannedTarget.name);
+		if (present.has(name)) continue;
 		const added = await runner.run([
 			"new-window",
 			"-d",
+			"-P",
+			"-F",
+			"#{window_id}",
 			"-t",
-			sessionTarget(plan.session),
+			target,
 			"-n",
 			name,
-			targetCommand(target),
+			targetCommand(plannedTarget),
 		]);
 		if (added.code !== 0) {
-			let rolledBack = true;
-			const surviving = new Set(created);
-			if (existed) {
-				for (const createdName of [...created].reverse()) {
-					const removed = await runner.run([
-						"kill-window",
-						"-t",
-						`${sessionTarget(plan.session)}=${createdName}`,
-					]);
-					if (removed.code === 0) surviving.delete(createdName);
-					rolledBack = rolledBack && removed.code === 0;
-				}
-			} else {
-				const removed = await runner.run([
-					"kill-session",
-					"-t",
-					exactSession(plan.session),
-				]);
-				rolledBack = removed.code === 0;
-				if (rolledBack) surviving.clear();
-			}
-			return {
-				ok: false,
-				session: plan.session,
-				created: [...surviving],
-				existed,
-				detail: `tmux new-window failed for ${name}; rollback ${rolledBack ? "complete" : "incomplete"}`,
-			};
+			// Remove what this run added, by id: a window tmux gave no id for
+			// cannot be named safely, and stays.
+			const left = new Set(
+				await killWindows(
+					runner,
+					windows.flatMap((window) =>
+						window.id === undefined ? [] : [window.id],
+					),
+				),
+			);
+			const surviving = windows.filter(
+				(window) => window.id === undefined || left.has(window.id),
+			);
+			const rolledBack = surviving.length === 0;
+			windows.splice(0, windows.length, ...surviving);
+			return result(
+				false,
+				`tmux new-window failed for ${name}; rollback ${rolledBack ? "complete" : "incomplete"}`,
+			);
 		}
-		created.push(name);
+		const id = tmuxId(added.stdout, "@");
+		windows.push({ name, ...(id !== undefined ? { id } : undefined) });
+		present.add(name);
 	}
 
-	return {
-		ok: true,
-		session: plan.session,
-		created,
-		existed,
-		detail: existed
-			? `reattached to ${plan.session}; added ${created.length} window(s)`
-			: `created ${plan.session} with ${created.length} window(s)`,
-	};
+	return result(
+		true,
+		existed
+			? `reattached to ${plan.session}; added ${windows.length} window(s)`
+			: `created ${plan.session} with ${windows.length} window(s)`,
+	);
 }
 
 /** The command a human runs to join the session — local or over ssh. */

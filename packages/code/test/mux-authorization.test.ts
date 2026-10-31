@@ -55,6 +55,7 @@ const servers: Server[] = [];
 const identities: ResolvedSshIdentity[] = [];
 afterEach(async () => {
 	tmux(["kill-session", "-t", `=${SESSION}`]);
+	tmux(["kill-session", "-t", "=mine"]);
 	for (const identity of identities.splice(0)) await identity.stop();
 	for (const server of servers.splice(0)) {
 		await new Promise((resolve) => server.close(resolve));
@@ -71,6 +72,18 @@ const SESSION = "t";
 /** tmux on this test file's own server (test/isolate-tmux.ts); its status. */
 function tmux(args: readonly string[]): number | null {
 	return spawnSync("tmux", [...args], { stdio: "ignore" }).status;
+}
+
+/** The windows of the session named exactly `session`, by name. */
+function windowsOf(session: string): readonly string[] {
+	const listed = spawnSync(
+		"tmux",
+		["list-windows", "-t", `=${session}:`, "-F", "#{window_name}"],
+		{ encoding: "utf8" },
+	);
+	return listed.status === 0
+		? listed.stdout.split("\n").filter((line) => line.length > 0)
+		: [];
 }
 
 function stationWithPam(hoboHome: string): void {
@@ -273,8 +286,9 @@ describe("mux --host, ending before its panes hold the leases", () => {
 
 /**
  * A preload that sends this process `SIGTERM` at one point of mux: right
- * after pam.SessionStarted is written, or as the first tmux command is
- * started (by then a pane's session is with its proxy).
+ * after pam.SessionStarted is written, as the first tmux command is started
+ * (by then a pane's session is with its proxy), or once `tmux new-session`
+ * has exited, after running SIGNAL_HOOK, what another tmux client does then.
  */
 const SIGNAL_AT = `import cp from "node:child_process";
 import fs from "node:fs";
@@ -293,9 +307,17 @@ fs.appendFileSync = function (path, data, ...rest) {
 	return result;
 };
 const start = cp.spawn;
-cp.spawn = function (command, ...rest) {
+const runHook = cp.spawnSync;
+cp.spawn = function (command, args, ...rest) {
 	if (at === "tmux" && command === "tmux") send();
-	return start.call(this, command, ...rest);
+	const child = start.call(this, command, args, ...rest);
+	if (at === "after new-session" && command === "tmux" && Array.isArray(args) && args.includes("new-session")) {
+		child.once("exit", () => {
+			if (process.env.SIGNAL_HOOK) runHook("sh", ["-c", process.env.SIGNAL_HOOK], { stdio: "ignore", env: process.env });
+			send();
+		});
+	}
+	return child;
 };
 syncBuiltinESMExports();
 `;
@@ -309,7 +331,8 @@ interface Ended {
 /** Run hobo-code's `mux --host box` as a process, signalled at `at`. */
 async function muxSignalled(
 	f: Fixture,
-	at: "session started" | "tmux",
+	at: "session started" | "tmux" | "after new-session",
+	hook = "",
 ): Promise<Ended> {
 	const preload = join(f.root, "signal-at.mjs");
 	writeFileSync(preload, SIGNAL_AT);
@@ -338,6 +361,7 @@ async function muxSignalled(
 					SSH_AUTH_SOCK: f.agentSocket,
 					NODE_NO_WARNINGS: "1",
 					SIGNAL_AT: at,
+					SIGNAL_HOOK: hook,
 				}),
 				// mux places agents only when seating is on.
 				HOBO_CODE_SEAT_AGENTS: "1",
@@ -395,6 +419,31 @@ describe("mux --host, signalled before its panes hold the leases", () => {
 		const ended = await muxSignalled(f, "tmux");
 		expect(ended.code, ended.output).toBe(143);
 		expect(tmux(["has-session", "-t", `=${SESSION}`])).not.toBe(0);
+	}, 90_000);
+
+	it("while tmux is set up, kills only the windows it created: one another client added survives", async () => {
+		const f = await fixture();
+		const ended = await muxSignalled(
+			f,
+			"after new-session",
+			`tmux new-window -d -t '=${SESSION}:' -n foreign 'sleep 600'`,
+		);
+		expect(ended.code, ended.output).toBe(143);
+		expect(windowsOf(SESSION)).toEqual(["foreign"]);
+		expect(proxiesUnder(f.root)).toEqual([]);
+	}, 90_000);
+
+	it("while tmux is set up, kills nothing by name: its session renamed, a new one of its name survives", async () => {
+		const f = await fixture();
+		const ended = await muxSignalled(
+			f,
+			"after new-session",
+			`tmux rename-session -t '=${SESSION}' mine && tmux new-session -d -s ${SESSION} -n foreign 'sleep 600'`,
+		);
+		expect(ended.code, ended.output).toBe(143);
+		expect(windowsOf(SESSION)).toEqual(["foreign"]);
+		expect(tmux(["has-session", "-t", "=mine"])).not.toBe(0);
+		expect(proxiesUnder(f.root)).toEqual([]);
 	}, 90_000);
 
 	it("while tmux is set up, leaves a session that was there before it", async () => {

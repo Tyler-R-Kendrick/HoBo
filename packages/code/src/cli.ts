@@ -127,6 +127,7 @@ import { inspectModels, modelsHumanSummary } from "./models.js";
 import {
 	applyMux,
 	attachCommand,
+	killWindows,
 	type MuxRunner,
 	type MuxTarget,
 	planMux,
@@ -1746,27 +1747,6 @@ const MUX_FAILED = "mux-failed";
  */
 const MUX_INTERRUPTED = "mux-interrupted";
 
-/**
- * Kill the tmux session `session`, which this run of mux created, on the
- * server it is on, as tmux names its socket: only that session, by its exact
- * name, so that a session the run found already there is never touched.
- */
-async function killCreatedSession(
-	runner: MuxRunner,
-	session: string,
-): Promise<void> {
-	const where = await runner.run([
-		"display-message",
-		"-p",
-		"-t",
-		`=${session}:`,
-		"#{socket_path}",
-	]);
-	const socket = where.stdout.trim();
-	if (where.code !== 0 || socket.length === 0) return;
-	await runner.run(["-S", socket, "kill-session", "-t", `=${session}`]);
-}
-
 /** Close `gateway`, saying `reason` if any; the error, if closing failed. */
 async function closeAuthorization(
 	gateway: OpenedGateway,
@@ -3069,22 +3049,21 @@ export async function runHoboCodeCli(
 							ok: true,
 							session: plan.session,
 							created: plan.targets.map((t) => t.name),
+							createdWindows: [],
 							existed: false,
 							detail: "dry run — no tmux invoked",
 						}
 					: await applyMux(plan, muxRunner);
 			// A signal held until now ends what mux opened rather than leave it
 			// to the panes: no proxy is retained, so the cleanup stops them all,
-			// and a tmux session this run created goes too, its panes' agent
-			// sockets gone with the proxies.
+			// and in a session this run created, the windows it created go too,
+			// by tmux's id (never a name, which another client may have taken),
+			// their agent sockets gone with the proxies. The session goes with
+			// its last window.
 			const signal = await interruption();
 			if (signal !== undefined) {
-				if (
-					flags["dry-run"] !== true &&
-					!applied.existed &&
-					applied.created.length > 0
-				) {
-					await killCreatedSession(muxRunner, plan.session);
+				if (!applied.existed) {
+					await killWindows(muxRunner, applied.createdWindows);
 				}
 				return interrupted(signal);
 			}

@@ -200,6 +200,97 @@ const CASES: readonly Case[] = [
 		member: "bin/mirror",
 		reader: "ARCHIVE_UNSAFE",
 	},
+	// Links, anywhere: each can put other bytes at the member's path.
+	{
+		what: "d -> ., mirror, then d/mirror",
+		entries: [
+			{ name: "d", type: "2", linkname: "." },
+			{ name: "mirror", body: GOOD },
+			{ name: "d/mirror", body: EVIL },
+		],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "real/, bin -> real, bin/mirror, then real/mirror",
+		entries: [
+			{ name: "real/", type: "5" },
+			{ name: "bin", type: "2", linkname: "real" },
+			{ name: "bin/mirror", body: GOOD },
+			{ name: "real/mirror", body: EVIL },
+		],
+		member: "bin/mirror",
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "mirror, then a hard link to it",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{ name: "other", type: "1", linkname: "mirror" },
+		],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "mirror, and a symbolic link beside it",
+		entries: [
+			{ name: "LICENSE", body: "MIT\n" },
+			{ name: "mirror", body: GOOD },
+			{ name: "COPYING", type: "2", linkname: "LICENSE" },
+		],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	// The member's path in the tree: nothing under it, only directories above it.
+	{
+		what: "mirror/x, then mirror",
+		entries: [
+			{ name: "mirror/x", body: EVIL },
+			{ name: "mirror", body: GOOD },
+		],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "mirror, then a directory mirror/sub/",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{ name: "mirror/sub/", type: "5" },
+		],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "a regular file bin, then bin/mirror",
+		entries: [
+			{ name: "bin", body: EVIL },
+			{ name: "bin/mirror", body: GOOD },
+		],
+		member: "bin/mirror",
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "bin/mirror, then a regular file bin",
+		entries: [
+			{ name: "bin/mirror", body: GOOD },
+			{ name: "bin", body: EVIL },
+		],
+		member: "bin/mirror",
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "a FIFO bin, then bin/mirror",
+		entries: [
+			{ name: "bin", type: "6" },
+			{ name: "bin/mirror", body: GOOD },
+		],
+		member: "bin/mirror",
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "mirror, and a FIFO and a directory beside it",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{ name: "pipe", type: "6" },
+			{ name: "share/", type: "5" },
+		],
+		reader: "GOOD",
+	},
 ];
 
 function archiveOf(crafted: Case): string {

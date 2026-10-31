@@ -4,14 +4,24 @@
  * gzip. Every refusal is a PinsError, thrown as soon as it is known.
  *
  * What it reads, and only that: POSIX ustar headers (magic `ustar\0`), whose
- * type is a regular file (`0`, or the old `\0`) or one
- * of the data-less types `1`–`6` (hard link, symbolic link, character device,
- * block device, directory, FIFO). Any other type is refused, because its data
- * is that entry's own contents to `tar` (a `7` contiguous file, a GNU `D`
- * dumpdir or `S` sparse file), or it renames the entry after it (pax `x`/`g`,
- * GNU `L`/`K`): a reader that skipped such data, or parsed it as headers,
- * would find members `tar` never extracts. A data-less type that claims data
- * is refused for the same reason.
+ * type is a regular file (`0`, or the old `\0`) or one of the data-less types
+ * `3`–`6` (character device, block device, directory, FIFO). Any other type is
+ * refused, because its data is that entry's own contents to `tar` (a `7`
+ * contiguous file, a GNU `D` dumpdir or `S` sparse file), or it renames the
+ * entry after it (pax `x`/`g`, GNU `L`/`K`): a reader that skipped such data,
+ * or parsed it as headers, would find members `tar` never extracts. A
+ * data-less type that claims data is refused for the same reason.
+ *
+ * A link (`1` hard, `2` symbolic) is refused wherever it is. `d -> .` makes
+ * `d/mirror` overwrite `mirror`, `bin -> real` makes `real/mirror` overwrite
+ * `bin/mirror`, and a hard link gives the member a second name; refusing
+ * every link closes all of them, and mirror's archives hold none.
+ *
+ * The member's path must be a file in a tree of directories: an entry under
+ * the member (`mirror/x`, a directory `mirror/sub/`) makes `tar` turn the
+ * member into a directory, and anything but a directory at one of its parents
+ * (a file or FIFO `bin` above `bin/mirror`) leaves `tar` nowhere to put it.
+ * Both are refused. Directories elsewhere, and above the member, are read.
  *
  * A GNU header (`ustar  \0`) is refused, and so is any other magic. Where
  * POSIX keeps a name prefix (bytes 345 to 500), a GNU header keeps times and
@@ -271,6 +281,7 @@ export class TarScan {
 	}
 
 	#header(header: TarHeader): void {
+		this.#refuseAliases(header);
 		this.#taking = header.name === this.#member;
 		if (this.#taking) {
 			if (this.#found) {
@@ -296,5 +307,28 @@ export class TarScan {
 		}
 		this.#left = header.size;
 		this.#pad = (BLOCK - (header.size % BLOCK)) % BLOCK;
+	}
+
+	/** Refuse an entry that could make tar put other bytes, or nothing, at the member's path. */
+	#refuseAliases({ name, type }: TarHeader): void {
+		const kind = type === "0" ? "regular file" : DATALESS.get(type);
+		if (type === "1" || type === "2") {
+			throw new PinsError(
+				"ARCHIVE_UNSAFE",
+				`${this.#archive} has a ${kind} named ${name}; a link can give ${this.#member} a second name or lead a path somewhere else, so no link is read anywhere in the archive`,
+			);
+		}
+		if (name.startsWith(`${this.#member}/`)) {
+			throw new PinsError(
+				"ARCHIVE_UNSAFE",
+				`${this.#archive} has ${name}, under ${this.#member}, so tar would make ${this.#member} a directory; refusing it`,
+			);
+		}
+		if (type !== "5" && this.#member.startsWith(`${name}/`)) {
+			throw new PinsError(
+				"ARCHIVE_UNSAFE",
+				`${this.#archive} has a ${kind} at ${name}, where ${this.#member} needs a directory, so tar cannot put the member there; refusing it`,
+			);
+		}
 	}
 }

@@ -156,10 +156,12 @@ still deploy to, does not fail: it creates a second project of that name there
 and deploys to it. Set `teamId` (`createVercelDeployProvider({ token, teamId })`)
 for a project that lives in a team. `selectIacProvider`, and so `hobo up`, reads
 it from `VERCEL_TEAM_ID`, beside `VERCEL_TOKEN`; unset, empty or blank, the
-deploy and any create are in the token's own scope. Two paths do not read it:
-the resolver plane (`HOBO_DEPLOY_RESOLVERS=1`), and a run whose credentials come
-from OpenSesame (`HOBO_CREDENTIALS=opensesame`), whose relaunched `hobo` starts
-from an allowlisted environment that leaves `VERCEL_TEAM_ID` behind.
+deploy and any create are in the token's own scope. The resolver plane
+(`HOBO_DEPLOY_RESOLVERS=1`) reads it the same way, and its project lookups and
+creates carry the same `teamId`. One path does not read it: a run whose
+credentials come from OpenSesame (`HOBO_CREDENTIALS=opensesame`), whose
+relaunched `hobo` starts from an allowlisted environment that leaves
+`VERCEL_TEAM_ID` behind.
 The outputs say what happened: `projectCreated` is `"true"` when this deployment
 created the project and `"false"` otherwise, and `scope` is the `teamId`, or
 `"personal"` when there is none.

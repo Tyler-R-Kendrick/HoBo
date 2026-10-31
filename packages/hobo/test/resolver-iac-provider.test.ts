@@ -24,6 +24,7 @@ import {
 	cloudflareResolverRegistry,
 	guardedCloudflareTransport,
 } from "@hobo/provider-cloudflare";
+import { VERCEL_PROJECT_PRODUCT_ID } from "@hobo/provider-vercel";
 import {
 	createManualClock,
 	createRuntimeLocalEventStore,
@@ -31,7 +32,11 @@ import {
 } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
 import { selectIacProvider } from "../src/compose.js";
-import type { JsonObject, JsonValue } from "../src/json.js";
+import {
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "../src/json.js";
 import type { PulumiAutomationAdapter } from "../src/pulumi-iac-provider.js";
 import {
 	createResolverBackedIacProvider,
@@ -833,6 +838,73 @@ describe("selectIacProvider: the resolver lane is opt-in", () => {
 				adapter: stubPulumiAdapter(),
 			}).id,
 		).toMatch(/^pulumi-backed:/u);
+	});
+});
+
+describe("selectIacProvider: the Vercel resolver lane's team", () => {
+	// A Vercel account with no projects: a lookup is 404 until a create.
+	function fakeVercel() {
+		const urls: string[] = [];
+		const transport: HttpTransport = async (request) => {
+			urls.push(request.url);
+			if (request.method === "POST") {
+				const body = parseJsonObject(request.body ?? "{}");
+				return {
+					status: 200,
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ id: "prj_lane", name: body.name ?? "" }),
+				};
+			}
+			return {
+				status: 404,
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ error: { code: "not_found" } }),
+			};
+		};
+		return { transport, urls };
+	}
+
+	async function reconcileWith(env: Record<string, string>) {
+		const store = await storeWithPlan([
+			{
+				name: "web",
+				port: "web",
+				provider: "vercel",
+				deps: [],
+				productId: VERCEL_PROJECT_PRODUCT_ID,
+			},
+		]);
+		const vercel = fakeVercel();
+		const provider = selectIacProvider({
+			store,
+			providers: [],
+			env: { HOBO_DEPLOY_RESOLVERS: "1", VERCEL_TOKEN: FAKE_TOKEN, ...env },
+			resolverTransport: vercel.transport,
+		});
+		await provider.apply({ ...program("web"), provider: "vercel" });
+		return vercel.urls.map(
+			(url) => `${new URL(url).pathname}${new URL(url).search}`,
+		);
+	}
+
+	it("looks up and creates the project in the team VERCEL_TEAM_ID names", async () => {
+		const requests = await reconcileWith({ VERCEL_TEAM_ID: " team_acme " });
+
+		expect(requests).toHaveLength(2);
+		for (const request of requests) {
+			expect(request).toMatch(/\?teamId=team_acme$/u);
+		}
+	});
+
+	it.each([
+		["unset", {}],
+		["empty", { VERCEL_TEAM_ID: "" }],
+		["blank", { VERCEL_TEAM_ID: "  " }],
+	])("with VERCEL_TEAM_ID %s, stays in the token's own scope", async (_case, team) => {
+		const requests = await reconcileWith(team);
+
+		expect(requests).toHaveLength(2);
+		for (const request of requests) expect(request).not.toContain("?");
 	});
 });
 

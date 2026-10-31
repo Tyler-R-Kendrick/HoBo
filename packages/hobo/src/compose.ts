@@ -443,6 +443,16 @@ function hostCredentialResolver(
 	};
 }
 
+// The Vercel team the environment names in `VERCEL_TEAM_ID`, trimmed, or
+// `undefined` when it is unset or blank (the name and the trim
+// `scripts/staging-cutover-demo.mts` already use). Both Vercel lanes read it.
+function vercelTeamIdOf(
+	env: Record<string, string | undefined>,
+): string | undefined {
+	const teamId = env.VERCEL_TEAM_ID?.trim();
+	return teamId === undefined || teamId === "" ? undefined : teamId;
+}
+
 // Build the OPT-IN resolver-backed deploy provider for whichever cloud the
 // environment has credentials for, or `undefined` when it has none. Cloudflare
 // resolvers take a transport the host must wrap in the Cloudflare guard policy;
@@ -472,6 +482,7 @@ function resolverBackedProviderFor(
 	}
 	const vercelToken = env.VERCEL_TOKEN;
 	if (vercelToken) {
+		const teamId = vercelTeamIdOf(env);
 		return createResolverBackedIacProvider({
 			store: deps.store,
 			registry: vercelResolverRegistry({
@@ -479,6 +490,7 @@ function resolverBackedProviderFor(
 					VERCEL_RESOLVER_CREDENTIAL_REF,
 					vercelToken,
 				),
+				...(teamId !== undefined ? { teamId } : undefined),
 			}),
 			transport,
 			credentialRef: VERCEL_RESOLVER_CREDENTIAL_REF,
@@ -498,10 +510,11 @@ function resolverBackedProviderFor(
 //     resolver plane (`hobo.resource-resolver/v1`) behind the IacProvider port.
 //   - `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` present -> the REAL
 //     Cloudflare Workers deploy provider (cred-gated).
-//   - else `VERCEL_TOKEN` present -> the REAL Vercel deploy provider (cred-gated),
-//     in the team `VERCEL_TEAM_ID` names, or the token's own scope when it is
-//     unset or blank (the name and the trim `scripts/staging-cutover-demo.mts`
-//     already use).
+//   - else `VERCEL_TOKEN` present -> the REAL Vercel deploy provider (cred-gated).
+//
+// Both Vercel lanes (the deploy provider and the resolver plane) work in the
+// team `VERCEL_TEAM_ID` names, or in the token's own scope when it is unset or
+// blank (`vercelTeamIdOf`).
 //
 // The resolver lane is OPT-IN and deliberately sits INSIDE the cred-gated
 // bracket: it can only replace the two bespoke deploy providers, never the
@@ -552,16 +565,14 @@ export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
 				: undefined),
 		});
 	}
-	const vercelTeamId = env.VERCEL_TEAM_ID?.trim();
+	const vercelTeamId = vercelTeamIdOf(env);
 	return createVercelDeployProvider({
 		// SAFETY: assertion required at this I/O or test boundary.
 		token: vercelToken as string,
 		...(deps.vercelFetch !== undefined
 			? { fetch: deps.vercelFetch }
 			: undefined),
-		...(vercelTeamId !== undefined && vercelTeamId !== ""
-			? { teamId: vercelTeamId }
-			: undefined),
+		...(vercelTeamId !== undefined ? { teamId: vercelTeamId } : undefined),
 	});
 }
 

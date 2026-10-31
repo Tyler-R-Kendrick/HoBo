@@ -18,10 +18,15 @@
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
 		"pretest": "node --experimental-strip-types ../../../scripts/ensure-built.mts",
-		"test": "vitest run"
+		"test": "vitest run",
+		"pretest:mirror": "node --experimental-strip-types ../../../scripts/ensure-built.mts",
+		"test:mirror": "vitest run --config vitest.mirror.config.ts"
 	},
 	"dependencies": {
 		"@hobo/core": "workspace:*"
+	},
+	"devDependencies": {
+		"@hobo/contract-harness": "workspace:*"
 	},
 	"description": "HoBo AWS CloudProvider: RDS/S3/Fargate/SQS/ElastiCache/DynamoDB behind the agnostic ports (HOBO-711)."
 }

@@ -35,6 +35,22 @@ pnpm --filter @hobo/provider-aws build
 pnpm --filter @hobo/provider-aws test
 ```
 
+The resolvers also run against the mirror.cloud emulator, in the opt-in mirror
+lane (ADR-0174): `test/mirror/resolvers.mirror.test.ts` reconciles every
+product in `AWS_RESOLVED_PRODUCT_IDS` twice, reads and deletes it, SigV4-signed
+with dummy keys and through `guardedAwsTransport`, and checks the emulator's
+journal. Run it from the repository root with `MIRROR_BIN=<mirror> pnpm run
+test:mirror` (it starts the emulator; `pnpm --filter @hobo/provider-aws
+test:mirror` alone needs `HOBO_MIRROR_URL` and fails without it). The default
+`test` leaves `test/mirror/` out by configuration.
+
+The two SQS cases need a mirror whose query decoder reads a map entry under the
+model's names (`Attribute.1.Name`, `Attribute.1.Value`): mirror `0158e361`
+drops the attributes, so a FIFO `CreateQueue` and `SetQueueAttributes` fail
+there. The Secrets Manager case declares no description and force-deletes,
+because mirror keeps no `Description` and refuses `DescribeSecret` of a secret
+scheduled for deletion; ADR-0174 lists both.
+
 ## Default Yard catalog (what AWS *can* allocate)
 
 `awsYardSpec()` and `AWS_DEFAULT_BINDINGS` (`src/default-yard.ts`) declare the
@@ -190,6 +206,10 @@ different suffix — is refused rather than interpolated into a hostname.
   and redaction. It proves **nothing** about a live AWS account: no live call
   is made anywhere in this package's tests, no real credential is used, and no
   network egress happens.
+- The mirror lane runs the same resolvers against mirror.cloud's emulate tier
+  for these six services. That shows they agree with another implementation of
+  the AWS APIs, written from the API models; it is still an emulator on
+  loopback, not AWS, and says nothing a live account would.
 - The SigV4 vectors prove the signature is computed as the published test suite
   says it should be. They do not prove any request was accepted or authorized.
 - The transport guard constrains the request this package composes and the

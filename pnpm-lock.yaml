@@ -1806,6 +1806,10 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../../core
+    devDependencies:
+      '@hobo/contract-harness':
+        specifier: workspace:*
+        version: link:../../contract-harness
 
   packages/providers/provider-ax:
     dependencies:

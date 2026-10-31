@@ -940,16 +940,24 @@ The `aws.secrets-manager/v1` resolver had three problems with such a secret:
    - Preview reads "exists as <id>, and the provider is deleting it." with the resolver's diagnostics, and `changes: 1`.
    - Drift is `true`, determined, with the same text. A resource on its way out is neither "would be created" nor "clean".
 3. **A scheduled secret fails closed.** `aws.secrets-manager/v1`'s `reconcile()` refuses it with `RESOLVER_PROVIDER_REJECTED` and names the two ways forward:
-   - declare `restoreScheduled: true` to restore it with its previous versions (`RestoreSecret`, reported as `update`, after which drift is applied as usual);
+   - declare `restoreScheduled: true` to restore it with its previous versions (`RestoreSecret`, reported as `update`). The same `reconcile()` then describes the restored secret and, as for any live secret, sends `UpdateSecret` for a declared `description` or `kmsKeyRef` that differs;
    - or destroy it with `forceDelete: true` to delete it now.
 
    With the flag, preview and drift say "apply will restore it, with its previous versions".
 4. **Delete converges.** `delete()` describes first and sends nothing more for a secret that is already scheduled. A declared `forceDelete: true` still deletes it at once. An `InvalidRequestException` after which a fresh describe finds the secret scheduled (someone deleted it between the two calls) counts as done; any other `InvalidRequestException` is still refused.
-5. **`restoreScheduled` is a declared realization parameter, never a default.** It is on `SecretsManagerOptions`. Its only effect is on a secret that is scheduled for deletion.
+5. **`restoreScheduled` and `forceDelete` are directives, not state.** Each is a declared realization parameter, never a default. A directive says how `reconcile()` or `delete()` acts on the secret, never what the secret is, so `read()` has nothing to report for it:
+   - `restoreScheduled` changes what `reconcile()` does only for a secret scheduled for deletion;
+   - `forceDelete` changes only what `delete()` does.
+
+   The resolver names its directives in the `directives` field of `ResourceResolver` (`@hobo/core`), and registration refuses a list that is not distinct parameter names. The resolver-backed `IacProvider` leaves a declared directive out of its comparison of declared and observed parameters, and names what it left out ("Not compared: restoreScheduled …"). So a plan that keeps `restoreScheduled: true` previews and refreshes a live secret exactly as it would without the flag. When every other declared parameter matches, that is `changes: 0` and drift `false`, determined, for a secret the flag restored as for any other.
+
+   In [ADR-0145](01-architecture-core.md#adr-0145)'s map a directive is a trait: it modifies how apply or delete acts on the resource, not what the resource is. It is the operator-owned, Yard-side kind, set on the product's slot options beside the provider's other options, and it is not a new attach point. HoBo has no general mechanism for marking such parameters (ADR-0145 leaves a typed `TraitDescriptor` for later). So each resolver lists its own, and `resolver-iac-provider` holds no product's parameter names.
 
 ### Consequences
 - **(+)** Preview never claims a create the provider would refuse, and drift never certifies a secret on its way out as clean.
 - **(+)** Nothing deleted on purpose comes back unless the plan says so.
 - **(−)** Redeploying a secret within its recovery window fails until the operator chooses one of the two ways forward. The refusal names both.
 - **(−)** `delete` now needs `secretsmanager:DescribeSecret` as well as `secretsmanager:DeleteSecret`.
+- **(+)** A plan may keep `restoreScheduled: true` after the restore. Its preview and drift are then those of any live secret, not UNDETERMINED.
+- **(−)** A resolver that reads a parameter as a directive must list it, or every plan that declares it previews UNDETERMINED. Listing a state parameter would hide its drift. That is why each resolver keeps its own list and registration checks its form.
 - **(−)** Only this resolver reports a resource being deleted today. The action is there for the others; until they use it, their preview of a resource in deletion is whatever their `read()` says.

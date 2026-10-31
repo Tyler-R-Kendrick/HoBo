@@ -427,6 +427,35 @@ describe("createResolverRegistry", () => {
 		);
 	});
 
+	it("keeps the directives a resolver declares", () => {
+		const registry = createResolverRegistry([
+			resolver({ directives: ["forceDelete", "restoreScheduled"] }),
+		]);
+
+		expect(registry.get("vercel.postgres")?.directives).toEqual([
+			"forceDelete",
+			"restoreScheduled",
+		]);
+	});
+
+	it.each([
+		[["forceDelete", "forceDelete"], "a directive named twice"],
+		[[""], "an empty name"],
+		[["force delete"], "a name that is not a parameter key"],
+	])("refuses a malformed directive list %o (%s)", (directives) => {
+		expect(
+			codeOf(() => createResolverRegistry([resolver({ directives })])),
+		).toBe("RESOLVER_PRODUCT_UNSUPPORTED");
+	});
+
+	it("refuses directives that are not a list", () => {
+		const malformed = Object.assign(resolver(), { directives: "forceDelete" });
+
+		expect(codeOf(() => createResolverRegistry([malformed]))).toBe(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+		);
+	});
+
 	it("refuses a registration missing a required method", () => {
 		// SAFETY: assertion required at this I/O or test boundary.
 		const incomplete = {

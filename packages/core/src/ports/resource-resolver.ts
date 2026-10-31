@@ -33,6 +33,7 @@
  */
 
 import {
+	isJsonArray,
 	isJsonBoolean,
 	isJsonNumber,
 	isJsonObject,
@@ -63,6 +64,8 @@ export type ResolverAction = (typeof RESOLVER_ACTIONS)[number];
 const LOGICAL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 /** Provider/product id grammar, bounded so an id cannot smuggle a payload. */
 const RESOLVER_ID_PATTERN = /^[a-z0-9][a-z0-9._/-]{0,127}$/u;
+/** A directive names one realization parameter: a bounded identifier. */
+const DIRECTIVE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/u;
 /**
  * A locator names where material lives; it never carries the material. The
  * body is the RFC 3986 character set minus `@`, so whitespace, control
@@ -118,6 +121,15 @@ export interface ResolveOutcome {
 export interface ResourceResolver {
 	readonly providerId: string;
 	readonly productId: string;
+	/**
+	 * The realization parameters this resolver reads as directives: they say
+	 * how `reconcile` or `delete` acts on the resource (`forceDelete`,
+	 * `restoreScheduled`), never what the resource is. `read()` has nothing to
+	 * report for a directive, so a caller comparing what a plan declares with
+	 * what `read()` observed leaves these keys out (ADR-0175). Absent means the
+	 * resolver reads none.
+	 */
+	readonly directives?: readonly string[];
 	/** Convergent and idempotent: running twice must yield the same outcome
 	 *  and one resource. */
 	reconcile(
@@ -324,6 +336,30 @@ function assertResolverContract(value: ResourceResolver): void {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
 			`resolver ${JSON.stringify(value.productId)} is missing the required delete() method`,
+			value.productId,
+		);
+	}
+	assertDirectives(value);
+}
+
+/**
+ * A directive list names parameters, so it is refused at registration unless
+ * it is a list of distinct parameter names: it decides which declared keys a
+ * caller leaves out of a desired-versus-observed comparison, and an entry that
+ * names nothing, or names a key twice, is a resolver nobody reviewed.
+ */
+function assertDirectives(value: ResourceResolver): void {
+	const { directives } = value;
+	if (directives === undefined) return;
+	const names: readonly JsonValue[] = isJsonArray(directives) ? directives : [];
+	const wellFormed =
+		isJsonArray(directives) &&
+		names.every((name) => isJsonString(name) && DIRECTIVE_PATTERN.test(name)) &&
+		new Set(names).size === names.length;
+	if (!wellFormed) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`resolver ${JSON.stringify(value.productId)} directives: expected distinct parameter names matching ${DIRECTIVE_PATTERN.source}, received ${JSON.stringify(directives)}`,
 			value.productId,
 		);
 	}

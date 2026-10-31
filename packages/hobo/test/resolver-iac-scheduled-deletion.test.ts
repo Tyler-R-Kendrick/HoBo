@@ -110,7 +110,16 @@ interface SecretState {
 
 /** One scheduled secret; RestoreSecret clears its DeletedDate. */
 function scheduledAccount() {
-	const state: SecretState = { deletedDate: DELETED_DATE_SECONDS };
+	return accountWith(DELETED_DATE_SECONDS);
+}
+
+/** One live secret: nothing scheduled. */
+function liveAccount() {
+	return accountWith(undefined);
+}
+
+function accountWith(deletedDate: number | undefined) {
+	const state: SecretState = { deletedDate };
 	const targets: string[] = [];
 	const answer = (status: number, body: JsonObject): TransportResponse => ({
 		status,
@@ -145,7 +154,7 @@ function scheduledAccount() {
 
 function driverFor(
 	store: RuntimeLocalEventStore,
-	account: ReturnType<typeof scheduledAccount>,
+	account: ReturnType<typeof accountWith>,
 ) {
 	return createResolverBackedIacProvider({
 		store,
@@ -235,5 +244,74 @@ describe("a secret scheduled for deletion, through the resolver-backed IacProvid
 			"RestoreSecret",
 			"DescribeSecret",
 		]);
+	});
+});
+
+// restoreScheduled and forceDelete say how apply and delete act; they are not
+// facts about the secret, and no read reports them. A plan that keeps one must
+// still preview and refresh clean once the secret is live (ADR-0175).
+describe("a plan that keeps its directives, against a live secret", () => {
+	it("previews no change and refreshes clean, naming the directives it did not compare", async () => {
+		const account = liveAccount();
+		const store = await storeWith(
+			secretNode({
+				description: "payment provider key",
+				forceDelete: true,
+				restoreScheduled: true,
+			}),
+		);
+		const driver = driverFor(store, account);
+
+		const diff = await driver.preview(program("preview"));
+		expect(diff.changes).toBe(0);
+		expect(diff.summary).toContain("every declared parameter matches");
+		expect(diff.summary).toContain(
+			"Not compared: forceDelete, restoreScheduled",
+		);
+		expect(diff.summary).not.toContain("UNDETERMINED");
+
+		const report = await driver.refresh(program("preview"));
+		expect(report.drift).toBe(false);
+		expect(report.observed["hobo.resolver.drift.determined"]).toBe("true");
+		expect(report.observed["hobo.resolver.drift.reason"]).toContain(
+			"Not compared: forceDelete, restoreScheduled",
+		);
+	});
+
+	it("still counts a real difference beside a directive", async () => {
+		const account = liveAccount();
+		const store = await storeWith(
+			secretNode({ description: "another key", restoreScheduled: true }),
+		);
+		const driver = driverFor(store, account);
+
+		const diff = await driver.preview(program("preview"));
+		expect(diff.changes).toBe(1);
+		expect(diff.summary).toContain(
+			"declared parameter(s) differ (description)",
+		);
+
+		const report = await driver.refresh(program("preview"));
+		expect(report.drift).toBe(true);
+		expect(report.observed["hobo.resolver.drift.determined"]).toBe("true");
+	});
+
+	it("is clean on the next preview after apply restored the secret", async () => {
+		const account = scheduledAccount();
+		const store = await storeWith(
+			secretNode({
+				description: "payment provider key",
+				restoreScheduled: true,
+			}),
+		);
+		const driver = driverFor(store, account);
+
+		await driver.apply(program("apply"));
+		const diff = await driver.preview(program("preview"));
+		const report = await driver.refresh(program("preview"));
+
+		expect(account.state.deletedDate).toBeUndefined();
+		expect(diff.changes).toBe(0);
+		expect(report.drift).toBe(false);
 	});
 });

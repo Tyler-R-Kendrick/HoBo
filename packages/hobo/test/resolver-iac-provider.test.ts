@@ -13,6 +13,7 @@ import {
 	createResolverRegistry,
 	type HttpTransport,
 	RESOLVER_CONTRACT,
+	type ResolveOutcome,
 	type ResolveRequest,
 	type ResourceResolver,
 	type TransportResponse,
@@ -57,6 +58,7 @@ const FAKE_TOKEN = "cf-test-token-abcdefghijklmnop";
 const DEPLOYMENT_ID = "dep-resolver-1";
 const CREDENTIAL_REF = "hobo-token://cloudflare/api-token";
 const BLIND_PRODUCT_ID = "blind.thing/v1";
+const STEERED_PRODUCT_ID = "steered.thing/v1";
 
 // Every path that must not touch the network gets this: reaching it is the
 // failure, not an exception to be handled.
@@ -501,6 +503,29 @@ describe("resolver-backed IacProvider: preview never mutates and never lies", ()
 		expect(diff.summary).toContain("every declared parameter matches");
 	});
 
+	it("preview leaves out the parameters the resolver names as directives, and says so", async () => {
+		const store = await storeWithPlan([
+			steeredNode({ title: "sessions", purgeOnDelete: true }),
+		]);
+		const driver = steeredDriver(store, ["purgeOnDelete"]);
+
+		const diff = await driver.preview(program("sessions", "preview"));
+		expect(diff.changes).toBe(0);
+		expect(diff.summary).toContain("every declared parameter matches");
+		expect(diff.summary).toContain("Not compared: purgeOnDelete");
+	});
+
+	it("preview still counts a declared parameter the resolver does not name as a directive", async () => {
+		const store = await storeWithPlan([
+			steeredNode({ title: "sessions", purgeOnDelete: true }),
+		]);
+		const driver = steeredDriver(store, []);
+
+		const diff = await driver.preview(program("sessions", "preview"));
+		expect(diff.changes).toBe(RESOLVER_PREVIEW_UNDETERMINED);
+		expect(diff.summary).toContain("(purgeOnDelete) have no counterpart");
+	});
+
 	it("preview counts the declared parameters that actually differ", async () => {
 		const store = await storeWithPlan([kvNode("sessions", { title: "other" })]);
 		const account = createFakeCloudflareAccount();
@@ -548,6 +573,21 @@ describe("resolver-backed IacProvider: refresh", () => {
 		expect(report.drift).toBe(false);
 		expect(report.observed["hobo.resolver.drift.determined"]).toBe("true");
 		expect(report.observed["hobo.resolver.physicalId"]).toBe("ns-1");
+	});
+
+	it("reports a determined clean read when the only unobserved parameters are directives", async () => {
+		const store = await storeWithPlan([
+			steeredNode({ title: "sessions", purgeOnDelete: true }),
+		]);
+
+		const report = await steeredDriver(store, ["purgeOnDelete"]).refresh(
+			program("sessions"),
+		);
+		expect(report.drift).toBe(false);
+		expect(report.observed["hobo.resolver.drift.determined"]).toBe("true");
+		expect(report.observed["hobo.resolver.drift.reason"]).toContain(
+			"Not compared: purgeOnDelete",
+		);
 	});
 
 	it("reports drift when the resource the plan describes is gone", async () => {
@@ -695,4 +735,49 @@ function blindResolver(): ResourceResolver {
 			// nothing to do
 		},
 	};
+}
+
+function steeredNode(realizationParameters: JsonObject): ResourcePlan {
+	return {
+		name: "sessions",
+		port: "kv",
+		provider: "steered",
+		deps: [],
+		productId: STEERED_PRODUCT_ID,
+		realizationParameters,
+	};
+}
+
+/** A resolver whose read() reports the title, and that reads `directives` as directives. */
+function steeredDriver(
+	store: RuntimeLocalEventStore,
+	directives: readonly string[],
+) {
+	const outcome: ResolveOutcome = {
+		contract: RESOLVER_CONTRACT,
+		action: "noop",
+		physicalId: "steered-1",
+		outputs: { title: "sessions" },
+		diagnostics: [],
+	};
+	const resolver: ResourceResolver = {
+		providerId: "steered",
+		productId: STEERED_PRODUCT_ID,
+		directives,
+		async reconcile() {
+			return outcome;
+		},
+		async read() {
+			return outcome;
+		},
+		async delete() {
+			// nothing to do
+		},
+	};
+	return createResolverBackedIacProvider({
+		store,
+		registry: createResolverRegistry([resolver]),
+		transport: unreachableTransport,
+		credentialRef: CREDENTIAL_REF,
+	});
 }

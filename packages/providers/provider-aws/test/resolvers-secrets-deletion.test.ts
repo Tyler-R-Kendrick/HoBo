@@ -38,6 +38,7 @@ import { describe, expect, it } from "vitest";
 import {
 	AWS_SECRETS_MANAGER_PRODUCT_ID,
 	awsResolverRegistry,
+	awsResolvers,
 	guardedAwsTransport,
 } from "../src/index.js";
 import {
@@ -409,5 +410,25 @@ describe("delete of a secret scheduled for deletion", () => {
 		await runner.remove();
 
 		expect(runner.aws.targets()).toEqual(["DescribeSecret"]);
+	});
+});
+
+describe("the Secrets Manager directives", () => {
+	it("are forceDelete and restoreScheduled, and no other AWS resolver reads any", () => {
+		const resolvers = awsResolvers({
+			region: REGION,
+			nowMs: NOW_MS,
+			resolveCredential: async () => ({
+				accessKeyId: "AKIAHOBOFAKEKEYID001",
+				secretAccessKey: "n0tARealSecretAccessKey0000000000000000x",
+			}),
+		});
+
+		const declared = resolvers
+			.filter((resolver) => resolver.directives !== undefined)
+			.map((resolver) => [resolver.productId, resolver.directives]);
+		expect(declared).toEqual([
+			[AWS_SECRETS_MANAGER_PRODUCT_ID, ["forceDelete", "restoreScheduled"]],
+		]);
 	});
 });

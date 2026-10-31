@@ -1714,6 +1714,16 @@ function deletedDateOf(record: JsonObject): string {
 	return isJsonString(value) ? value : "an unreported date";
 }
 
+/**
+ * The Secrets Manager declarations that say how apply and delete act, never
+ * what the secret is: `forceDelete` ends the recovery window on delete, and
+ * `restoreScheduled` lets apply restore a secret scheduled for deletion.
+ */
+const SECRETS_MANAGER_DIRECTIVES: readonly string[] = Object.freeze([
+	"forceDelete",
+	"restoreScheduled",
+]);
+
 /** Whether the declaration asks for a secret scheduled for deletion to be restored. */
 function restoreDeclared(context: AwsResolverContext): boolean {
 	return optionalBoolean(context.desired, "restoreScheduled") === true;
@@ -1770,6 +1780,9 @@ function secretDiagnostics(context: AwsResolverContext): readonly string[] {
 }
 
 const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
+	// Neither is a fact about the secret, so read() never reports one, and a
+	// preview or drift check leaves them out of its comparison (ADR-0175).
+	directives: SECRETS_MANAGER_DIRECTIVES,
 	async read(context) {
 		const existing = await readSecret(context);
 		if (existing === undefined) return undefined;
@@ -2134,6 +2147,8 @@ const SSM_PARAMETER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 /** Per-product behaviour; the wrapper owns credentials, naming, and refusals. */
 interface AwsResolverSpec {
 	readonly productId: string;
+	/** The declared parameters this product reads as directives, not state. */
+	readonly directives?: readonly string[];
 	reconcile(context: AwsResolverContext): Promise<ResolveOutcome>;
 	read(context: AwsResolverContext): Promise<ResolveOutcome | undefined>;
 	remove(context: AwsResolverContext): Promise<void>;
@@ -2200,6 +2215,9 @@ function createResolver(
 	return {
 		providerId: AWS_PROVIDER_TARGET,
 		productId: spec.productId,
+		...(spec.directives === undefined
+			? undefined
+			: { directives: spec.directives }),
 		async reconcile(request, transport) {
 			return spec.reconcile(await contextFor(request, transport));
 		},

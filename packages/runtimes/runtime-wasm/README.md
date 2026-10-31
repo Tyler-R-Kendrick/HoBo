@@ -29,8 +29,11 @@ application fetch handler runs.
 `$HOBO_HOME/tools` (atomic temp-file + rename, so concurrent ensures never see a
 partial binary). Tests share one warm cache: `test/wasmtime-global-setup.ts`
 (vitest `globalSetup` in the root `vitest.config.ts`) pre-installs wasmtime once
-into the default HOBO_HOME and exports `HOBO_WASMTIME_BIN`, so tests using
-throwaway HOBO_HOME dirs don't re-download per test under parallel sweeps.
+into the repository-local, gitignored `.cache/hobo-test-tools/tools/wasmtime`
+(`HOBO_TEST_TOOLS_HOME` moves it) and exports `HOBO_WASMTIME_BIN`, so tests using
+throwaway HOBO_HOME dirs don't re-download per test under parallel sweeps. It
+never uses the default HOBO_HOME: a global setup runs before any per-file
+isolation, so that default is the developer's real `~/.hobo`.
 
 ## Architecture rules
 

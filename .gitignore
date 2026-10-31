@@ -25,6 +25,10 @@ node_modules/
 # Turborepo local cache
 .turbo/
 
+# Tools test setups download for the run (wasmtime for the root vitest config),
+# kept here so no test writes the developer's real ~/.hobo.
+/.cache/
+
 # Package build output
 dist/
 

@@ -20,6 +20,8 @@ import { type TarEntry, tarGz } from "./support/tar-support.ts";
 
 const GOOD = Buffer.from("#!/bin/sh\necho GOOD\n");
 const EVIL = Buffer.from("#!/bin/sh\necho EVIL\n");
+/** GNU tar's magic and version, `ustar  \0`. */
+const GNU = "ustar  ";
 const NAMES = new Map([
 	[sha256Hex(GOOD), "GOOD"],
 	[sha256Hex(EVIL), "EVIL"],
@@ -74,6 +76,38 @@ const CASES: readonly Case[] = [
 		entries: [{ name: "mirror", body: GOOD }],
 		after: [{ name: "mirror", body: EVIL }],
 		reader: "GOOD",
+	},
+	{
+		what: "POSIX magic with an odd version, named through the prefix",
+		entries: [
+			{ name: "mirror", prefix: "bin", magic: "ustar\0XX", body: GOOD },
+		],
+		member: "bin/mirror",
+		reader: "GOOD",
+	},
+	// GNU headers. Bytes 345 to 500 hold times there, and tar reads no prefix.
+	{
+		what: "mirror, then a GNU-magic mirror with zz where a prefix would be",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{ name: "mirror", prefix: "zz", magic: GNU, body: EVIL },
+		],
+		reader: "ARCHIVE_UNSUPPORTED",
+	},
+	{
+		what: "a lone GNU-magic mirror with zz where a prefix would be",
+		entries: [{ name: "mirror", prefix: "zz", magic: GNU, body: EVIL }],
+		reader: "ARCHIVE_UNSUPPORTED",
+	},
+	{
+		what: "a GNU-magic mirror",
+		entries: [{ name: "mirror", magic: GNU, body: GOOD }],
+		reader: "ARCHIVE_UNSUPPORTED",
+	},
+	{
+		what: "GNU magic with its version zeroed, which tar reads as v7",
+		entries: [{ name: "mirror", magic: "ustar ", body: GOOD }],
+		reader: "ARCHIVE_UNSUPPORTED",
 	},
 ];
 

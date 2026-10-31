@@ -3,8 +3,8 @@
  * scan that finds the one member a pin names. Pure: no file, no stream, no
  * gzip. Every refusal is a PinsError, thrown as soon as it is known.
  *
- * What it reads, and only that: ustar headers (POSIX `ustar\0`, or GNU's
- * `ustar ` magic), whose type is a regular file (`0`, or the old `\0`) or one
+ * What it reads, and only that: POSIX ustar headers (magic `ustar\0`), whose
+ * type is a regular file (`0`, or the old `\0`) or one
  * of the data-less types `1`–`6` (hard link, symbolic link, character device,
  * block device, directory, FIFO). Any other type is refused, because its data
  * is that entry's own contents to `tar` (a `7` contiguous file, a GNU `D`
@@ -12,6 +12,11 @@
  * GNU `L`/`K`): a reader that skipped such data, or parsed it as headers,
  * would find members `tar` never extracts. A data-less type that claims data
  * is refused for the same reason.
+ *
+ * A GNU header (`ustar  \0`) is refused, and so is any other magic. Where
+ * POSIX keeps a name prefix (bytes 345 to 500), a GNU header keeps times and
+ * sparse-file data, and `tar` never reads a name there; mirror's archives are
+ * made with `tar --format=ustar`, so they never carry one.
  *
  * Names are compared as `tar` would write them out: repeated slashes
  * collapsed, any leading `./` and a trailing `/` removed, so `.//mirror` is
@@ -97,10 +102,16 @@ function parseHeader(block: Buffer, archive: string): TarHeader {
 		);
 	}
 	const magic = block.subarray(257, 263).toString("latin1");
-	if (magic !== "ustar\0" && magic !== "ustar ") {
+	if (magic === "ustar ") {
 		throw new PinsError(
 			"ARCHIVE_UNSUPPORTED",
-			`${archive} has a header that is not ustar (no ustar magic: a v7 or unknown format); only ustar archives are read`,
+			`${archive} has a GNU-format header ("ustar  " magic), whose bytes 345 to 500 tar reads as times, never as a name prefix; only POSIX ustar headers are read`,
+		);
+	}
+	if (magic !== "ustar\0") {
+		throw new PinsError(
+			"ARCHIVE_UNSUPPORTED",
+			`${archive} has a header that is not ustar (no ustar magic: a v7 or unknown format); only POSIX ustar headers are read`,
 		);
 	}
 	const type = field(block, 156, 1) || "0";

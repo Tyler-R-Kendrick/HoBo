@@ -172,11 +172,18 @@ describe("entry types the reader does not model", () => {
 		);
 	});
 
-	it("reads a GNU-magic header like a POSIX one", async () => {
-		const bytes = tarGz([{ name: "mirror", body: BINARY, magic: "ustar  " }]);
+	it("refuses a GNU-magic header, where tar reads no name prefix", async () => {
+		const bytes = tarGz([
+			{ name: "mirror", body: BINARY },
+			{ name: "mirror", prefix: "zz", body: SMUGGLED, magic: "ustar  " },
+		]);
 		const { dir, path } = archiveFile(bytes);
-		await extractMember(path, "mirror", join(dir, "out"), sha256Hex(bytes));
-		assert.deepEqual(readFileSync(join(dir, "out")), BINARY);
+		const dest = join(dir, "out");
+		await assert.rejects(
+			extractMember(path, "mirror", dest, sha256Hex(bytes)),
+			refusal("ARCHIVE_UNSUPPORTED"),
+		);
+		assert.equal(existsSync(dest), false);
 	});
 
 	it("refuses a member over the size cap before reading its data", async () => {

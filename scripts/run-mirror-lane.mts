@@ -333,6 +333,9 @@ try {
 		results.push({ name, code: await runPackage(name, env) });
 	}
 	if (signalled !== undefined) throw new Error("stopped by a signal");
+	// A mirror that exited before the journal read is MIRROR_EXITED here when
+	// its exit has been heard, and MIRROR_JOURNAL_UNREADABLE from the read when
+	// the read gets there first; either way the lane exits 1.
 	if (lostError !== undefined) throw lostError;
 	// Once the read begins `lost` is not looked at again: a mirror that exits
 	// while its journal is read drops the read, and the read's own failure

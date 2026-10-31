@@ -325,11 +325,15 @@ async function resolveAwsCredentials(
 	// did -- and reading `.accessKeyId` off `undefined` or a string throws a
 	// TypeError, which is precisely the untyped failure this boundary exists to
 	// turn into a refusal an operator can act on.
+	// The kind is read from the value's tag, as `json.ts` reads a JSON value's
+	// (the repo bans `typeof` narrowing); `undefined`, `null` and a string are
+	// not "[object Object]", so nothing below reads a field off them.
+	const tag = (value: AwsCredentials | string | undefined): string =>
+		Object.prototype.toString.call(value);
 	if (
-		material === null ||
-		typeof material !== "object" ||
-		typeof material.accessKeyId !== "string" ||
-		typeof material.secretAccessKey !== "string" ||
+		tag(material) !== "[object Object]" ||
+		tag(material.accessKeyId) !== "[object String]" ||
+		tag(material.secretAccessKey) !== "[object String]" ||
 		material.accessKeyId.trim().length === 0 ||
 		material.secretAccessKey.trim().length === 0
 	) {
@@ -1685,6 +1689,19 @@ async function readSecret(
 	);
 }
 
+/**
+ * Whether AWS has scheduled this secret for deletion. DescribeSecret answers
+ * `DeletedDate`, "The date the secret is scheduled for deletion. If it is not
+ * scheduled for deletion, this field is omitted." Until that date the secret
+ * still holds its name: CreateSecret, UpdateSecret and a second unforced
+ * DeleteSecret answer InvalidRequestException ("The secret is scheduled for
+ * deletion").
+ */
+function scheduledForDeletion(record: JsonObject): boolean {
+	const deletedDate = record.DeletedDate;
+	return deletedDate !== undefined && deletedDate !== null;
+}
+
 function secretArn(record: JsonObject, label: string): string {
 	const arn = optionalString(record, "ARN");
 	if (arn === undefined) {
@@ -1727,7 +1744,11 @@ function secretDiagnostics(context: AwsResolverContext): readonly string[] {
 const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 	async read(context) {
 		const existing = await readSecret(context);
-		if (existing === undefined) return undefined;
+		// A secret scheduled for deletion is going away and its value can no
+		// longer be read (GetSecretValue refuses it), so it is not there to adopt.
+		if (existing === undefined || scheduledForDeletion(existing)) {
+			return undefined;
+		}
 		return outcome(
 			settledAction(context),
 			secretArn(existing, `secretsmanager describe ${context.name}`),
@@ -1739,7 +1760,27 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 		const description = optionalString(context.desired, "description");
 		const kmsKeyRef = optionalString(context.desired, "kmsKeyRef");
 		const diagnostics = [...secretDiagnostics(context)];
-		const existing = await readSecret(context);
+		let existing = await readSecret(context);
+		let restored = false;
+
+		if (existing !== undefined && scheduledForDeletion(existing)) {
+			// CreateSecret cannot take the name back while the deletion is pending,
+			// so the declared secret converges only by cancelling it. RestoreSecret
+			// "Cancels the scheduled deletion of a secret by removing the DeletedDate
+			// time stamp", and keeps the versions written out of band.
+			jsonResult(
+				context,
+				await secretsCall(context, "RestoreSecret", {
+					SecretId: context.name,
+				}),
+				`secretsmanager restore ${context.name}`,
+			);
+			diagnostics.push(
+				"the secret was scheduled for deletion and is still declared, so RestoreSecret cancelled the deletion; its versions are kept",
+			);
+			existing = (await readSecret(context)) ?? existing;
+			restored = true;
+		}
 
 		if (existing === undefined) {
 			const label = `secretsmanager create ${context.name}`;
@@ -1795,18 +1836,23 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 		}
 
 		return outcome(
-			settledAction(context),
+			restored ? "update" : settledAction(context),
 			secretArn(existing, `secretsmanager describe ${context.name}`),
 			secretOutputs(context.name, existing),
 			diagnostics,
 		);
 	},
 	async remove(context) {
+		const force = optionalBoolean(context.desired, "forceDelete") === true;
+		const existing = await readSecret(context);
+		if (existing === undefined) return;
+		// Already being deleted: a second unforced DeleteSecret is
+		// InvalidRequestException, and there is nothing more to ask for. A forced
+		// delete still goes ahead, since it ends the recovery window now.
+		if (scheduledForDeletion(existing) && !force) return;
 		const response = await secretsCall(context, "DeleteSecret", {
 			SecretId: context.name,
-			...(optionalBoolean(context.desired, "forceDelete") === true
-				? { ForceDeleteWithoutRecovery: true }
-				: undefined),
+			...(force ? { ForceDeleteWithoutRecovery: true } : undefined),
 		});
 		if (
 			!isSuccess(response) &&

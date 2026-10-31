@@ -115,7 +115,7 @@ and remove the resource — not the whole surface.
 | `aws.dynamodb/v1` | REST-JSON `x-amz-target` on `dynamodb.{region}.amazonaws.com` | `DescribeTable`, `CreateTable`, `UpdateTable`, `DeleteTable` |
 | `aws.sqs/v1`, `aws.sqs-fifo/v1` | query protocol on `sqs.{region}.amazonaws.com` | `GetQueueUrl`, `CreateQueue`, `GetQueueAttributes`, `SetQueueAttributes`, `DeleteQueue` |
 | `aws.sns/v1` | query protocol on `sns.{region}.amazonaws.com` | `ListTopics` (paged), `CreateTopic`, `GetTopicAttributes`, `SetTopicAttributes`, `DeleteTopic` |
-| `aws.secrets-manager/v1` | REST-JSON `x-amz-target` on `secretsmanager.{region}.amazonaws.com` | `DescribeSecret`, `CreateSecret`, `UpdateSecret`, `DeleteSecret` |
+| `aws.secrets-manager/v1` | REST-JSON `x-amz-target` on `secretsmanager.{region}.amazonaws.com` | `DescribeSecret`, `CreateSecret`, `UpdateSecret`, `RestoreSecret`, `DeleteSecret` |
 | `aws.ssm-parameter-store/v1` | REST-JSON `x-amz-target` on `ssm.{region}.amazonaws.com` | `GetParameter`, `PutParameter`, `DeleteParameter` |
 
 Path-style S3 addressing (`/{bucket}`) is deliberate: it keeps the transport
@@ -199,6 +199,13 @@ different suffix — is refused rather than interpolated into a hostname.
 - Resolvers do not create Resource Definitions. Whether a matching definition is
   registered in the catalog is still checked at resolution time
   (`YARD_BINDING_PRODUCT_UNKNOWN`).
+- A Secrets Manager secret **scheduled for deletion** (DescribeSecret answers
+  `DeletedDate`) still holds its name for its recovery window, and AWS refuses
+  CreateSecret, UpdateSecret and a second unforced DeleteSecret for it. So
+  `read` treats it as absent, `delete` issues nothing more for it (a declared
+  `forceDelete: true` still deletes it at once), and `reconcile` of a secret that
+  is still declared calls `RestoreSecret`, which keeps its versions, and reports
+  `update` with a diagnostic.
 - Secrets Manager secrets are created **without a version**, and SSM
   `SecureString` parameters are **refused**: in both cases the value is
   credential material, and this resolver never carries it.

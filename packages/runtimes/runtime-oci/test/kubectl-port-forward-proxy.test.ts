@@ -34,7 +34,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createProcessKubectlTransport } from "../src/kubectl-transport.js";
+import type { JsonObject } from "../src/json.js";
+import {
+	createProcessKubectlTransport,
+	type KubectlRequest,
+} from "../src/kubectl-transport.js";
 import { reapStandIns, standInPreamble } from "./stand-in-children.js";
 
 const dirs: string[] = [];
@@ -106,7 +110,7 @@ function transportFor(options: Parameters<typeof forwardingKubectl>[0] = {}) {
 	});
 }
 
-const post = (path: string, body: unknown) => ({
+const post = (path: string, body: JsonObject): KubectlRequest => ({
 	method: "POST",
 	path,
 	body,
@@ -119,12 +123,11 @@ async function forwarded(
 ) {
 	const transport = transportFor(options);
 	const response = await transport.handle(
-		// SAFETY: the transport reads exactly the fields a request names.
 		post("/kubectl/port-forward", {
 			namespace: "hobo-dev",
 			service,
 			targetPort: 8080,
-		}) as never,
+		}),
 	);
 	return { transport, response };
 }
@@ -138,8 +141,7 @@ async function teardown(
 		method: "DELETE",
 		path: "/kubectl/resources",
 		body: { namespace: "hobo-dev", name },
-		// SAFETY: the transport reads exactly the fields a request names.
-	} as never);
+	});
 }
 
 describe("opening a port-forward", () => {
@@ -193,12 +195,8 @@ describe("opening a port-forward", () => {
 describe("proxying a request over the tunnel", () => {
 	const proxy = (
 		transport: Awaited<ReturnType<typeof forwarded>>["transport"],
-		body: Record<string, unknown>,
-	) =>
-		transport.handle(
-			// SAFETY: the transport reads exactly the fields a request names.
-			post("/kubectl/http-proxy", body) as never,
-		);
+		body: JsonObject,
+	) => transport.handle(post("/kubectl/http-proxy", body));
 
 	it("refuses when no forward is open for the service", async () => {
 		// A fetch against a URL that means nothing would fail
@@ -332,8 +330,7 @@ describe("closing a forward", () => {
 		const { transport } = await forwarded();
 		await teardown(transport);
 		const response = await transport.handle(
-			// SAFETY: the transport reads exactly the fields a request names.
-			post("/kubectl/http-proxy", { service: "api", path: "/" }) as never,
+			post("/kubectl/http-proxy", { service: "api", path: "/" }),
 		);
 		expect(response.status).toBe(503);
 	});

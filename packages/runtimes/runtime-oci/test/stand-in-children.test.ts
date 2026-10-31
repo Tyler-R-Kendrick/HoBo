@@ -28,7 +28,7 @@ afterAll(async () => {
 });
 
 /** A stand-in that never exits on its own, as a port-forward does. */
-function longLived(): { dir: string; bin: string } {
+function longLived() {
 	const dir = join(scratch, `stand-in-${dirs.length + 1}`);
 	mkdirSync(dir, { recursive: true });
 	dirs.push(dir);

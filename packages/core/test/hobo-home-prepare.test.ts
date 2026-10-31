@@ -144,7 +144,7 @@ prepareHoboHome({
 			children.map(
 				(child) =>
 					new Promise<void>((ready) => {
-						const listen = (chunk: unknown) => {
+						const listen = (chunk: Buffer | string) => {
 							if (String(chunk).includes("ready")) {
 								child.stdout.off("data", listen);
 								ready();

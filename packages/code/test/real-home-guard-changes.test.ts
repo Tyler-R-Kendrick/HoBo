@@ -41,7 +41,7 @@ afterAll(() => {
 let homes = 0;
 
 /** A home holding `durable/chat.json` ("{}"), and the snapshot of it. */
-function home(): { home: string; file: string } {
+function home() {
 	homes += 1;
 	const dir = join(scratch, `home-${homes}`, ".hobo");
 	mkdirSync(join(dir, "durable"), { recursive: true });

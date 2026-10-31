@@ -31,10 +31,6 @@ function isDirectory(path: string): boolean {
 	}
 }
 
-function errorCode(error: unknown): string {
-	return error instanceof Error && "code" in error ? String(error.code) : "";
-}
-
 export function watchHomes(homes: readonly string[]): HomeWatch {
 	const touched = new Set<string>();
 	const watchers = new Map<string, FSWatcher>();
@@ -63,7 +59,9 @@ export function watchHomes(homes: readonly string[]): HomeWatch {
 			});
 			watchers.set(key, watcher);
 		} catch (error) {
-			unwatched.push(`${dir} (${errorCode(error) || String(error)})`);
+			const code =
+				error instanceof Error && "code" in error ? String(error.code) : "";
+			unwatched.push(`${dir} (${code || String(error)})`);
 		}
 	};
 	const watchTree = (dir: string) => {

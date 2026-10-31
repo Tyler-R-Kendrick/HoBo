@@ -13,7 +13,7 @@ import { createServer, type Server } from "node:net";
 import { constants, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
 	initStation,
 	loadStationEvents,
@@ -41,6 +41,18 @@ const STATION = "station:local";
 const ESC = String.fromCharCode(0x1b);
 const SHELL_DRAWN = `${ESC}[?1049h`;
 const CONTROL_SEQUENCES = new RegExp(`${ESC}\\[[0-9;?]*[a-zA-Z]`, "gu");
+/**
+ * A preload that hands its process each SIGTERM 300 ms late, as a loaded
+ * machine can: the launcher passes the signal on late, and hobo-code hears it
+ * only after what else the group signal reached (ssh) has ended.
+ */
+const LATE_SIGTERM = `const emit = process.emit;
+process.emit = function (event, ...rest) {
+	if (event !== "SIGTERM") return emit.call(this, event, ...rest);
+	setTimeout(() => emit.call(process, event, ...rest), 300);
+	return process.listenerCount(event) > 0;
+};
+`;
 /** Bounds on a failure, never waits to sit out: each step goes on at its event. */
 const STEP_BOUND_MS = 60_000;
 const RUN_TIMEOUT_MS = 4 * STEP_BOUND_MS;
@@ -135,6 +147,7 @@ interface Ended {
  */
 async function forwardInShellThenSignal(
 	signal: "SIGTERM" | "SIGHUP",
+	options: { readonly lateSignal?: boolean } = {},
 ): Promise<Ended> {
 	// Short paths: the Station's agent proxy is a Unix socket under HOBO_HOME.
 	const root = mkdtempSync(join(tmpdir(), "z"));
@@ -160,6 +173,7 @@ async function forwardInShellThenSignal(
 		`#!/bin/sh\necho $$ > '${at("ssh.pid")}'\nwhile :; do sleep 0.1; done\n`,
 	);
 	chmodSync(join(bin, "ssh"), 0o755);
+	writeFileSync(at("late.mjs"), LATE_SIGTERM);
 	const agentSocket = at("a.sock");
 	const agent = createServer((socket) => socket.end());
 	servers.push(agent);
@@ -186,6 +200,9 @@ async function forwardInShellThenSignal(
 			HOBO_CODE_REDUCED_MOTION: "1",
 			HOBO_CODE_SIDECAR_POLL_MS: "250",
 			NODE_NO_WARNINGS: "1",
+			...(options.lateSignal === true
+				? { NODE_OPTIONS: `--import=${pathToFileURL(at("late.mjs")).href}` }
+				: undefined),
 		}),
 		stdio: ["pipe", "pipe", "pipe"],
 	});
@@ -267,5 +284,24 @@ describe.skipIf(skipReason !== false)(
 				RUN_TIMEOUT_MS,
 			);
 		}
+
+		it(
+			"SIGTERM that hobo-code hears only once the group signal has ended ssh: still shell-quit, and ends by the signal",
+			async () => {
+				const ended = await forwardInShellThenSignal("SIGTERM", {
+					lateSignal: true,
+				});
+				expect(ended.audit, ended.screen.slice(-2000)).toEqual([
+					"pam.GatewayStarted",
+					"pam.SessionStarted",
+					"pam.SessionEnded(shell-quit)",
+					"pam.GatewayStopped",
+				]);
+				expect(ended.sshEnded).toBe(true);
+				expect(ended.sockets).toEqual([]);
+				expect(ended.code).toBe(128 + constants.signals.SIGTERM);
+			},
+			RUN_TIMEOUT_MS,
+		);
 	},
 );

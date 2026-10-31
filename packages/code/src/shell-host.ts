@@ -234,6 +234,12 @@ interface ShellForward {
  * signals only from `stop`, the shell's own quit, while the shell keeps the
  * process's. However the forward ends (ssh exits, the lease runs out, the
  * forward fails to start, or `stop`), its authorization is closed.
+ *
+ * ssh runs in a process group of its own. In hobo-code's, the launcher's
+ * signal reached ssh as it reached the shell, and Node could hand the shell
+ * ssh's exit before the signal: the forward closed the authorization as if
+ * ssh had ended by itself, before the shell knew it was quitting. Now only
+ * the shell's quit stops ssh, and the close says why.
  */
 function startShellForward(
 	forward: HandedForward,
@@ -252,7 +258,12 @@ function startShellForward(
 	});
 	const done = forwardResidentSessions(forward, signals, {
 		stdout: new Writable({ write: (_chunk, _encoding, next) => next() }),
-		startSsh: (args) => spawn("ssh", [...args], { stdio: "ignore", env }),
+		startSsh: (args) =>
+			spawn("ssh", [...args], {
+				stdio: "ignore",
+				env,
+				detached: process.platform !== "win32",
+			}),
 	})
 		.catch(() => 1)
 		.finally(async () => {

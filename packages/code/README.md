@@ -57,7 +57,9 @@ neither a signal sent to `hobo-code` nor the terminal's hangup reaches it
 directly. There, the launcher passes SIGINT, SIGTERM, SIGHUP and SIGQUIT on to
 the child's process group, the SIGHUP of a closing terminal included, so what
 the child starts without detaching gets them too: the `--pi` TUI, `tmux
-attach`, and the `ssh` of `session serve --host`. (A `/hobo` command runs in the
+attach`, and the `ssh` of `session serve --host` (not that of the shell's
+`/sessions serve --host`, which the shell starts detached and stops itself).
+(A `/hobo` command runs in the
 child itself; only with `HOBO_CODE_HOBO_BIN`, a stand-in for tests, is it a
 process of its own, which the group signal then reaches as well.) It waits for
 the child to end, and
@@ -912,7 +914,8 @@ signal while it is being closed is only recorded. If the verb fails once the
 authorization is open, a throw included, before it hands the authorization to
 the forward, it closes it itself, and the Station's `pam.SessionEnded` says
 `session-serve-failed`. The interactive shell's `/sessions serve --host
-<machine>` runs the same forward behind its screen (ssh gets no terminal),
+<machine>` runs the same forward behind its screen (ssh gets no terminal, and
+runs in a process group of its own, so that only the shell's quit stops it),
 and closes the authorization when the forward ends, when it cannot start, and
 when the shell quits. The shell holds the same four signals from just before
 one of its verbs opens an authorization: one that comes while that verb or its

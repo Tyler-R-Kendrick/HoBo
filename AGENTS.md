@@ -560,6 +560,24 @@ writes to (a PATH entry, an executable that must fail to launch) is listed in
 that shows it, and that file scans every test source and fails on any other
 such literal.
 
+### A test never writes the real HoBo home
+
+`resolveHoboHome` (`@hobo/core/hobo-home`) is `HOBO_HOME`, else `.hobo` under
+`HOME`, else under `os.homedir()` — never a temp directory. A test that omits
+its home therefore writes wherever HOME and HOBO_HOME point, so a suite must
+point them at throwaway directories. The root config does it for HOBO_HOME
+(`test/setup/isolate-hobo-home.ts`). `packages/code` also moves HOME per worker
+(`packages/code/test/isolate-user-home.ts`, with a test git identity) and runs
+`packages/code/test/real-home-guard.ts` as global setup: it lists `/tmp/.hobo`,
+`$(os.tmpdir())/.hobo`, `$HOME/.hobo` and the account's `~/.hobo` before the
+run and fails the run naming every entry that appeared, against that snapshot
+(those directories may already exist). A child process given an environment
+with no HOME falls back to the account's home, which only the guard catches:
+pass the child the test's `HOME` or `HOBO_HOME`. The guard cannot tell who
+wrote an entry, so another checkout's suite or a HoBo session writing there at
+the same time fails the run too; the chat and session files it names record
+the `cwd` that wrote them.
+
 ### Characterization (approval) tests — for generated artifacts
 
 Rule-based tests assert *behaviour* ("an unknown category is rejected").

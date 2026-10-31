@@ -1,0 +1,160 @@
+/**
+ * The guard on this package's home isolation.
+ *
+ * `test/isolate-user-home.ts` and the root's `test/setup/isolate-hobo-home.ts`
+ * move HOME and HOBO_HOME for every file, and `test/real-home-guard.ts` fails
+ * the run when a real HoBo home gained entries anyway. A guarantee nothing
+ * checks quietly stops holding, so this file checks both halves: that the
+ * homes a test sees are throwaway ones, and that the guard really fails a run
+ * that writes into a home it watches. The second half runs vitest again with
+ * only the guard, a HOME and a TMPDIR of its own, so it never touches the
+ * machine's real `~/.hobo` or `/tmp/.hobo`.
+ */
+import { spawnSync } from "node:child_process";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	realpathSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
+import { createRequire } from "node:module";
+import { tmpdir, userInfo } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { resolveHoboHome } from "@hobo/core/hobo-home";
+import { afterAll, describe, expect, it } from "vitest";
+
+import { gainedEntries, snapshotHomes } from "./real-home-guard.js";
+
+describe("the homes a test in this package sees", () => {
+	it("HOME is a directory of the run's, not the account's", () => {
+		const home = String(process.env.HOME);
+		expect(resolve(home)).not.toBe(resolve(userInfo().homedir));
+		expect(existsSync(home)).toBe(true);
+	});
+
+	it("the default HoBo home is not the account's ~/.hobo", () => {
+		expect(resolve(resolveHoboHome())).not.toBe(
+			resolve(join(userInfo().homedir, ".hobo")),
+		);
+		// An environment that names no home falls back to os.homedir(), which
+		// reads the HOME set for this worker.
+		expect(resolveHoboHome({})).toBe(join(String(process.env.HOME), ".hobo"));
+	});
+});
+
+const scratch = mkdtempSync(join(tmpdir(), "hobo-real-home-guard-"));
+afterAll(() => {
+	rmSync(scratch, { recursive: true, force: true });
+});
+
+describe("comparing snapshots", () => {
+	it("names what appeared, including a home that did not exist before", () => {
+		const kept = join(scratch, "kept");
+		const fresh = join(scratch, "fresh");
+		mkdirSync(join(kept, "durable"), { recursive: true });
+		const before = snapshotHomes([kept, fresh]);
+		writeFileSync(join(kept, "durable", "leak.json"), "{}");
+		mkdirSync(join(fresh, "runtime"), { recursive: true });
+		expect(gainedEntries(before, snapshotHomes([kept, fresh]))).toEqual([
+			fresh,
+			join(fresh, "runtime"),
+			join(kept, "durable", "leak.json"),
+		]);
+	});
+});
+
+const GUARD = fileURLToPath(new URL("./real-home-guard.ts", import.meta.url));
+const VITEST = join(
+	dirname(createRequire(import.meta.url).resolve("vitest/package.json")),
+	"vitest.mjs",
+);
+
+let runs = 0;
+
+/**
+ * Runs one probe test under the guard alone, with HOME and TMPDIR of its own.
+ * `prepare` lays out what those homes hold before the run starts.
+ */
+function runUnderGuard(
+	probe: string,
+	prepare: (dirs: { home: string; temp: string }) => void = () => {},
+) {
+	runs += 1;
+	const project = join(scratch, `run-${runs}`);
+	const home = join(project, "home");
+	const temp = join(project, "tmp");
+	mkdirSync(home, { recursive: true });
+	mkdirSync(temp, { recursive: true });
+	prepare({ home, temp });
+	writeFileSync(
+		join(project, "probe.test.mjs"),
+		`import { mkdirSync, writeFileSync } from "node:fs";\nimport { join } from "node:path";\nit("probes", () => {\n${probe}\n});\n`,
+	);
+	writeFileSync(
+		join(project, "vitest.config.mjs"),
+		`export default { test: { globals: true, include: ["probe.test.mjs"], globalSetup: [${JSON.stringify(GUARD)}] } };\n`,
+	);
+	// Another vitest run of its own: none of this run's VITEST_* settings or homes.
+	const inherited = Object.fromEntries(
+		Object.entries(process.env).filter(
+			([key]) =>
+				!key.startsWith("VITEST") &&
+				key !== "HOBO_HOME" &&
+				key !== "HOBO_TEST_HOMES",
+		),
+	);
+	const run = spawnSync(
+		process.execPath,
+		[VITEST, "run", "--root", project, "--config", "vitest.config.mjs"],
+		{
+			cwd: project,
+			env: { ...inherited, HOME: home, TMPDIR: temp },
+			encoding: "utf8",
+		},
+	);
+	return {
+		status: run.status,
+		output: `${run.stdout}${run.stderr}`,
+		home: realpathSync(home),
+		temp: realpathSync(temp),
+	};
+}
+
+describe("the guard", () => {
+	it("passes a run that wrote nowhere, though the homes already held entries", () => {
+		// The machine's homes may hold a developer's state, or an earlier leak.
+		const run = runUnderGuard("", ({ home, temp }) => {
+			mkdirSync(join(home, ".hobo", "durable"), { recursive: true });
+			writeFileSync(join(home, ".hobo", "durable", "old.json"), "{}");
+			mkdirSync(join(temp, ".hobo"), { recursive: true });
+		});
+		expect(run.output).not.toMatch(/wrote into a real HoBo home/u);
+		expect(run.status).toBe(0);
+	});
+
+	it("fails a run that added an entry under HOME's .hobo, and names it", () => {
+		const run = runUnderGuard(
+			`writeFileSync(join(process.env.HOME, ".hobo", "durable", "leak.json"), "{}");`,
+			({ home }) => {
+				mkdirSync(join(home, ".hobo", "durable"), { recursive: true });
+			},
+		);
+		expect(run.status).toBe(1);
+		expect(run.output).toContain(
+			join(run.home, ".hobo", "durable", "leak.json"),
+		);
+	});
+
+	it("fails a run that created the temp dir's .hobo, and names it", () => {
+		// `<os.tmpdir()>/.hobo` was the old fallback for an environment with no HOME.
+		const run = runUnderGuard(
+			`mkdirSync(join(process.env.TMPDIR, ".hobo", "durable"), { recursive: true });`,
+		);
+		expect(run.status).toBe(1);
+		expect(run.output).toContain(join(run.temp, ".hobo"));
+		expect(run.output).toContain(join(run.temp, ".hobo", "durable"));
+	});
+});

@@ -264,10 +264,6 @@ export async function runResidentSshAgentProxy(
 	encoded: string,
 ): Promise<number> {
 	const payload = parseResidentPayload(encoded);
-	const proxy = await startSshAgentProxy({
-		...payload,
-		onRedeem: () => appendAudit(payload, "pam.CredentialRedeemed"),
-	});
 	let reason = "authorization-expired";
 	let signal!: () => void;
 	const interrupted = new Promise<void>((resolve) => {
@@ -281,8 +277,16 @@ export async function runResidentSshAgentProxy(
 		reason = "launcher-stop";
 		signal();
 	};
+	// Listening before the socket exists: the launcher takes the socket file
+	// as the proxy started, and may stop it at once. Listening only once the
+	// proxy had started left a stop in between to the signal's default action,
+	// with no pam.SessionEnded written.
 	process.once("SIGINT", onInterrupt);
 	process.once("SIGTERM", onTerminate);
+	const proxy = await startSshAgentProxy({
+		...payload,
+		onRedeem: () => appendAudit(payload, "pam.CredentialRedeemed"),
+	});
 	await Promise.race([proxy.done, interrupted]);
 	process.off("SIGINT", onInterrupt);
 	process.off("SIGTERM", onTerminate);

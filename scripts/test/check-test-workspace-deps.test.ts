@@ -1209,6 +1209,37 @@ describe("checkTestWorkspaceDeps", () => {
 		);
 	});
 
+	it("refuses a declaration that names no build of another package, and exits non-zero on it", () => {
+		const declared = (needs: string[]) => ({
+			...base,
+			[REGISTRY]: JSON.stringify({
+				reaches: [
+					{ from: "packages/app/src/run.ts", needs, why: "spawns lib" },
+				],
+			}),
+			"packages/app/package.json": manifest("@s/app"),
+			"packages/app/test/a.test.ts": 'import "../src/run.js";\n',
+			"packages/app/src/run.ts": `${SPAWN}${JOIN}spawn(process.execPath, [join(process.cwd(), "packages", "lib", "dist", "cli.js")]);\n`,
+		});
+		const empty = `${REGISTRY}: "packages/app/src/run.ts" names no build of another package it needs; name one as "<package>#build", or remove the entry`;
+		const staleIn = (needs: string[]) =>
+			within(declared(needs), (dir) =>
+				scanTestWorkspaceDeps(dir).stale.map(
+					(item) => `${item.file}: ${item.reason}`,
+				),
+			);
+		// An empty list, or one naming only the file's own package, silences
+		// the reach it declares.
+		assert.deepEqual(staleIn([]), [empty]);
+		assert.deepEqual(staleIn(["@s/app#build"]), [empty]);
+		assert.deepEqual(staleIn(["@s/app#build", "@s/lib#build"]), []);
+		within(declared([]), (dir) => {
+			const run = cli(dir, []);
+			assert.equal(run.status, 1);
+			assert.match(run.stderr, /names no build of another package/u);
+		});
+	});
+
 	it("refuses a declaration that no test task reaches any more, or that names no workspace package", () => {
 		const reaches = [
 			'import { spawn } from "node:child_process";',
@@ -1252,7 +1283,9 @@ describe("checkTestWorkspaceDeps", () => {
 					),
 					[
 						`${REGISTRY}: "packages/app/src/gone.ts" is not a tracked file`,
+						`${REGISTRY}: "packages/app/src/gone.ts" names no build of another package it needs; name one as "<package>#build", or remove the entry`,
 						`${REGISTRY}: "packages/app/src/quiet.ts" no longer reaches another package at run time`,
+						`${REGISTRY}: "packages/app/src/run.ts" names no build of another package it needs; name one as "<package>#build", or remove the entry`,
 						`${REGISTRY}: "packages/app/src/run.ts" needs "@s/lib", which is not "<package>#build"`,
 						`${REGISTRY}: "packages/app/src/run.ts" needs "@s/nope#build", and @s/nope is not a workspace package`,
 						`${REGISTRY}: "packages/app/src/unloaded.ts" is loaded by no test task`,

@@ -41,8 +41,9 @@
  *   fails unless `scripts/test-deps-runtime-reaches.json` declares what the
  *   file needs.
  *   Every test task that loads a declared file must have those builds, and a
- *   declaration no test task reaches, or that names no workspace package,
- *   fails too.
+ *   declaration no test task reaches, that names no workspace package, or
+ *   that names no build of a package other than the file's own (an empty
+ *   `needs`), fails too.
  * - A declaration orders the sibling's build only with a `workspace:`
  *   specifier, unless pnpm's link-workspace-packages is on
  *   (lib/turbo-task-graph `orderedDependency`); a violation says how the
@@ -832,6 +833,18 @@ export function scanTestWorkspaceDeps(
 					`"${from}" needs "${need}", and ${name} is not a workspace package`,
 				);
 		}
+		// An entry that needs nothing of another package's would silence the
+		// reach it declares: a task builds its own package anyway.
+		const own = owner(from)?.name;
+		if (
+			!needs.some((need) => {
+				const name = neededBuild(need);
+				return name !== undefined && byName.has(name) && name !== own;
+			})
+		)
+			staleness(
+				`"${from}" names no build of another package it needs; name one as "<package>#build", or remove the entry`,
+			);
 	}
 	const order = (item: Violation) =>
 		`${item.file}\0${item.package}\0${item.task}\0${item.imports}\0${item.specifier}`;

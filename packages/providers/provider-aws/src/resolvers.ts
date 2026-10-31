@@ -1702,6 +1702,34 @@ function scheduledForDeletion(record: JsonObject): boolean {
 	return deletedDate !== undefined && deletedDate !== null;
 }
 
+/**
+ * `DeletedDate` as an ISO 8601 instant. AWS's JSON protocol answers a timestamp
+ * as epoch seconds; a string is passed through as the provider wrote it.
+ */
+function deletedDateOf(record: JsonObject): string {
+	const value = record.DeletedDate;
+	if (isJsonNumber(value) && Number.isFinite(value)) {
+		return new Date(value * 1000).toISOString();
+	}
+	return isJsonString(value) ? value : "an unreported date";
+}
+
+/** Whether the declaration asks for a secret scheduled for deletion to be restored. */
+function restoreDeclared(context: AwsResolverContext): boolean {
+	return optionalBoolean(context.desired, "restoreScheduled") === true;
+}
+
+/** What apply will do with a secret scheduled for deletion, in one sentence. */
+function scheduledNote(
+	context: AwsResolverContext,
+	record: JsonObject,
+): string {
+	const until = `the secret is scheduled for deletion until ${deletedDateOf(record)}`;
+	return restoreDeclared(context)
+		? `${until}; apply will restore it, with its previous versions (restoreScheduled: true)`
+		: `${until}; apply refuses it: declare restoreScheduled: true to restore it with its previous versions, or destroy it with forceDelete: true to delete it now`;
+}
+
 function secretArn(record: JsonObject, label: string): string {
 	const arn = optionalString(record, "ARN");
 	if (arn === undefined) {
@@ -1744,10 +1772,21 @@ function secretDiagnostics(context: AwsResolverContext): readonly string[] {
 const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 	async read(context) {
 		const existing = await readSecret(context);
-		// A secret scheduled for deletion is going away and its value can no
-		// longer be read (GetSecretValue refuses it), so it is not there to adopt.
-		if (existing === undefined || scheduledForDeletion(existing)) {
-			return undefined;
+		if (existing === undefined) return undefined;
+		// A secret scheduled for deletion still exists and still holds its name,
+		// so it is reported, not hidden: as `delete` (the provider is deleting
+		// it), with the date and what apply will do. Reporting it absent would
+		// tell a preview that apply creates it, which CreateSecret refuses.
+		if (scheduledForDeletion(existing)) {
+			return outcome(
+				"delete",
+				secretArn(existing, `secretsmanager describe ${context.name}`),
+				{
+					...secretOutputs(context.name, existing),
+					deletedDate: deletedDateOf(existing),
+				},
+				[scheduledNote(context, existing), ...secretDiagnostics(context)],
+			);
 		}
 		return outcome(
 			settledAction(context),
@@ -1764,10 +1803,19 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 		let restored = false;
 
 		if (existing !== undefined && scheduledForDeletion(existing)) {
-			// CreateSecret cannot take the name back while the deletion is pending,
-			// so the declared secret converges only by cancelling it. RestoreSecret
-			// "Cancels the scheduled deletion of a secret by removing the DeletedDate
-			// time stamp", and keeps the versions written out of band.
+			// CreateSecret cannot take the name back while the deletion is pending.
+			// Someone deleted this secret on purpose, so bringing it back is the
+			// declaration's call, never a default: without restoreScheduled this
+			// fails closed and says how to proceed.
+			if (!restoreDeclared(context)) {
+				throw new ResolverError(
+					"RESOLVER_PROVIDER_REJECTED",
+					`secretsmanager ${context.name}: ${scheduledNote(context, existing)}`,
+				);
+			}
+			// RestoreSecret "Cancels the scheduled deletion of a secret by removing
+			// the DeletedDate time stamp", and keeps the versions written out of band.
+			const until = deletedDateOf(existing);
 			jsonResult(
 				context,
 				await secretsCall(context, "RestoreSecret", {
@@ -1776,7 +1824,7 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 				`secretsmanager restore ${context.name}`,
 			);
 			diagnostics.push(
-				"the secret was scheduled for deletion and is still declared, so RestoreSecret cancelled the deletion; its versions are kept",
+				`restored the secret scheduled for deletion until ${until}, with its previous versions (restoreScheduled: true)`,
 			);
 			existing = (await readSecret(context)) ?? existing;
 			restored = true;
@@ -1854,11 +1902,17 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 			SecretId: context.name,
 			...(force ? { ForceDeleteWithoutRecovery: true } : undefined),
 		});
-		if (
-			!isSuccess(response) &&
-			jsonErrorCode(response.body) === "ResourceNotFoundException"
-		) {
-			return;
+		if (!isSuccess(response)) {
+			const code = jsonErrorCode(response.body);
+			if (code === "ResourceNotFoundException") return;
+			// InvalidRequestException has more than one cause, so it is checked,
+			// not matched by its wording: if the secret is now scheduled for
+			// deletion (someone deleted it between the describe and this call),
+			// the deletion this asked for is already under way.
+			if (code === "InvalidRequestException" && !force) {
+				const now = await readSecret(context);
+				if (now === undefined || scheduledForDeletion(now)) return;
+			}
 		}
 		jsonResult(context, response, `secretsmanager delete ${context.name}`);
 	},

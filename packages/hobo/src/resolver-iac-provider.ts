@@ -420,13 +420,23 @@ export function createResolverBackedIacProvider(
 			// untrusted JSON while the port hands us the domain type: same value,
 			// viewed as the JSON the parser is written against.
 			const observed = parseResolveOutcome(cloneAsJson(raw));
+			const diagnostics = diagnosticSuffix(observed.diagnostics);
+			// A read reporting `delete` is a resource the provider is deleting
+			// (a secret in its recovery window): it exists, so apply does not
+			// create it, and it is not converged; the resolver's diagnostic says
+			// what apply will do with it.
+			if (observed.action === "delete") {
+				return {
+					summary: `${label}: exists as ${observed.physicalId}, and the provider is deleting it.${diagnostics}`,
+					changes: 1,
+				};
+			}
 			const desiredJson = cloneAsJson(bound.request.desired);
 			const observedJson = cloneAsJson(observed.outputs);
 			const { differing, unobservable } = compareDesired(
 				isJsonObject(desiredJson) ? desiredJson : {},
 				isJsonObject(observedJson) ? observedJson : {},
 			);
-			const diagnostics = diagnosticSuffix(observed.diagnostics);
 			if (differing.length > 0) {
 				const bound_note =
 					unobservable.length > 0
@@ -516,6 +526,16 @@ export function createResolverBackedIacProvider(
 			// viewed as the JSON the parser is written against.
 			const observed = parseResolveOutcome(cloneAsJson(raw));
 			const outputs = toIacOutputs(observed, program.resourceId);
+			if (observed.action === "delete") {
+				return {
+					drift: true,
+					observed: marker(
+						true,
+						`the provider is deleting the resource the plan describes${diagnosticSuffix(observed.diagnostics)}`,
+						outputs,
+					),
+				};
+			}
 			const desiredJson = cloneAsJson(bound.request.desired);
 			const observedJson = cloneAsJson(observed.outputs);
 			const { differing, unobservable } = compareDesired(

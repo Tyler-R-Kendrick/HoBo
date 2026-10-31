@@ -430,6 +430,11 @@ export function sns(options?: SnsOptions): SlotBinding {
 export interface SecretsManagerOptions {
 	readonly rotationDays?: number;
 	readonly kmsKeyRef?: string;
+	/**
+	 * Restore the secret if it is scheduled for deletion. Without it, apply
+	 * refuses a secret that is scheduled for deletion and says so.
+	 */
+	readonly restoreScheduled?: boolean;
 }
 
 /**

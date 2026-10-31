@@ -913,3 +913,43 @@ HoBo's Plan 09 pyramid specifies unit, conformance, integration, E2E, determinis
 - **(+)** The two refusals are visible facts rather than absences: an operator learns that a new major shipped, and learns that a candidate could not be verified, instead of seeing a quiet `hold` in both cases.
 - **(−)** `acceptMajor` puts a real decision in front of an operator on every major, which is friction by design and will be experienced as friction.
 - **(−)** The profile-claim check is only as good as the claims: a pack that keeps a profile id while degrading behind it passes. Conformance evidence, not this function, is what catches that.
+
+## ADR-0175
+**A resource the provider is deleting is reported, not hidden: a resolver's `read()` answers it with action `delete` and says when and what apply will do, preview and drift show it, and apply of an AWS Secrets Manager secret scheduled for deletion fails closed unless the plan declares `restoreScheduled: true`.**
+
+**Status:** Accepted.
+
+### Context
+`DeleteSecret` does not delete a secret. It schedules the deletion 7 to 30 days ahead (30 by default), and until then the secret keeps its name. The oracle is AWS's documentation in the Secrets Manager API model:
+- `DescribeSecret` answers the secret with `DeletedDate`: "The date the secret is scheduled for deletion. If it is not scheduled for deletion, this field is omitted."
+- `CreateSecret`, `UpdateSecret` and a second unforced `DeleteSecret` answer `InvalidRequestException` ("The secret is scheduled for deletion").
+- `RestoreSecret` "Cancels the scheduled deletion of a secret by removing the DeletedDate time stamp".
+
+The `aws.secrets-manager/v1` resolver had three problems with such a secret:
+- **It hid the secret.** `read()` reported it absent, so the resolver-backed `IacProvider` previewed "absent at the provider; apply would create it", a create the provider refuses, and drift said the resource did not exist.
+- **It restored the secret silently.** `reconcile()` brought back a secret someone had deleted on purpose.
+- **It could not delete twice.** A second delete failed.
+
+### Decision
+1. **`read()` reports a resource the provider is deleting.** The outcome carries:
+   - action `delete`, the member of the closed action set for "being deleted"; `reconcile()` never reports it;
+   - the physical id;
+   - the outputs, plus the date (`deletedDate` for a secret, as an ISO 8601 instant);
+   - a diagnostic: "scheduled for deletion until <date>", then what apply will do.
+2. **The resolver-backed `IacProvider` shows it** (`packages/hobo/src/resolver-iac-provider.ts`).
+   - Preview reads "exists as <id>, and the provider is deleting it." with the resolver's diagnostics, and `changes: 1`.
+   - Drift is `true`, determined, with the same text. A resource on its way out is neither "would be created" nor "clean".
+3. **A scheduled secret fails closed.** `aws.secrets-manager/v1`'s `reconcile()` refuses it with `RESOLVER_PROVIDER_REJECTED` and names the two ways forward:
+   - declare `restoreScheduled: true` to restore it with its previous versions (`RestoreSecret`, reported as `update`, after which drift is applied as usual);
+   - or destroy it with `forceDelete: true` to delete it now.
+
+   With the flag, preview and drift say "apply will restore it, with its previous versions".
+4. **Delete converges.** `delete()` describes first and sends nothing more for a secret that is already scheduled. A declared `forceDelete: true` still deletes it at once. An `InvalidRequestException` after which a fresh describe finds the secret scheduled (someone deleted it between the two calls) counts as done; any other `InvalidRequestException` is still refused.
+5. **`restoreScheduled` is a declared realization parameter, never a default.** It is on `SecretsManagerOptions`. Its only effect is on a secret that is scheduled for deletion.
+
+### Consequences
+- **(+)** Preview never claims a create the provider would refuse, and drift never certifies a secret on its way out as clean.
+- **(+)** Nothing deleted on purpose comes back unless the plan says so.
+- **(−)** Redeploying a secret within its recovery window fails until the operator chooses one of the two ways forward. The refusal names both.
+- **(−)** `delete` now needs `secretsmanager:DescribeSecret` as well as `secretsmanager:DeleteSecret`.
+- **(−)** Only this resolver reports a resource being deleted today. The action is there for the others; until they use it, their preview of a resource in deletion is whatever their `read()` says.

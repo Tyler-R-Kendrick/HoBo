@@ -118,6 +118,14 @@ and remove the resource — not the whole surface.
 | `aws.secrets-manager/v1` | REST-JSON `x-amz-target` on `secretsmanager.{region}.amazonaws.com` | `DescribeSecret`, `CreateSecret`, `UpdateSecret`, `RestoreSecret`, `DeleteSecret` |
 | `aws.ssm-parameter-store/v1` | REST-JSON `x-amz-target` on `ssm.{region}.amazonaws.com` | `GetParameter`, `PutParameter`, `DeleteParameter` |
 
+IAM actions for `aws.secrets-manager/v1`, per verb:
+
+| Verb | Actions |
+|---|---|
+| `read` | `secretsmanager:DescribeSecret` |
+| `reconcile` | `secretsmanager:DescribeSecret`, `secretsmanager:CreateSecret`, `secretsmanager:UpdateSecret`, and `secretsmanager:RestoreSecret` when `restoreScheduled: true` is declared |
+| `delete` | `secretsmanager:DescribeSecret` (it describes the secret first), `secretsmanager:DeleteSecret` |
+
 Path-style S3 addressing (`/{bucket}`) is deliberate: it keeps the transport
 allowlist to one reviewable host per region instead of one host per bucket name
 a caller happens to pass.
@@ -201,11 +209,18 @@ different suffix — is refused rather than interpolated into a hostname.
   (`YARD_BINDING_PRODUCT_UNKNOWN`).
 - A Secrets Manager secret **scheduled for deletion** (DescribeSecret answers
   `DeletedDate`) still holds its name for its recovery window, and AWS refuses
-  CreateSecret, UpdateSecret and a second unforced DeleteSecret for it. So
-  `read` treats it as absent, `delete` issues nothing more for it (a declared
-  `forceDelete: true` still deletes it at once), and `reconcile` of a secret that
-  is still declared calls `RestoreSecret`, which keeps its versions, and reports
-  `update` with a diagnostic.
+  CreateSecret, UpdateSecret and a second unforced DeleteSecret for it
+  ([ADR-0175](../../../docs/design/adr/07-portability-extensibility.md#adr-0175)).
+  - `read` reports it with action `delete`, `outputs.deletedDate`, and a
+    diagnostic: "scheduled for deletion until <date>", then what apply will do.
+    Preview and drift say so; neither reports it absent.
+  - `reconcile` **fails closed** by default (`RESOLVER_PROVIDER_REJECTED`): someone
+    deleted it on purpose. Declare `restoreScheduled: true` to restore it with its
+    previous versions (`RestoreSecret`, reported as `update`), or destroy it with
+    `forceDelete: true` to delete it now.
+  - `delete` issues nothing more for it, and a `forceDelete: true` delete still
+    deletes it at once. An `InvalidRequestException` because someone scheduled it
+    between the describe and the delete counts as done.
 - Secrets Manager secrets are created **without a version**, and SSM
   `SecureString` parameters are **refused**: in both cases the value is
   credential material, and this resolver never carries it.

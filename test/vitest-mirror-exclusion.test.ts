@@ -22,6 +22,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { configDefaults } from "vitest/config";
 
+import { testCategories } from "../scripts/lib/test-categories.ts";
+
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 function tracked(): readonly string[] {
@@ -220,4 +222,28 @@ describe("a package with a mirror lane keeps the root config in its default lane
 		const test = (await loadUserConfig(`${dir}/vitest.config.ts`)).test ?? {};
 		expect(test.isolate).toBe(root.isolate);
 	});
+});
+
+describe("the root lanes collect no test/mirror file", () => {
+	// `scripts/run-tests.ts` lists each lane's files with `git ls-files` over
+	// its globs. `contract-consumer` reaches `packages/` only through
+	// `*.contract.test.ts`, and `contract-provider`'s `*provider*` globs only
+	// `src/draft/` and the root `test/`: a package's mirror file may carry
+	// `provider` in its name (hobo-vercel-api.provider.mirror.test.ts does).
+	for (const rootOnly of [false, true]) {
+		for (const [category, globs] of Object.entries(testCategories(rootOnly))) {
+			it(`${category}${rootOnly ? " (--root-only)" : ""}`, () => {
+				const listing = spawnSync("git", ["ls-files", "--", ...globs], {
+					cwd: ROOT,
+					encoding: "utf8",
+					maxBuffer: 64 * 1024 * 1024,
+				});
+				expect(listing.status, listing.stderr).toBe(0);
+				const mirror = listing.stdout
+					.split("\n")
+					.filter((file) => MIRROR_TEST.test(file));
+				expect(mirror).toEqual([]);
+			});
+		}
+	}
 });

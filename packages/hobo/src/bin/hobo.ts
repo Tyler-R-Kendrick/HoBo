@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { HoboHomeUnavailable, prepareHoboHome } from "@hobo/core/hobo-home";
 // Register TypeScript bindle sources before composing the CLI so `hobo dev`
 // runs the flagship src/bindle.ts authoring path without a separate build.
@@ -51,8 +51,11 @@ async function runComposed(
 	// CI talks to its account relay and GitHub directly. It must work before
 	// local Yard provisioning and without creating an unrelated SQLite journal.
 	let verb: string | null;
+	let homeFlag: string | null;
 	try {
-		verb = parseArgv(args).verb;
+		const parsed = parseArgv(args);
+		verb = parsed.verb;
+		homeFlag = parsed.flags.home;
 	} catch {
 		return writeResult(await createHoboCli().run(args));
 	}
@@ -68,7 +71,15 @@ async function runComposed(
 	// a user whose state an earlier HoBo kept in /tmp/.hobo hears where it went.
 	let hoboHome: string;
 	try {
-		hoboHome = prepareHoboHome({ program: "hobo" });
+		// `--home <dir>` names the home the verb uses (yard, dev, up, …); that is
+		// the one to make, not the environment's.
+		hoboHome = prepareHoboHome({
+			program: "hobo",
+			env:
+				homeFlag === null || homeFlag.length === 0
+					? process.env
+					: { ...process.env, HOBO_HOME: resolve(homeFlag) },
+		});
 	} catch (error) {
 		if (!(error instanceof HoboHomeUnavailable)) throw error;
 		process.stderr.write(`hobo: ${error.message}\n`);

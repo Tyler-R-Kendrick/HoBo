@@ -14,7 +14,7 @@
  * not this coding harness.
  */
 import { spawn } from "node:child_process";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
 	HoboHomeUnavailable,
@@ -59,11 +59,22 @@ removeComposedDirsOnSignals();
 // what to set, rather than as EACCES from whichever write came first, and a
 // user whose state an earlier HoBo kept in /tmp/.hobo hears where it went.
 // Help, and a command line the CLI refuses, write nothing and are not
-// prepared for.
-const invocation = describeHoboCodeInvocation(process.argv.slice(2));
+// prepared for. The home is the one the command will use: `--home <dir>` when
+// given (it wins over HOBO_HOME in the CLI), else the environment's.
+const invocation = describeHoboCodeInvocation(
+	process.argv.slice(2).filter((arg) => arg !== "--pi"),
+);
+const homeEnv: NodeJS.ProcessEnv =
+	invocation.home === undefined
+		? process.env
+		: { ...process.env, HOBO_HOME: resolvePath(invocation.home) };
+/** The HoBo home this invocation uses. */
+function invocationHome(): string {
+	return resolveHoboHome(homeEnv);
+}
 if (!invocation.help && !invocation.malformed) {
 	try {
-		prepareHoboHome({ program: "hobo-code" });
+		prepareHoboHome({ program: "hobo-code", env: homeEnv });
 	} catch (error) {
 		if (!(error instanceof HoboHomeUnavailable)) throw error;
 		process.stderr.write(`hobo-code: ${error.message}\n`);
@@ -110,7 +121,7 @@ async function launchProductShell(options: {
 	readonly messages?: readonly ShellMessage[];
 	readonly journal?: readonly ShellMessage[];
 }): Promise<number> {
-	const hoboHome = resolveHoboHome();
+	const hoboHome = invocationHome();
 	let engine: ShellEngine | null = null;
 	const isolation = await createIsolationContext({
 		projectRoot: options.cwd ?? process.cwd(),
@@ -279,7 +290,7 @@ if (argv[0] === "_station-agent") {
 	} else if (result.ok && action?.kind === "git-pane" && action.sessionId) {
 		process.exitCode = await runGitTerminalPane({
 			sessionId: action.sessionId,
-			hoboHome: action.hoboHome ?? resolveHoboHome(),
+			hoboHome: action.hoboHome ?? invocationHome(),
 		});
 	} else if (
 		result.ok &&
@@ -334,7 +345,7 @@ if (argv[0] === "_station-agent") {
 			await action.closeAuthorization?.();
 		}
 	} else if (result.ok && action?.kind === "serve-sessions") {
-		const hoboHome = action.hoboHome ?? resolveHoboHome();
+		const hoboHome = action.hoboHome ?? invocationHome();
 		const requestedPort =
 			action.port ??
 			Number.parseInt(process.env.HOBO_CODE_SESSION_PORT ?? "0", 10);

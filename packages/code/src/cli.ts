@@ -596,6 +596,8 @@ export interface HoboCodeInvocation {
 	readonly help: boolean;
 	/** A command line the CLI refuses before it touches the home. */
 	readonly malformed: boolean;
+	/** The home `--home <dir>` or `--home=<dir>` names; it wins over HOBO_HOME. */
+	readonly home?: string;
 }
 
 /**
@@ -609,7 +611,10 @@ export function describeHoboCodeInvocation(
 ): HoboCodeInvocation {
 	try {
 		const { verb, flags } = parseArgv(argv);
-		return { help: verb === "help" || flags.help === true, malformed: false };
+		const help = verb === "help" || flags.help === true;
+		return isJsonString(flags.home) && flags.home.length > 0
+			? { help, malformed: false, home: flags.home }
+			: { help, malformed: false };
 	} catch {
 		return { help: false, malformed: true };
 	}

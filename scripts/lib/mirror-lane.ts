@@ -314,7 +314,11 @@ type Announcement =
 	| { readonly kind: "spawn-error"; readonly error: Error }
 	| { readonly kind: "timeout" };
 
-/** `mirror <version> listening on <scheme>://<address>`, the line mirror prints once its specs are loaded. */
+/**
+ * `mirror <version> listening on <scheme>://<address>`, the line mirror prints
+ * once its listener is bound (since mirror.cloud#442; a build before it
+ * printed it once its specs were loaded, just before it bound).
+ */
 const BANNER = /^mirror (\S+) listening on (https?):\/\/(\S+)$/u;
 
 /**
@@ -364,7 +368,12 @@ type Health =
 	| { readonly kind: "another"; readonly version: string }
 	| { readonly kind: "unhealthy"; readonly detail: string };
 
-/** Mirror prints its banner just before it binds: a refusal right after it is retried, 25 ms apart, at most this often. */
+/**
+ * A mirror built before mirror.cloud#442 prints its banner just before it
+ * binds, so a refused health check after the banner is retried, 25 ms apart,
+ * at most this often. Since #442 the banner follows the bind, and the first
+ * attempt connects.
+ */
 const BIND_RETRIES = 40;
 
 /** The two fields of a `/_mirror/health` answer the lane reads. */

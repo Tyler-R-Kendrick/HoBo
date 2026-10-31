@@ -271,7 +271,7 @@ export async function extractMember(
 		if (read.archive !== sha256) {
 			throw new PinsError(
 				"DIGEST_MISMATCH",
-				`${archive} hashed to ${read.archive} while ${member} was read from it, but the pin says ${sha256}; nothing was kept`,
+				`${archive} hashed to ${read.archive} while ${member} was read from it, but the pin says ${sha256}`,
 			);
 		}
 		writing(`syncing ${partial}`, () => {
@@ -286,8 +286,10 @@ export async function extractMember(
 	} catch (error) {
 		// Every error thrown above is a PinsError; a failure while cleaning up
 		// is recorded beside it, never in its place, and the partial file is
-		// removed whether or not closing it worked.
+		// removed whether or not closing it worked. The message ends by saying
+		// whether anything was left behind, and where.
 		let failure = error;
+		let kept = false;
 		if (fd !== undefined) {
 			try {
 				closeSync(fd);
@@ -300,18 +302,26 @@ export async function extractMember(
 		try {
 			rmSync(partial, { force: true });
 		} catch (rmError) {
+			kept = true;
 			if (failure instanceof PinsError && rmError instanceof Error) {
 				failure = failure.withSuppressed(`removing ${partial}`, rmError);
 			}
 		}
+		const outcome = kept
+			? `the partial file was kept at ${partial}`
+			: "nothing was kept";
 		const signal = guard.interrupted();
 		if (signal !== null) {
 			throw new PinsError(
 				"INTERRUPTED",
-				`unpacking ${member} was interrupted by ${signal}; nothing was kept`,
+				`unpacking ${member} was interrupted by ${signal}; ${outcome}`,
+				{
+					cause: failure,
+					suppressed: failure instanceof PinsError ? failure.suppressed : [],
+				},
 			);
 		}
-		throw failure;
+		throw failure instanceof PinsError ? failure.withNote(outcome) : failure;
 	} finally {
 		guard.release();
 	}

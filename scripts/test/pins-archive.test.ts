@@ -268,6 +268,87 @@ describe("a failure writing the member", () => {
 		assert.deepEqual(readdirSync(dir), ["a.tar.gz"]);
 	});
 
+	it("says the partial file was kept, and where, when removing it fails", async (t) => {
+		const dir = scratch("rm-failed");
+		const path = join(dir, "a.tar.gz");
+		writeFileSync(path, ARCHIVE);
+		const realRm = fs.rmSync;
+		t.mock.method(fs, "rmSync", (target: string, options?: fs.RmOptions) => {
+			if (String(target).endsWith(".partial"))
+				throw injected("EBUSY", "rmSync");
+			return realRm(target, options);
+		});
+		syncBuiltinESMExports();
+		await assert.rejects(
+			extractMember(path, "mirror", join(dir, "out"), "0".repeat(64)),
+			(error: Error) => {
+				assert.ok(error instanceof PinsError, String(error));
+				assert.equal(error.code, "DIGEST_MISMATCH");
+				const partial = readdirSync(dir).find((name) =>
+					name.endsWith(".partial"),
+				);
+				assert.ok(partial !== undefined, "the partial file is still there");
+				assert.doesNotMatch(error.message, /nothing was kept/u);
+				assert.ok(
+					error.message.endsWith(
+						`; the partial file was kept at ${join(dir, partial)}`,
+					),
+					error.message,
+				);
+				const [removing] = error.suppressed;
+				assert.ok(removing instanceof Error && "code" in removing);
+				assert.equal(removing.code, "EBUSY");
+				return true;
+			},
+		);
+	});
+
+	it("keeps the failure underneath an interruption as its cause, with what was suppressed", async (t) => {
+		const dir = scratch("interrupted");
+		const path = join(dir, "a.tar.gz");
+		writeFileSync(path, ARCHIVE);
+		// A listener of the test's own keeps the guard from ending the process.
+		const stay = (): void => undefined;
+		process.on("SIGTERM", stay);
+		t.after(() => {
+			process.off("SIGTERM", stay);
+		});
+		const realWrite = fs.writeSync;
+		t.mock.method(
+			fs,
+			"writeSync",
+			(fd: number, buffer: Uint8Array, offset?: number, length?: number) => {
+				if (fd <= 2) return realWrite(fd, buffer, offset, length);
+				process.emit("SIGTERM", "SIGTERM");
+				throw injected("ENOSPC", "writeSync");
+			},
+		);
+		const realClose = fs.closeSync;
+		t.mock.method(fs, "closeSync", (fd: number) => {
+			realClose(fd);
+			if (fd > 2) throw injected("EIO", "closeSync");
+		});
+		syncBuiltinESMExports();
+		await assert.rejects(
+			extractMember(path, "mirror", join(dir, "out"), sha256Hex(ARCHIVE)),
+			(error: Error) => {
+				assert.ok(error instanceof PinsError, String(error));
+				assert.equal(error.code, "INTERRUPTED");
+				assert.match(
+					error.message,
+					/interrupted by SIGTERM; nothing was kept$/u,
+				);
+				assert.ok(error.cause instanceof PinsError, String(error.cause));
+				assert.equal(error.cause.code, "ARCHIVE_WRITE_FAILED");
+				const [closing] = error.suppressed;
+				assert.ok(closing instanceof Error && "code" in closing);
+				assert.equal(closing.code, "EIO");
+				return true;
+			},
+		);
+		assert.deepEqual(readdirSync(dir), ["a.tar.gz"]);
+	});
+
 	for (const [name, code] of [
 		["writeSync", "ENOSPC"],
 		["fsyncSync", "EIO"],

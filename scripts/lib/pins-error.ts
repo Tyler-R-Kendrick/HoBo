@@ -55,6 +55,15 @@ export class PinsError extends Error {
 		this.suppressed = options?.suppressed ?? [];
 	}
 
+	/** This error again, with `note` added to the end of its message. */
+	withNote(note: string): PinsError {
+		return new PinsError(
+			this.code,
+			`${this.message.slice(this.code.length + 2)}; ${note}`,
+			{ cause: this.cause, suppressed: this.suppressed },
+		);
+	}
+
 	/** This error again, with `also` (a failure while `step`) recorded beside it and named in the message. */
 	withSuppressed(step: string, also: Error): PinsError {
 		return new PinsError(

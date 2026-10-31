@@ -255,7 +255,7 @@ interface DesiredComparison {
 	readonly differing: readonly string[];
 	/** Declared parameters `read()` reports nothing about, either way. */
 	readonly unobservable: readonly string[];
-	/** Declared parameters the resolver reads as directives, left out. */
+	/** Declared directives `read()` reports nothing about, left out. */
 	readonly directives: readonly string[];
 }
 
@@ -269,10 +269,13 @@ interface DesiredComparison {
  * a difference is a lower bound on the change count, and an unobservable
  * parameter makes the total undetermined.
  *
- * A key the resolver names in `directives` is not state at all: it says how
- * apply or delete acts (`restoreScheduled`, `forceDelete`), so no read can
- * report it and it is left out rather than counted as unobservable (ADR-0175).
- * It is listed, so the verdict can say what it did not compare.
+ * A key the resolver names in `directives` says how apply or delete acts
+ * (`restoreScheduled`, `forceDelete`), not what the resource is, so `read()`
+ * normally reports nothing for it. Such a key is left out rather than counted
+ * as unobservable, and listed so the verdict can say what it did not compare
+ * (ADR-0175). A directive key `read()` DOES report is compared like any other
+ * parameter: the list only excuses a key there is nothing to compare against,
+ * so naming a reported state key as a directive cannot hide its drift.
  */
 function compareDesired(
 	desired: JsonObject,
@@ -286,12 +289,8 @@ function compareDesired(
 	// Keys are already code-unit sorted by the parse boundaries; sorting again
 	// keeps the result stable if that ever stops being true.
 	for (const key of Object.keys(desired).sort(compareStrings)) {
-		if (isDirective.has(key)) {
-			directives.push(key);
-			continue;
-		}
 		if (!Object.hasOwn(observed, key)) {
-			unobservable.push(key);
+			(isDirective.has(key) ? directives : unobservable).push(key);
 			continue;
 		}
 		if (stringifyOutput(desired[key]) !== stringifyOutput(observed[key])) {
@@ -299,6 +298,15 @@ function compareDesired(
 		}
 	}
 	return { differing, unobservable, directives };
+}
+
+/**
+ * The verdict when nothing compared differs. With directives left out it says
+ * "every compared declared parameter", never "every declared parameter": the
+ * directives were declared and not compared.
+ */
+function allMatch(directives: readonly string[]): string {
+	return `every ${directives.length === 0 ? "" : "compared "}declared parameter matches what the provider reports`;
 }
 
 /** Names the declared directives a comparison left out, or nothing. */
@@ -480,7 +488,7 @@ export function createResolverBackedIacProvider(
 				};
 			}
 			return {
-				summary: `${label}: exists as ${observed.physicalId}; every declared parameter matches what the provider reports.${notCompared}${diagnostics}`,
+				summary: `${label}: exists as ${observed.physicalId}; ${allMatch(directives)}.${notCompared}${diagnostics}`,
 				changes: 0,
 			};
 		},
@@ -595,11 +603,7 @@ export function createResolverBackedIacProvider(
 			}
 			return {
 				drift: false,
-				observed: marker(
-					true,
-					`every declared parameter matches what the provider reports${tail}`,
-					outputs,
-				),
+				observed: marker(true, `${allMatch(directives)}${tail}`, outputs),
 			};
 		},
 	};

@@ -511,8 +511,40 @@ describe("resolver-backed IacProvider: preview never mutates and never lies", ()
 
 		const diff = await driver.preview(program("sessions", "preview"));
 		expect(diff.changes).toBe(0);
-		expect(diff.summary).toContain("every declared parameter matches");
+		expect(diff.summary).toContain(
+			"every compared declared parameter matches what the provider reports",
+		);
+		expect(diff.summary).not.toContain("every declared parameter matches");
 		expect(diff.summary).toContain("Not compared: purgeOnDelete");
+	});
+
+	it("preview compares a directive that read() reports, so naming a state key as one hides no drift", async () => {
+		const store = await storeWithPlan([steeredNode({ size: 3 })]);
+		const driver = steeredDriver(store, ["size"], { size: 2 });
+
+		const diff = await driver.preview(program("sessions", "preview"));
+		expect(diff.changes).toBe(1);
+		expect(diff.summary).toContain("declared parameter(s) differ (size)");
+		expect(diff.summary).not.toContain("Not compared");
+
+		const report = await driver.refresh(program("sessions"));
+		expect(report.drift).toBe(true);
+		expect(report.observed["hobo.resolver.drift.determined"]).toBe("true");
+		expect(report.observed["hobo.resolver.drift.reason"]).toContain(
+			"differ from what the provider reports: size",
+		);
+	});
+
+	it("preview reports a reported directive that matches as compared, not as left out", async () => {
+		const store = await storeWithPlan([steeredNode({ size: 2 })]);
+		const driver = steeredDriver(store, ["size"], { size: 2 });
+
+		const diff = await driver.preview(program("sessions", "preview"));
+		expect(diff.changes).toBe(0);
+		expect(diff.summary).toContain(
+			"every declared parameter matches what the provider reports",
+		);
+		expect(diff.summary).not.toContain("Not compared");
 	});
 
 	it("preview still counts a declared parameter the resolver does not name as a directive", async () => {
@@ -586,7 +618,7 @@ describe("resolver-backed IacProvider: refresh", () => {
 		expect(report.drift).toBe(false);
 		expect(report.observed["hobo.resolver.drift.determined"]).toBe("true");
 		expect(report.observed["hobo.resolver.drift.reason"]).toContain(
-			"Not compared: purgeOnDelete",
+			"every compared declared parameter matches what the provider reports. Not compared: purgeOnDelete",
 		);
 	});
 
@@ -748,16 +780,17 @@ function steeredNode(realizationParameters: JsonObject): ResourcePlan {
 	};
 }
 
-/** A resolver whose read() reports the title, and that reads `directives` as directives. */
+/** A resolver whose read() reports `outputs` (the title by default), and that reads `directives` as directives. */
 function steeredDriver(
 	store: RuntimeLocalEventStore,
 	directives: readonly string[],
+	outputs: JsonObject = { title: "sessions" },
 ) {
 	const outcome: ResolveOutcome = {
 		contract: RESOLVER_CONTRACT,
 		action: "noop",
 		physicalId: "steered-1",
-		outputs: { title: "sessions" },
+		outputs,
 		diagnostics: [],
 	};
 	const resolver: ResourceResolver = {

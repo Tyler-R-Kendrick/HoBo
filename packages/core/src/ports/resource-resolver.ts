@@ -124,10 +124,13 @@ export interface ResourceResolver {
 	/**
 	 * The realization parameters this resolver reads as directives: they say
 	 * how `reconcile` or `delete` acts on the resource (`forceDelete`,
-	 * `restoreScheduled`), never what the resource is. `read()` has nothing to
-	 * report for a directive, so a caller comparing what a plan declares with
-	 * what `read()` observed leaves these keys out (ADR-0175). Absent means the
-	 * resolver reads none.
+	 * `restoreScheduled`), never what the resource is, so `read()` normally has
+	 * nothing to report for one. A caller comparing what a plan declares with
+	 * what `read()` observed leaves a declared directive out only when `read()`
+	 * reports no value under that key; a key `read()` does report is compared
+	 * like any other, so this list can never hide drift `read()` observes
+	 * (ADR-0175). Absent means the resolver reads none. This is metadata about
+	 * the resolver's parameters, not a trait and not an attach point.
 	 */
 	readonly directives?: readonly string[];
 	/** Convergent and idempotent: running twice must yield the same outcome

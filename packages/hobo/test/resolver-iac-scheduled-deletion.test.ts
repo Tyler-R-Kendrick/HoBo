@@ -268,9 +268,8 @@ describe("a plan that keeps its directives, against a live secret", () => {
 
 		const diff = await driver.preview(program("preview"));
 		expect(diff.changes).toBe(0);
-		expect(diff.summary).toContain("every declared parameter matches");
 		expect(diff.summary).toContain(
-			"Not compared: forceDelete, restoreScheduled",
+			"every compared declared parameter matches what the provider reports. Not compared: forceDelete, restoreScheduled",
 		);
 		expect(diff.summary).not.toContain("UNDETERMINED");
 

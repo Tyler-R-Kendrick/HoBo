@@ -25,3 +25,28 @@ export function launcherSignals(platform) {
 		? { listen: CONSOLE, forward: false }
 		: { listen: ENDING, forward: true };
 }
+
+/**
+ * Pass `signal` on to the child: to its process group, which it leads in a
+ * session of its own, so that whatever it started without detaching (a
+ * `/hobo` command, the `--pi` TUI, `tmux attach`, `ssh`) gets the signal too.
+ * Sent to the child alone, the signal orphaned them wherever the child had no
+ * handler for it. A child that leads no such group, or is gone, gets it alone.
+ *
+ * @param {{ readonly pid?: number | undefined; kill(signal: NodeJS.Signals): unknown }} child
+ * @param {NodeJS.Signals} signal
+ * @param {(pid: number, signal: NodeJS.Signals) => unknown} [kill]
+ */
+export function forwardSignal(
+	child,
+	signal,
+	kill = (pid, sent) => process.kill(pid, sent),
+) {
+	if (child.pid === undefined) return;
+	try {
+		kill(-child.pid, signal);
+	} catch (error) {
+		if (error?.code !== "ESRCH") throw error;
+		child.kill(signal);
+	}
+}

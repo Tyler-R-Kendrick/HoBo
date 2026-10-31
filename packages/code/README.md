@@ -54,8 +54,10 @@ Skip code rebuild with `HOBO_CODE_SKIP_STALE_REBUILD=1`. Force source with
 The launcher runs `dist/bin/hobo-code.js` (or `src/` via tsx) as a child, in a
 session of its own except on Windows, so neither a signal sent to `hobo-code`
 nor the terminal's hangup reaches that child directly. The launcher passes
-SIGINT, SIGTERM, SIGHUP and SIGQUIT on to it, the SIGHUP of a closing terminal
-included, waits for it to end, and exits with its status, or 128+n when it
+SIGINT, SIGTERM, SIGHUP and SIGQUIT on to the child's process group, the SIGHUP
+of a closing terminal included, so whatever the child started without
+detaching (a `/hobo` command, the `--pi` TUI, `tmux attach`, `ssh`) gets them
+too. It waits for the child to end, and exits with its status, or 128+n when it
 ends by signal n. Killed outright (SIGKILL), the launcher passes nothing on:
 the child sees its IPC channel to the launcher close and quits as on SIGHUP.
 On Windows the launcher passes nothing on: the child shares its console and

@@ -24,7 +24,7 @@ import { createRequire } from "node:module";
 import { constants } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { launcherSignals } from "./launcher-signals.mjs";
+import { forwardSignal, launcherSignals } from "./launcher-signals.mjs";
 
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const distCli = join(pkgRoot, "dist", "cli.js");
@@ -253,7 +253,9 @@ const run = useSource
 // nothing is passed on (launcher-signals.mjs says why), and hobo-code only
 // waits for the child.
 const signals = launcherSignals(process.platform);
-const onSignal = signals.forward ? (signal) => run.kill(signal) : () => {};
+const onSignal = signals.forward
+	? (signal) => forwardSignal(run, signal)
+	: () => {};
 for (const signal of signals.listen) process.on(signal, onSignal);
 const result = await new Promise((resolve) => {
 	run.once("error", (error) => resolve({ error }));

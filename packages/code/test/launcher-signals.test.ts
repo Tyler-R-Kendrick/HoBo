@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { launcherSignals } from "../bin/launcher-signals.mjs";
+import { forwardSignal, launcherSignals } from "../bin/launcher-signals.mjs";
 
 const launcher = join(
 	dirname(fileURLToPath(import.meta.url)),
@@ -35,5 +35,40 @@ describe("which signals hobo-code's launcher passes on", () => {
 	it("is what the launcher acts on", () => {
 		const source = readFileSync(launcher, "utf8");
 		expect(source).toMatch(/launcherSignals\(process\.platform\)/u);
+	});
+});
+
+describe("how hobo-code's launcher passes a signal on", () => {
+	const child = () => {
+		const killed: string[] = [];
+		return { pid: 4242, kill: (signal: string) => killed.push(signal), killed };
+	};
+
+	it("signals the child's process group, so what the child started gets it too", () => {
+		const target = child();
+		const sent: string[] = [];
+		forwardSignal(target, "SIGTERM", (pid, signal) =>
+			sent.push(`${pid} ${signal}`),
+		);
+		expect(sent).toEqual(["-4242 SIGTERM"]);
+		expect(target.killed).toEqual([]);
+	});
+
+	it("signals the child alone when it leads no such group", () => {
+		const target = child();
+		forwardSignal(target, "SIGHUP", () => {
+			throw Object.assign(new Error("kill ESRCH"), { code: "ESRCH" });
+		});
+		expect(target.killed).toEqual(["SIGHUP"]);
+	});
+
+	it("lets any other failure through", () => {
+		const target = child();
+		expect(() =>
+			forwardSignal(target, "SIGINT", () => {
+				throw Object.assign(new Error("kill EPERM"), { code: "EPERM" });
+			}),
+		).toThrow("EPERM");
+		expect(target.killed).toEqual([]);
 	});
 });

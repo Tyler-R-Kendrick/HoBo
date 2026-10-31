@@ -126,7 +126,18 @@ interface Ended {
 	 * the alternate screen, the cursor shown, and the line settings the same.
 	 */
 	readonly terminalRestored: boolean;
+	/** With `busyVerb`: whether the `/hobo` command the shell started has ended. */
+	readonly grandchildEnded: boolean | undefined;
 	readonly screen: string;
+}
+
+interface Run {
+	/**
+	 * Run `/hobo recipes` through a stand-in `hobo` (HOBO_CODE_HOBO_BIN) that
+	 * never ends: the shell starts it as a child of its own, without detaching,
+	 * and it is still running when hobo-code is ended.
+	 */
+	readonly busyVerb?: boolean;
 }
 
 /** The line settings a terminal left raw differs in: `-icanon -echo ...`. */
@@ -150,12 +161,19 @@ function stores(dir: string): string[] {
  * idle again, end hobo-code as `ending` says, and give the child that holds
  * the store time to end while the terminal stays open.
  */
-async function endTheShell(ending: Ending): Promise<Ended> {
+async function endTheShell(ending: Ending, run: Run = {}): Promise<Ended> {
 	const root = mkdtempSync(join(tmpdir(), "hobo-code-signals-"));
 	roots.push(root);
 	const tmp = join(root, "tmp");
 	mkdirSync(tmp);
 	const at = (name: string): string => join(root, name);
+	const busyHobo = at("busy-hobo.mjs");
+	if (run.busyVerb === true) {
+		writeFileSync(
+			busyHobo,
+			`import { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(at("grandchild"))}, String(process.pid));\nsetInterval(() => {}, 1000);\n`,
+		);
+	}
 	// An inner sh writes its own pid and becomes hobo-code, so that pid is
 	// hobo-code's. The outer one, the terminal's shell, records its status,
 	// whether hobo-code's child is still running at that moment and the line
@@ -169,23 +187,25 @@ async function endTheShell(ending: Ending): Promise<Ended> {
 		`stty -a > '${at("stty-after")}'`,
 		`while [ ! -e '${at("done")}' ]; do sleep 0.1; done`,
 	].join("; ");
+	const env: NodeJS.ProcessEnv = {
+		PATH: process.env.PATH ?? "",
+		HOME: root,
+		HOBO_HOME: join(root, "home"),
+		TMPDIR: tmp,
+		TERM: "xterm-256color",
+		HOBO_CODE_ENGINE: "none",
+		HOBO_CODE_FROM_SOURCE: "0",
+		HOBO_CODE_SKIP_STALE_REBUILD: "1",
+		HOBO_CODE_REDUCED_MOTION: "1",
+		// The shell's Station Evidence sidecar outlives it by design, until its
+		// HOBO_HOME is gone: the cleanup removes that, and the sidecar notices
+		// within a moment.
+		HOBO_CODE_SIDECAR_POLL_MS: "250",
+		NODE_NO_WARNINGS: "1",
+	};
+	if (run.busyVerb === true) env.HOBO_CODE_HOBO_BIN = busyHobo;
 	const script = spawn("script", ["-qfec", command, "/dev/null"], {
-		env: {
-			PATH: process.env.PATH ?? "",
-			HOME: root,
-			HOBO_HOME: join(root, "home"),
-			TMPDIR: tmp,
-			TERM: "xterm-256color",
-			HOBO_CODE_ENGINE: "none",
-			HOBO_CODE_FROM_SOURCE: "0",
-			HOBO_CODE_SKIP_STALE_REBUILD: "1",
-			HOBO_CODE_REDUCED_MOTION: "1",
-			// The shell's Station Evidence sidecar outlives it by design, until its
-			// HOBO_HOME is gone: the cleanup removes that, and the sidecar notices
-			// within a moment.
-			HOBO_CODE_SIDECAR_POLL_MS: "250",
-			NODE_NO_WARNINGS: "1",
-		},
+		env,
 		stdio: ["pipe", "pipe", "pipe"],
 	});
 	let screen = "";
@@ -203,6 +223,7 @@ async function endTheShell(ending: Ending): Promise<Ended> {
 		});
 	});
 	let child: number | undefined;
+	let grandchild: number | undefined;
 	try {
 		await until(() => closed || screen.includes(SHELL_DRAWN), VERB_DEADLINE_MS);
 		if (!closed) {
@@ -210,15 +231,23 @@ async function endTheShell(ending: Ending): Promise<Ended> {
 			await sleep(500);
 			script.stdin.write("\r");
 		}
-		await until(
-			() =>
-				closed ||
-				(stores(tmp).length > 0 &&
-					screen.replace(CONTROL_SEQUENCES, "").includes(VERB_ENDED)),
-			VERB_DEADLINE_MS,
-		);
+		// Ready: the verb has left a store behind and ended, or, with `busyVerb`,
+		// the stand-in `hobo` it started is running.
+		const ready = (): boolean =>
+			run.busyVerb === true
+				? existsSync(at("grandchild"))
+				: stores(tmp).length > 0 &&
+					screen.replace(CONTROL_SEQUENCES, "").includes(VERB_ENDED);
+		await until(() => closed || ready(), VERB_DEADLINE_MS);
 		const made = stores(tmp);
-		if (made.length > 0 && !closed) {
+		const readyToEnd =
+			!closed &&
+			(run.busyVerb === true ? existsSync(at("grandchild")) : made.length > 0);
+		if (readyToEnd) {
+			if (run.busyVerb === true) {
+				grandchild = Number(readFileSync(at("grandchild"), "utf8"));
+				children.push(grandchild);
+			}
 			const hoboCode = Number(readFileSync(at("pid"), "utf8"));
 			child = childrenOf(hoboCode)[0];
 			if (child !== undefined) {
@@ -233,9 +262,13 @@ async function endTheShell(ending: Ending): Promise<Ended> {
 			}
 			await until(() => closed || existsSync(at("status")), SIGNAL_GRACE_MS);
 			await until(() => child === undefined || !running(child), CHILD_GRACE_MS);
+			await until(
+				() => grandchild === undefined || !running(grandchild),
+				CHILD_GRACE_MS,
+			);
 		}
 		if (
-			made.length > 0 &&
+			readyToEnd &&
 			ending !== "close the terminal" &&
 			ending.to === "hobo-code" &&
 			ending.signal !== "SIGKILL"
@@ -265,6 +298,8 @@ async function endTheShell(ending: Ending): Promise<Ended> {
 			left: stores(tmp),
 			childEnded: child !== undefined && !running(child),
 			childOutlivedIt: existsSync(at("outlived")),
+			grandchildEnded:
+				grandchild === undefined ? undefined : !running(grandchild),
 			terminalRestored:
 				last("1049l") > last("1049h") &&
 				last("25h") > last("25l") &&
@@ -339,5 +374,30 @@ describe.skipIf(skipReason !== false)(
 			},
 			RUN_TIMEOUT_MS,
 		);
+	},
+);
+
+describe.skipIf(skipReason !== false)(
+	`hobo-code ended while a /hobo command its shell started is still running${skipReason === false ? "" : ` (${skipReason})`}`,
+	() => {
+		// The shell starts the command as a child of its own, without detaching,
+		// so it is in the process group hobo-code's launcher passes signals to.
+		// Passed on to the shell alone, the signal left it running.
+		for (const signal of ["SIGTERM", "SIGHUP"] as const) {
+			it(
+				`${signal} ends that command too, and the shell quits`,
+				async () => {
+					const ended = await endTheShell(
+						{ signal, to: "hobo-code" },
+						{ busyVerb: true },
+					);
+					expect(ended.grandchildEnded, ended.screen.slice(-2000)).toBe(true);
+					expect(ended.childEnded).toBe(true);
+					expect(ended.childOutlivedIt).toBe(false);
+					expect(ended.code).toBe(0);
+				},
+				RUN_TIMEOUT_MS,
+			);
+		}
 	},
 );

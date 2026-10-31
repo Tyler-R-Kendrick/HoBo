@@ -99,8 +99,9 @@ describe("LaneChildren", () => {
 			await exit;
 
 			const swept = toGroup(child.pid).map(([, signal]) => signal);
-			if (swept.length === 0) {
-				// Red: nothing swept the group, so the straggler still runs.
+			if (swept.length === 0 && !left.hasEnded()) {
+				// Red: nothing swept the group, and the straggler's socket is still
+				// open, so its pid is still ours to end.
 				realKill.call(process, left.pid, "SIGKILL");
 			}
 			// Sent by the time the exit event reaches the test: the handler the

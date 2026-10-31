@@ -363,19 +363,29 @@ export function parseResolverDirectives(
 ): readonly string[] {
 	const { directives } = resolver;
 	if (directives === undefined) return NO_DIRECTIVES;
-	const names: readonly JsonValue[] = isJsonArray(directives) ? directives : [];
-	const wellFormed =
-		isJsonArray(directives) &&
-		names.every((name) => isJsonString(name) && DIRECTIVE_PATTERN.test(name)) &&
-		new Set(names).size === names.length;
+	// By index, not with every(): every() skips the holes of a sparse array,
+	// and a list with a hole names nothing in that slot.
+	const names: string[] = [];
+	let wellFormed = isJsonArray(directives);
+	const length = isJsonArray(directives) ? directives.length : 0;
+	for (let index = 0; wellFormed && index < length; index++) {
+		const name = Object.hasOwn(directives, index)
+			? directives[index]
+			: undefined;
+		wellFormed =
+			isJsonString(name) &&
+			DIRECTIVE_PATTERN.test(name) &&
+			!names.includes(name);
+		if (isJsonString(name)) names.push(name);
+	}
 	if (!wellFormed) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
-			`resolver ${JSON.stringify(resolver.productId)} directives: expected distinct parameter names matching ${DIRECTIVE_PATTERN.source}, received ${JSON.stringify(directives)}`,
+			`resolver ${JSON.stringify(resolver.productId)} directives: expected distinct parameter names matching ${DIRECTIVE_PATTERN.source}, with no holes, received ${JSON.stringify(directives)}`,
 			resolver.productId,
 		);
 	}
-	return Object.freeze([...directives]);
+	return Object.freeze(names);
 }
 
 /**

@@ -489,6 +489,29 @@ describe("createResolverRegistry", () => {
 		).toBe("RESOLVER_PRODUCT_UNSUPPORTED");
 	});
 
+	it("refuses a sparse directive list, which names nothing in its hole", () => {
+		const holes: string[] = [];
+		holes[1] = "size";
+
+		expect(
+			codeOf(() => parseResolverDirectives(resolver({ directives: holes }))),
+		).toBe("RESOLVER_PRODUCT_UNSUPPORTED");
+		expect(
+			codeOf(() => createResolverRegistry([resolver({ directives: holes })])),
+		).toBe("RESOLVER_PRODUCT_UNSUPPORTED");
+	});
+
+	it("parses a directive list to one that parses to itself", () => {
+		const parsed = parseResolverDirectives(
+			resolver({ directives: ["forceDelete", "restoreScheduled"] }),
+		);
+
+		expect(parseResolverDirectives(resolver({ directives: parsed }))).toEqual(
+			parsed,
+		);
+		expect(Object.keys(parsed)).toEqual(["0", "1"]);
+	});
+
 	it("refuses directives that are not a list", () => {
 		const malformed = Object.assign(resolver(), { directives: "forceDelete" });
 

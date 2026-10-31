@@ -289,9 +289,16 @@ function applyEvidenceOverlay(
 	}));
 }
 
+/**
+ * The controls url a running hobo-code session left under the HoBo home named
+ * by `env`, and by `env` only: a caller that passes an environment naming
+ * neither HOBO_HOME nor HOME (`env: {}`) gets no overlay, rather than one
+ * discovered from whatever session this process's own home holds.
+ */
 function discoveredEvidenceControlsUrl(
 	env: NodeJS.ProcessEnv,
 ): string | undefined {
+	if (!env.HOBO_HOME?.trim() && !env.HOME?.trim()) return undefined;
 	const path = join(
 		resolveHoboHome(env),
 		"runtime",

@@ -318,3 +318,28 @@ describe("a plan that keeps its directives, against a live secret", () => {
 		expect(report.drift).toBe(false);
 	});
 });
+
+describe("a directive that is not a boolean, through the resolver-backed IacProvider", () => {
+	it.each([
+		[{ forceDelete: "true" }, "forceDelete"],
+		[{ restoreScheduled: "true" }, "restoreScheduled"],
+	] as const)("%o is refused by preview, apply and destroy, before any call", async (parameters, name) => {
+		const account = scheduledAccount();
+		const store = await storeWith(
+			secretNode({ description: "payment provider key", ...parameters }),
+		);
+		const driver = driverFor(store, account);
+
+		for (const call of [
+			driver.preview(program("preview")),
+			driver.apply(program("apply")),
+			driver.destroy(program("destroy")),
+		]) {
+			await expect(call).rejects.toThrow(
+				`${name} is a directive and must be a boolean (true or false)`,
+			);
+		}
+		expect(account.targets).toEqual([]);
+		expect(account.state.deletedDate).toBe(DELETED_DATE_SECONDS);
+	});
+});

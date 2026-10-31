@@ -495,6 +495,12 @@ interface AwsResolverContext {
 	readonly desired: JsonObject;
 	/** True when the caller already knows the physical id (adopt vs noop). */
 	readonly knownPhysicalId: string | undefined;
+	/**
+	 * The product's directives the declaration switches on. Each declared
+	 * directive was parsed as a boolean at the boundary ({@link parseDirectives}),
+	 * so a resolver reads this set and never `desired` for a directive.
+	 */
+	readonly directivesOn: ReadonlySet<string>;
 	redact(text: string, limit?: number): string;
 }
 
@@ -1804,7 +1810,7 @@ const SECRETS_MANAGER_DIRECTIVES: readonly string[] = Object.freeze([
 
 /** Whether the declaration asks for a secret scheduled for deletion to be restored. */
 function restoreDeclared(context: AwsResolverContext): boolean {
-	return optionalBoolean(context.desired, "restoreScheduled") === true;
+	return context.directivesOn.has("restoreScheduled");
 }
 
 /** What apply will do with a secret scheduled for deletion, in one sentence. */
@@ -1998,7 +2004,7 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 		);
 	},
 	async remove(context) {
-		const force = optionalBoolean(context.desired, "forceDelete") === true;
+		const force = context.directivesOn.has("forceDelete");
 		const existing = await readSecret(context);
 		if (existing === undefined) return;
 		// Already being deleted: a second unforced DeleteSecret is
@@ -2241,11 +2247,43 @@ const SSM_PARAMETER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 /** Per-product behaviour; the wrapper owns credentials, naming, and refusals. */
 interface AwsResolverSpec {
 	readonly productId: string;
-	/** The declared parameters this product reads as directives, not state. */
+	/**
+	 * The declared parameters this product reads as directives, not state.
+	 * Every AWS directive is a boolean flag, parsed by {@link parseDirectives}.
+	 */
 	readonly directives?: readonly string[];
 	reconcile(context: AwsResolverContext): Promise<ResolveOutcome>;
 	read(context: AwsResolverContext): Promise<ResolveOutcome | undefined>;
 	remove(context: AwsResolverContext): Promise<void>;
+}
+
+/**
+ * The parse boundary for a product's directives. A directive is a boolean
+ * flag: absent means off, and any value but `true` or `false` is refused,
+ * naming the key and the type it must have. Read loosely, a `"true"` would be
+ * "not true", so `forceDelete: "true"` would preview clean and then delete
+ * without force; a declaration that asks for something by mistake is refused
+ * before the resolver acts on it, or makes any call.
+ */
+function parseDirectives(
+	desired: JsonObject,
+	directives: readonly string[],
+	productId: string,
+): ReadonlySet<string> {
+	const on = new Set<string>();
+	for (const name of directives) {
+		if (!Object.hasOwn(desired, name)) continue;
+		const value = desired[name];
+		if (!isJsonBoolean(value)) {
+			throw new ResolverError(
+				"RESOLVER_PROVIDER_REJECTED",
+				`aws resolver for ${productId}: ${name} is a directive and must be a boolean (true or false), but the declaration gives ${redactAwsText(JSON.stringify(value), undefined, 80)}`,
+				productId,
+			);
+		}
+		if (value) on.add(name);
+	}
+	return on;
 }
 
 function clockOf(nowMs: AwsResolverOptions["nowMs"]): () => number {
@@ -2287,6 +2325,12 @@ function createResolver(
 				spec.productId,
 			);
 		}
+		const desired = parseJsonObject(JSON.stringify(request.desired));
+		const directivesOn = parseDirectives(
+			desired,
+			spec.directives ?? [],
+			spec.productId,
+		);
 		const credentials = await resolveAwsCredentials(
 			request,
 			options.resolveCredential,
@@ -2298,8 +2342,9 @@ function createResolver(
 			region,
 			nowMs,
 			name: resourceName(request, spec.productId),
-			desired: parseJsonObject(JSON.stringify(request.desired)),
+			desired,
 			knownPhysicalId: knownPhysicalId(request),
+			directivesOn,
 			redact(text: string, limit = 400): string {
 				return redactAwsText(text, credentials, limit);
 			},

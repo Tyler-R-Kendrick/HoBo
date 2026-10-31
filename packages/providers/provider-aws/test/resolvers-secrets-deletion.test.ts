@@ -478,6 +478,52 @@ describe("the Secrets Manager directives", () => {
 	});
 });
 
+// A directive is a boolean flag. Read loosely, "true" would be "not true": a
+// forceDelete: "true" plan would preview clean and then delete without force.
+// So any other value is refused at the resolver boundary, before any call.
+describe("a directive that is not a boolean", () => {
+	it.each([
+		["forceDelete", "true"],
+		["restoreScheduled", "true"],
+		["forceDelete", 1],
+		["restoreScheduled", null],
+	] as const)("%s: %o is refused by read, reconcile and delete, before any call", async (name, value) => {
+		const runner = harness(scheduledSecret());
+		const desired: JsonObject = { [name]: value };
+
+		for (const call of [
+			runner.read(desired),
+			runner.reconcile(desired),
+			runner.remove(desired),
+		]) {
+			const refusal = await refusalOf(call);
+			expect(refusal).toBeInstanceOf(ResolverError);
+			expect(refusal instanceof ResolverError ? refusal.code : "").toBe(
+				"RESOLVER_PROVIDER_REJECTED",
+			);
+			expect(refusal?.message).toContain(
+				`${name} is a directive and must be a boolean (true or false)`,
+			);
+			expect(refusal?.message).toContain(JSON.stringify(value));
+		}
+		expect(runner.aws.targets()).toEqual([]);
+		expect(runner.secrets.get(NAME)?.deletedDate).toBeDefined();
+	});
+
+	it("false is off: an unforced delete, and a refused reconcile", async () => {
+		const runner = harness(scheduledSecret());
+
+		await runner.remove({ forceDelete: false });
+		const refusal = await runner.reconcile({ restoreScheduled: false }).then(
+			() => undefined,
+			(error: Error) => error,
+		);
+
+		expect(runner.aws.targets()).toEqual(["DescribeSecret", "DescribeSecret"]);
+		expect(refusal?.message).toContain("apply refuses it");
+	});
+});
+
 // The options a Yard row declares are the realization parameters the resolver
 // is handed, so each directive the refusal names must be declarable through the
 // typed factory (a misspelt or missing field fails to compile here).

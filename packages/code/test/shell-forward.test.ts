@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import {
 	chmodSync,
 	existsSync,
@@ -12,6 +13,7 @@ import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 import {
 	initStation,
 	loadStationEvents,
@@ -274,5 +276,69 @@ describe("the shell's /sessions serve --host", () => {
 		expect(await until(() => s.closes.length > 0, 30_000)).toBe(true);
 		expect(audit(s.hoboHome)).toEqual(closedWith());
 		expect(s.sockets()).toEqual([]);
+	}, 60_000);
+});
+
+describe("the shell's forward, its process hung past the lease", () => {
+	it("ends ssh at the lease through its watchdog, though the shell's own timer cannot run", async () => {
+		// The fixture runs the forward, its lease 2 s away, then blocks its
+		// event loop for 15 s; the watchdog ends ssh at the lease regardless.
+		const root = mkdtempSync(join(tmpdir(), "s"));
+		roots.push(root);
+		const hoboHome = join(root, "h");
+		const project = join(root, "p");
+		const bin = join(root, "b");
+		mkdirSync(project);
+		mkdirSync(bin);
+		stationWithPam(hoboHome);
+		writeFileSync(
+			join(project, "devenv.machines.json"),
+			`${JSON.stringify({
+				machines: [
+					{ id: "box", host: "box.ts.net", isolationClass: "development" },
+				],
+			})}\n`,
+		);
+		const pidFile = join(root, "ssh.pid");
+		writeFileSync(
+			join(bin, "ssh"),
+			`#!/bin/sh\necho $$ > '${pidFile}'\nwhile :; do sleep 0.1; done\n`,
+		);
+		chmodSync(join(bin, "ssh"), 0o755);
+		const agentSocket = join(root, "a.sock");
+		const agent = createServer((socket) => socket.end());
+		servers.push(agent);
+		await new Promise<void>((resolve) => agent.listen(agentSocket, resolve));
+		const shellProcess = spawn(
+			process.execPath,
+			[
+				fileURLToPath(
+					new URL("./fixtures/shell-forward-blocked.mjs", import.meta.url),
+				),
+			],
+			{
+				cwd: project,
+				env: {
+					PATH: `${bin}:/usr/bin:/bin`,
+					HOBO_HOME: hoboHome,
+					PROJECT: project,
+					AGENT_SOCKET: agentSocket,
+					SSH_PID: pidFile,
+					LEASE_MS: "2000",
+					BLOCK_MS: "15000",
+					HOBO_CODE_SEAT_AGENTS: "0",
+					TMUX_TMPDIR: process.env.TMUX_TMPDIR ?? "",
+				},
+				stdio: "ignore",
+			},
+		);
+		const pid = shellProcess.pid ?? -1;
+		standIns.push(pid);
+		expect(await until(() => existsSync(pidFile), 30_000)).toBe(true);
+		const ssh = Number.parseInt(readFileSync(pidFile, "utf8"), 10);
+		standIns.push(ssh);
+		expect(await until(() => !running(ssh), 9_000)).toBe(true);
+		// Ended by the watchdog, while the shell's process was still blocked.
+		expect(running(pid)).toBe(true);
 	}, 60_000);
 });

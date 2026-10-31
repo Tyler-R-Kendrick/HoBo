@@ -13,6 +13,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { join } from "node:path";
 import { Writable } from "node:stream";
+import { fileURLToPath } from "node:url";
 import { emitFromAtoms } from "./atom-index.js";
 import {
 	formatHoboCodeResult,
@@ -223,6 +224,11 @@ function handedForward(result: HoboCodeCliResult): HandedForward | undefined {
 	};
 }
 
+/** The watchdog the shell runs its forward's ssh under (see startShellForward). */
+const SSH_WATCHDOG = fileURLToPath(
+	new URL("../bin/ssh-watchdog.mjs", import.meta.url),
+);
+
 /** A forward the shell runs behind its screen; `stop` ends it and closes its authorization. */
 interface ShellForward {
 	stop(): Promise<void>;
@@ -241,10 +247,13 @@ interface ShellForward {
  * ssh had ended by itself, before the shell knew it was quitting. Now only
  * the shell's quit stops ssh, and the close says why.
  *
- * Detached, ssh would outlive a shell that never got to quit. As a last
- * resort, the process's `exit`, which an uncaught error reaches too, stops
- * ssh's process group; nothing asynchronous can run there, so that exit
- * cannot close the authorization.
+ * Detached, ssh would outlive a shell that never got to quit. It runs under
+ * a watchdog (`bin/ssh-watchdog.mjs`) whose stdin is a pipe this process
+ * holds: however the process ends, SIGKILL included, the pipe ends and the
+ * watchdog ends ssh; it ends ssh at the authorization's lease too. The
+ * process's `exit`, which an uncaught error reaches as well, stops the
+ * watchdog at once. Nothing asynchronous can run there, nor after SIGKILL,
+ * so neither can close the authorization: its lease ends it.
  */
 function startShellForward(
 	forward: HandedForward,
@@ -276,11 +285,20 @@ function startShellForward(
 	const done = forwardResidentSessions(forward, signals, {
 		stdout: new Writable({ write: (_chunk, _encoding, next) => next() }),
 		startSsh: (args) => {
-			ssh = spawn("ssh", [...args], {
-				stdio: "ignore",
-				env,
-				detached: process.platform !== "win32",
-			});
+			ssh =
+				process.platform === "win32"
+					? spawn("ssh", [...args], { stdio: "ignore", env })
+					: spawn(
+							process.execPath,
+							[
+								SSH_WATCHDOG,
+								String(Date.parse(forward.authorizationExpiresAt ?? "")),
+								"ssh",
+								...args,
+							],
+							// The watchdog's stdin: the pipe whose end is this process's.
+							{ stdio: ["pipe", "ignore", "ignore"], env, detached: true },
+						);
 			return ssh;
 		},
 	})

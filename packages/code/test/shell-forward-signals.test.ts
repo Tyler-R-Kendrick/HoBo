@@ -175,7 +175,9 @@ type Ending =
 	/** script(1) is killed: the pseudo-terminal goes, as when its window closes. */
 	| "close the terminal"
 	/** An uncaught error in hobo-code's work process. */
-	| "crash";
+	| "crash"
+	/** SIGKILL to hobo-code's work process, which no handler sees. */
+	| "SIGKILL the work process";
 
 /**
  * Start hobo-code's shell, run `/sessions serve --host box` in it, and once
@@ -284,6 +286,7 @@ async function forwardInShellThenEnd(
 		if (ending === "SIGTERM" || ending === "SIGHUP")
 			process.kill(Number(readFileSync(at("pid"), "utf8")), ending);
 		if (ending === "close the terminal") script.kill("SIGKILL");
+		if (ending === "SIGKILL the work process") process.kill(work, "SIGKILL");
 		await until(() => !running(work), STEP_BOUND_MS);
 		await until(() => existsSync(at("status")) || closed, STEP_BOUND_MS);
 		// Bounded: what ends ssh acts as the shell goes, not at a lease.
@@ -369,6 +372,18 @@ describe.skipIf(skipReason !== false)(
 				expect(ended.sshEnded).toBe(true);
 				expect(ended.sockets).toEqual([]);
 				expect(ended.workExit).toBe(128 + constants.signals.SIGHUP);
+			},
+			RUN_TIMEOUT_MS,
+		);
+
+		it(
+			"SIGKILL to the shell's process: ssh does not outlive it",
+			async () => {
+				// The watchdog ssh runs under sees the shell's pipe end. Nothing
+				// can close the authorization after SIGKILL; its lease ends it.
+				const ended = await forwardInShellThenEnd("SIGKILL the work process");
+				expect(ended.workExit, ended.screen.slice(-2000)).toBeNull();
+				expect(ended.sshEnded).toBe(true);
 			},
 			RUN_TIMEOUT_MS,
 		);

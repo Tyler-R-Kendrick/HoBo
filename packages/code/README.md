@@ -919,8 +919,11 @@ authorization is open, a throw included, before it hands the authorization to
 the forward, it closes it itself, and the Station's `pam.SessionEnded` says
 `session-serve-failed`. The interactive shell's `/sessions serve --host
 <machine>` runs the same forward behind its screen (ssh gets no terminal, and
-runs in a process group of its own, so that only the shell's quit stops it),
-and closes the authorization when the forward ends, when it cannot start, and
+runs in a process group of its own, so that only the shell's quit stops it,
+under a watchdog, `bin/ssh-watchdog.mjs`, whose stdin is a pipe the shell's
+process holds: when that process ends, however it ends, or the
+authorization's lease does, the watchdog ends ssh), and closes the
+authorization when the forward ends, when it cannot start, and
 when the shell quits. The shell holds the same four signals from just before
 one of its verbs opens an authorization: one that comes while that verb or its
 forward runs quits the shell, which waits for a verb still opening the
@@ -930,8 +933,9 @@ with 128+n. Its terminal closing is a hangup, taken as SIGHUP: a terminal
 that has gone fails every read and write (EIO), and the shell quits on that
 without writing to it again, so the authorization is closed with
 `shell-quit` and hobo-code ends with 129. If the shell's process ends without
-quitting (an uncaught error), its `exit` stops ssh; nothing can close the
-authorization then, and its lease ends it. Its `/sessions serve` without `--host` starts the
+quitting (an uncaught error, or SIGKILL), ssh does not outlive it: an
+uncaught error's `exit` stops ssh at once, and the watchdog ends it either
+way. Nothing can close the authorization then, and its lease ends it. Its `/sessions serve` without `--host` starts the
 loopback session browser as `hobo-code session serve` does, shows where it is,
 and closes it when the shell quits.
 

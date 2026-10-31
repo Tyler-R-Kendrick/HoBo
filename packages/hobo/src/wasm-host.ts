@@ -10,6 +10,8 @@
  *   - cloud-native: multi-cloud registry (`@hobo/runtime-cloud-native`)
  */
 
+import { join } from "node:path";
+import { HoboHomeUnavailable, resolveHoboHome } from "@hobo/core/hobo-home";
 import { must } from "@hobo/core/total-access";
 import {
 	createInProcessWasmtimeEngine,
@@ -44,14 +46,29 @@ export interface WasmHostProbe {
 	readonly tiers: WasmHostProbe["componentHosts"];
 }
 
+/**
+ * `$HOBO_HOME/tools`, where `ensureWasmtimeBinary` installs wasmtime, by the
+ * same rule; none when no HoBo home can be named (the probe then tries the
+ * other candidates rather than failing).
+ */
+function hoboToolsDir(env: NodeJS.ProcessEnv): string | undefined {
+	try {
+		return join(resolveHoboHome(env), "tools");
+	} catch (error) {
+		if (error instanceof HoboHomeUnavailable) return undefined;
+		throw error;
+	}
+}
+
 export function probeWasmHostInstall(
 	options: { readonly binPath?: string; readonly env?: NodeJS.ProcessEnv } = {},
 ): WasmHostProbe {
 	const env = options.env ?? process.env;
+	const toolsDir = hoboToolsDir(env);
 	const candidates = [
 		options.binPath,
 		env.HOBO_WASMTIME_BIN,
-		env.HOME ? `${env.HOME}/.hobo/tools/wasmtime` : undefined,
+		toolsDir ? join(toolsDir, "wasmtime") : undefined,
 		"wasmtime",
 	].filter((value): value is string => isJsonString(value) && value.length > 0);
 
@@ -96,7 +113,7 @@ export function probeWasmHostInstall(
 
 	notes.push(`wasmtime CLI unavailable: ${lastError}`);
 	notes.push(
-		`wasm will auto-download wasmtime ${PINNED_WASMTIME_VERSION} into ~/.hobo/tools on first serve`,
+		`wasm will auto-download wasmtime ${PINNED_WASMTIME_VERSION} into ${toolsDir ?? "$HOBO_HOME/tools"} on first serve`,
 	);
 	notes.push(
 		"local component host still runs (in-process engine; no .wasm bytes)",

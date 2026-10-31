@@ -7,7 +7,42 @@ export {
 	describeConcern,
 	parseConcernCases,
 } from "./concern.js";
+export {
+	createHttpProviderStub,
+	exchangeHttp,
+	HTTP_PROVIDER_ERROR_CODES,
+	type HttpEndpoint,
+	type HttpEndpointInput,
+	type HttpExchangeRequest,
+	type HttpExchangeResponse,
+	HttpProviderError,
+	type HttpProviderErrorCode,
+	type HttpProviderTarget,
+	type HttpProviderTargetInput,
+	parseHttpEndpoint,
+	parseHttpProviderTarget,
+} from "./http-provider.js";
 export { checkPactInventory } from "./inventory.js";
+export {
+	type PactJsonValue,
+	MatchingRuleError,
+	parseMatchingPath,
+	parseResponseMatchingRules,
+	type ResponseMatchingRule,
+	withResponseMatchingRules,
+} from "./matching.js";
+export {
+	createMirrorTransport,
+	MIRROR_CA_ENV,
+	MIRROR_URL_ENV,
+	type MirrorJournalEntry,
+	type MirrorJournalFilter,
+	MirrorLaneError,
+	type MirrorTransportRequest,
+	mirrorControl,
+	mirrorLaneEndpoint,
+	readMirrorJournal,
+} from "./mirror-lane.js";
 export { createMockProviderFromPact } from "./mock.js";
 export type {
 	PactDocument,

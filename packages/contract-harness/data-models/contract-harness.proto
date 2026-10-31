@@ -33,3 +33,43 @@ message VerificationReport {
   bool ok = 2;
   repeated InteractionFailure failures = 3;
 }
+
+// Provider verification over real HTTP (src/http-provider.ts). The endpoint a
+// pact is verified against, and one exchange with it.
+message HttpProviderTarget {
+  string name = 1;
+  string base_url = 2;
+  string host = 3;
+  string ca = 4;
+  uint32 timeout_ms = 5;
+  uint32 max_response_bytes = 6;
+}
+message HttpExchangeRequest {
+  string method = 1;
+  string path = 2;
+  map<string, string> headers = 3;
+  string body = 4;
+}
+message HttpExchangeResponse {
+  uint32 status = 1;
+  map<string, string> headers = 2;
+  string body = 3;
+}
+// One entry of the mirror.cloud emulator's journal (src/mirror-lane.ts).
+message MirrorJournalEntry {
+  string request_id = 1;
+  string service_id = 2;
+  string operation = 3;
+  string tier = 4;
+  uint32 status = 5;
+  string error_code = 6;
+}
+// A Pact v3 response matching rule as src/matching.ts applies it.
+message ResponseMatcher {
+  string match = 1;
+  string regex = 2;
+}
+message ResponseMatchingRule {
+  string path = 1;
+  repeated ResponseMatcher matchers = 2;
+}

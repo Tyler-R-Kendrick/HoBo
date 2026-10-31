@@ -595,28 +595,74 @@ function scheduledWith(deletedDate: JsonValue): Map<string, FakeSecret> {
 	return new Map([[NAME, { description: undefined, deletedDate }]]);
 }
 
+/** Epoch seconds the resolver accepts, and the canonical instant each reads as. */
+const EPOCH_CASES: readonly (readonly [number, string, string])[] = [
+	[1523477145.729, "2018-04-11T20:05:45.729Z", "fractional seconds"],
+	[1523477145.7296, "2018-04-11T20:05:45.730Z", "rounded to the millisecond"],
+	[1764480625, "2025-11-30T05:30:25.000Z", "whole seconds"],
+	[0, "1970-01-01T00:00:00.000Z", "the epoch"],
+	[-62167219200, "0000-01-01T00:00:00.000Z", "the first instant of 0000"],
+	[
+		253402300799.999,
+		"9999-12-31T23:59:59.999Z",
+		"the last millisecond of 9999",
+	],
+];
+
+/** RFC 3339 date-times the resolver accepts, and the canonical instant each reads as. */
+const RFC3339_CASES: readonly (readonly [string, string, string])[] = [
+	[
+		"2026-11-30T05:30:25.033060027Z",
+		"2026-11-30T05:30:25.033060027Z",
+		"nanoseconds, as the emulator writes it",
+	],
+	["2026-11-30T05:30:25Z", "2026-11-30T05:30:25.000Z", "whole seconds"],
+	["2026-11-30T05:30:25.5000Z", "2026-11-30T05:30:25.500Z", "trailing zeros"],
+	[
+		"2026-11-30T05:30:25.0330600271Z",
+		"2026-11-30T05:30:25.033060027Z",
+		"ten fraction digits, kept to the nanosecond",
+	],
+	["2026-11-30t05:30:25z", "2026-11-30T05:30:25.000Z", "lower-case t and z"],
+	["2026-11-30T05:30:25-00:00", "2026-11-30T05:30:25.000Z", "-00:00"],
+	["2026-11-30T05:30:25+00:00", "2026-11-30T05:30:25.000Z", "+00:00"],
+	["2026-11-30T07:30:25.5+02:00", "2026-11-30T05:30:25.500Z", "an offset east"],
+	[
+		"2026-11-30T23:30:00-01:00",
+		"2026-12-01T00:30:00.000Z",
+		"an offset across midnight",
+	],
+	["2028-02-29T00:00:00Z", "2028-02-29T00:00:00.000Z", "a leap day"],
+	[
+		"2000-02-29T00:00:00Z",
+		"2000-02-29T00:00:00.000Z",
+		"a leap day in a year divisible by 400",
+	],
+	[
+		"0000-01-01T00:00:00Z",
+		"0000-01-01T00:00:00.000Z",
+		"the first instant of 0000",
+	],
+	[
+		"9999-12-31T23:59:59.999999999Z",
+		"9999-12-31T23:59:59.999999999Z",
+		"the last nanosecond of 9999",
+	],
+];
+
 // DescribeSecret's DeletedDate is a Timestamp; AWS's JSON protocol answers it
 // as epoch seconds, which may be fractional (the API reference's own example
 // answers LastChangedDate as 1523477145.729). A provider that answers text
 // (mirror.cloud's emulator writes "2026-11-30T05:30:25.033060027Z") must
 // answer an RFC 3339 date-time. Either becomes one canonical instant: UTC,
 // upper-case T and Z, a four-digit year, at least three fraction digits and at
-// most nine, no trailing zero past the third, a leap second kept as 60. A null
+// most nine, no trailing zero past the third; a leap second is refused. A null
 // is the field's absence (Smithy's null-as-absent): not scheduled. Anything
 // else leaves the secret's state unreadable, so it is refused.
 describe("DeletedDate as a provider answers it", () => {
-	it.each([
-		[1523477145.729, "2018-04-11T20:05:45.729Z", "fractional seconds"],
-		[1523477145.7296, "2018-04-11T20:05:45.730Z", "rounded to the millisecond"],
-		[1764480625, "2025-11-30T05:30:25.000Z", "whole seconds"],
-		[0, "1970-01-01T00:00:00.000Z", "the epoch"],
-		[-62167219200, "0000-01-01T00:00:00.000Z", "the first instant of 0000"],
-		[
-			253402300799.999,
-			"9999-12-31T23:59:59.999Z",
-			"the last millisecond of 9999",
-		],
-	])("reads epoch seconds %o (%s) as %s", async (seconds, instant) => {
+	it.each(
+		EPOCH_CASES,
+	)("reads epoch seconds %o (%s) as %s", async (seconds, instant) => {
 		const runner = harness(scheduledWith(seconds));
 
 		const observed = await runner.read();
@@ -628,55 +674,9 @@ describe("DeletedDate as a provider answers it", () => {
 		);
 	});
 
-	it.each([
-		[
-			"2026-11-30T05:30:25.033060027Z",
-			"2026-11-30T05:30:25.033060027Z",
-			"nanoseconds, as the emulator writes it",
-		],
-		["2026-11-30T05:30:25Z", "2026-11-30T05:30:25.000Z", "whole seconds"],
-		["2026-11-30T05:30:25.5000Z", "2026-11-30T05:30:25.500Z", "trailing zeros"],
-		[
-			"2026-11-30T05:30:25.0330600271Z",
-			"2026-11-30T05:30:25.033060027Z",
-			"ten fraction digits, kept to the nanosecond",
-		],
-		["2026-11-30t05:30:25z", "2026-11-30T05:30:25.000Z", "lower-case t and z"],
-		["2026-11-30T05:30:25-00:00", "2026-11-30T05:30:25.000Z", "-00:00"],
-		["2026-11-30T05:30:25+00:00", "2026-11-30T05:30:25.000Z", "+00:00"],
-		[
-			"2026-11-30T07:30:25.5+02:00",
-			"2026-11-30T05:30:25.500Z",
-			"an offset east",
-		],
-		[
-			"2026-11-30T23:30:00-01:00",
-			"2026-12-01T00:30:00.000Z",
-			"an offset across midnight",
-		],
-		["2028-02-29T00:00:00Z", "2028-02-29T00:00:00.000Z", "a leap day"],
-		[
-			"2000-02-29T00:00:00Z",
-			"2000-02-29T00:00:00.000Z",
-			"a leap day in a year divisible by 400",
-		],
-		["2016-12-31T23:59:60Z", "2016-12-31T23:59:60.000Z", "a leap second"],
-		[
-			"2017-01-01T08:59:60.5+09:00",
-			"2016-12-31T23:59:60.500Z",
-			"a leap second at an offset",
-		],
-		[
-			"0000-01-01T00:00:00Z",
-			"0000-01-01T00:00:00.000Z",
-			"the first instant of 0000",
-		],
-		[
-			"9999-12-31T23:59:59.999999999Z",
-			"9999-12-31T23:59:59.999999999Z",
-			"the last nanosecond of 9999",
-		],
-	])("reads the RFC 3339 date-time %s as %s (%s)", async (text, instant) => {
+	it.each(
+		RFC3339_CASES,
+	)("reads the RFC 3339 date-time %s as %s (%s)", async (text, instant) => {
 		const runner = harness(scheduledWith(text));
 
 		const observed = await runner.read();
@@ -723,7 +723,6 @@ describe("DeletedDate as a provider answers it", () => {
 		["2026-11-30T24:00:00Z", "hour 24"],
 		["2026-11-30T05:60:25Z", "minute 60"],
 		["2026-11-30T05:30:61Z", "second 61"],
-		["2026-11-30T05:30:60Z", "a leap second that does not end a UTC day"],
 		["2026-11-30T05:30:25+24:00", "offset hour 24"],
 		["2026-11-30T05:30:25+05:60", "offset minute 60"],
 		["0000-01-01T00:30:00+01:00", "an instant before 0000 in UTC"],
@@ -831,5 +830,107 @@ describe("DeletedDate as a provider answers it", () => {
 		expect(refusal?.message).not.toContain(leaked);
 		expect(refusal?.message).toContain("[redacted]");
 		expect(refusal?.message.length).toBeLessThan(500);
+	});
+});
+
+// A leap second is refused wherever it falls: AWS's epoch-seconds timestamps
+// cannot carry one, RFC 3339 allows one only where a leap second occurred, and
+// an output of "…:60.000Z" is one Date.parse reads as NaN.
+describe("a DeletedDate that is a leap second", () => {
+	it.each([
+		["2016-12-31T23:59:60Z", "a real leap second"],
+		["2017-01-01T08:59:60.5+09:00", "a real leap second at an offset"],
+		["2026-11-30T23:59:60Z", "the last second of a day with none"],
+		["2026-11-30T23:30:60Z", "second 60 of minute 30"],
+		["2026-11-30T05:30:60Z", "second 60 in the morning"],
+	])("refuses %s (%s), and says it is a leap second", async (text) => {
+		const runner = harness(scheduledWith(text));
+
+		const refusal = await refusalOf(runner.read());
+
+		expect(refusal instanceof ResolverError ? refusal.code : "").toBe(
+			"RESOLVER_OUTPUT_UNPARSEABLE",
+		);
+		expect(refusal?.message).toContain(
+			`AWS returned a DeletedDate (${JSON.stringify(text)}) that is a leap second (second 60)`,
+		);
+	});
+});
+
+/** A deterministic generator (mulberry32), so a failure names a reproducible case. */
+function generator(seed: number): (below: number) => number {
+	let state = seed >>> 0;
+	return (below) => {
+		state = (state + 0x6d2b79f5) >>> 0;
+		let mixed = Math.imul(state ^ (state >>> 15), 1 | state);
+		mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), 61 | mixed);
+		return Math.floor((((mixed ^ (mixed >>> 14)) >>> 0) / 2 ** 32) * below);
+	};
+}
+
+const pad = (value: number, width: number) =>
+	String(value).padStart(width, "0");
+
+/** A valid RFC 3339 date-time with random fields, and the instant it names to the millisecond. */
+function generatedDateTime(next: (below: number) => number) {
+	const year = next(10000);
+	const month = 1 + next(12);
+	const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+	const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+	const day = 1 + next(days[month - 1] ?? 28);
+	const time = `${pad(next(24), 2)}:${pad(next(60), 2)}:${pad(next(60), 2)}`;
+	const fraction = Array.from({ length: next(13) }, () => next(10)).join("");
+	const zone =
+		next(3) === 0
+			? (["Z", "z"][next(2)] ?? "Z")
+			: `${next(2) === 0 ? "+" : "-"}${pad(next(24), 2)}:${pad(next(60), 2)}`;
+	const date = `${pad(year, 4)}-${pad(month, 2)}-${pad(day, 2)}`;
+	const separator = next(4) === 0 ? "t" : "T";
+	const text = `${date}${separator}${time}${fraction === "" ? "" : `.${fraction}`}${zone}`;
+	const ms = Date.parse(
+		`${date}T${time}.${fraction.padEnd(3, "0").slice(0, 3)}${zone.toUpperCase()}`,
+	);
+	return { text, ms };
+}
+
+describe("every DeletedDate the resolver accepts is one Date.parse reads", () => {
+	const CANONICAL = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3,9}Z$/u;
+
+	it("for every accepted value in the tables and the fuzz set", async () => {
+		const accepted: JsonValue[] = [
+			...EPOCH_CASES.map(([seconds]) => seconds),
+			...RFC3339_CASES.map(([text]) => text),
+			-1,
+			-0,
+			"2026-11-30T05:30:25.123456789Z",
+			"2026-11-30T05:30:25.1234567890Z",
+		];
+		for (const value of accepted) {
+			const observed = await harness(scheduledWith(value)).read();
+			const instant = String(observed?.outputs.deletedDate);
+			expect(instant, JSON.stringify(value)).toMatch(CANONICAL);
+			expect(Number.isNaN(Date.parse(instant)), instant).toBe(false);
+		}
+	});
+
+	it("for 400 generated RFC 3339 date-times, each read as the instant it names", async () => {
+		const next = generator(0x0175);
+		let readCount = 0;
+		for (let index = 0; index < 400; index++) {
+			const { text, ms } = generatedDateTime(next);
+			const year = new Date(ms).getUTCFullYear();
+			const read = harness(scheduledWith(text)).read();
+			if (year < 0 || year > 9999) {
+				const refusal = await refusalOf(read);
+				expect(refusal?.message, text).toContain("in the years 0000 to 9999");
+				continue;
+			}
+			const instant = String((await read)?.outputs.deletedDate);
+			expect(instant, text).toMatch(CANONICAL);
+			expect(Date.parse(instant), text).toBe(ms);
+			readCount += 1;
+		}
+		// Offsets push only the edges of 0000 and 9999 out of range.
+		expect(readCount).toBeGreaterThan(390);
 	});
 });

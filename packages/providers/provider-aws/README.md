@@ -218,7 +218,7 @@ different suffix — is refused rather than interpolated into a hostname.
     is scheduled for deletion", and does not equate it with DeleteSecret's
     `DeletionDate`, the end of the recovery window. It must be epoch seconds
     (fractional allowed, rounded to the millisecond) or an RFC 3339 date-time
-    (either case, any fraction digits, a leap second at the end of a UTC day),
+    (either case, any fraction digits; a leap second, second 60, is refused),
     in the years 0000 to 9999. Both are reported as one canonical UTC instant,
     `YYYY-MM-DDTHH:MM:SS.fffZ`, with the fraction kept to the nanosecond. A
     `null` is the field's absence: not scheduled. Anything else is refused as

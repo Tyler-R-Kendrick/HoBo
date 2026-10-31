@@ -1731,8 +1731,9 @@ const LAST_INSTANT_MS = 253402300799999;
 
 /**
  * RFC 3339 `date-time` (section 5.6): `T` and `Z` in either case (section
- * 5.6's NOTE), any number of fraction digits (`time-secfrac = "." 1*DIGIT`),
- * and a seconds field of 00 to 60, since the grammar allows a leap second.
+ * 5.6's NOTE) and any number of fraction digits (`time-secfrac = "." 1*DIGIT`).
+ * The grammar's seconds field also allows 60 for a leap second; that is
+ * matched here and refused by {@link instantFromRfc3339}.
  */
 const RFC3339_DATE_TIME =
 	/^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:[Zz]|([+-])(\d{2}):(\d{2}))$/u;
@@ -1778,13 +1779,16 @@ function instantFromEpochSeconds(seconds: number): string | undefined {
 /**
  * An RFC 3339 date-time as the canonical instant, or `undefined` when it is
  * not one: a field out of its range (month 01-12, day 01 to the month's last,
- * hour 00-23, minute 00-59, second 00-60, offset hour 00-23 and minute 00-59),
- * a leap second anywhere but the last second of a UTC day, or an instant
- * outside the years 0000 to 9999 once its offset is applied.
+ * hour 00-23, minute 00-59, second 00-59, offset hour 00-23 and minute 00-59),
+ * or an instant outside the years 0000 to 9999 once its offset is applied.
  *
- * The date and time are moved to UTC by whole-second arithmetic. A leap second
- * is computed as second 59 and written back as 60, because a JavaScript date
- * has no second 60. The fraction is carried as text, never through a number.
+ * A leap second (second 60) is refused. AWS's epoch-seconds timestamps cannot
+ * carry one; RFC 3339 allows one only where a leap second actually occurred;
+ * and `…:60.000Z` is an output `Date.parse` cannot read, so a consumer of
+ * `outputs.deletedDate` would get NaN.
+ *
+ * The date and time are moved to UTC by whole-second arithmetic; the fraction
+ * is carried as text, never through a number.
  */
 function instantFromRfc3339(text: string): string | undefined {
 	const match = RFC3339_DATE_TIME.exec(text);
@@ -1812,23 +1816,19 @@ function instantFromRfc3339(text: string): string | undefined {
 		day <= daysInMonth(year, month) &&
 		hour <= 23 &&
 		minute <= 59 &&
-		second <= 60 &&
+		second <= 59 &&
 		offsetHour <= 23 &&
 		offsetMinute <= 59;
 	if (!inRange) return undefined;
 	const local = new Date(0);
 	local.setUTCFullYear(year, month - 1, day);
-	local.setUTCHours(hour, minute, Math.min(second, 59), 0);
+	local.setUTCHours(hour, minute, second, 0);
 	const offsetMinutes =
 		(sign === "-" ? -1 : 1) * (offsetHour * 60 + offsetMinute);
 	const utcMs = local.getTime() - offsetMinutes * 60_000;
 	if (utcMs < FIRST_INSTANT_MS || utcMs > LAST_INSTANT_MS) return undefined;
-	const utc = new Date(utcMs);
-	const endsUtcDay = utc.getUTCHours() === 23 && utc.getUTCMinutes() === 59;
-	if (second === 60 && !endsUtcDay) return undefined;
-	const iso = utc.toISOString();
-	const seconds = second === 60 ? "60" : iso.slice(17, 19);
-	return `${iso.slice(0, 17)}${seconds}.${canonicalFraction(fraction)}Z`;
+	const iso = new Date(utcMs).toISOString();
+	return `${iso.slice(0, 19)}.${canonicalFraction(fraction)}Z`;
 }
 
 /**
@@ -1872,10 +1872,10 @@ function memberSource(body: string, key: string): string | undefined {
  * `YYYY-MM-DDTHH:MM:SS.fffZ`, upper-case `T` and `Z`, a four-digit year, any
  * offset (`-00:00` included) applied, and the fraction as
  * {@link canonicalFraction} keeps it. A number is rounded to the millisecond;
- * a leap second keeps second 60. Anything else is unreadable, and the
+ * a leap second (second 60) is refused. Anything else is unreadable, and the
  * secret's state with it, so it is refused rather than guessed at. The
- * refusal quotes the value as it was written, bounded and redacted like any
- * provider text.
+ * refusal quotes a number as it was written and anything else as the value it
+ * parsed to, bounded and redacted like any provider text.
  *
  * Nothing more is read into the date than the API says. DescribeSecret calls it
  * "The date the secret is scheduled for deletion"; DeleteSecret's
@@ -1904,9 +1904,14 @@ function parseDeletedDate(
 	const written = isJsonNumber(value)
 		? (memberSource(described.body, "DeletedDate") ?? JSON.stringify(value))
 		: JSON.stringify(value);
+	const leapSecond =
+		isJsonString(value) && RFC3339_DATE_TIME.exec(value)?.[6] === "60";
+	const what = leapSecond
+		? "is a leap second (second 60), which no AWS timestamp carries and which Date.parse cannot read"
+		: "is neither epoch seconds nor an RFC 3339 date-time in the years 0000 to 9999";
 	throw unparseable(
 		`secretsmanager describe ${context.name}`,
-		`AWS returned a DeletedDate (${context.redact(written, 80)}) that is neither epoch seconds nor an RFC 3339 date-time in the years 0000 to 9999, so whether the secret is scheduled for deletion cannot be read; it is refused rather than assumed`,
+		`AWS returned a DeletedDate (${context.redact(written, 80)}) that ${what}, so whether the secret is scheduled for deletion cannot be read; it is refused rather than assumed`,
 	);
 }
 

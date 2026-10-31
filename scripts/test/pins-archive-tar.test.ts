@@ -470,6 +470,15 @@ const CASES: readonly Case[] = [
 		reader: "ARCHIVE_UNSAFE",
 	},
 	{
+		what: "mirror, then Ss\u0345\u0307 and ss\u1fbe\u0307, one name to NTFS though NFC orders them apart",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{ name: utf8("Ss\u0345\u0307"), body: "a" },
+			{ name: utf8("ss\u1fbe\u0307"), body: "b" },
+		],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
 		what: "MIRROR/x, then mirror",
 		entries: [
 			{ name: "MIRROR/x", body: EVIL },

@@ -28,10 +28,12 @@
  * insensitive file system, the default on macOS and Windows: `mirror` and
  * `MIRROR`, `bin/mirror` and `BIN/mirror`, `café` spelled in NFC and in NFD,
  * or one name twice. There `tar` writes both to one file and the second
- * wins. Names are folded as `foldName` says, and the two rules above compare
- * folded names too, so `MIRROR/x` beside `mirror` is refused. Every name is
- * kept for the comparison, so an archive of more than `MAX_ENTRIES` entries
- * is refused.
+ * wins. Each name has two keys, and two names that share either are one
+ * file: `foldName` (NFD and full case folding, as Linux casefold directories
+ * compare) and `upcaseName` (simple uppercase of each code point, with no
+ * normalisation, as NTFS compares). The two rules above compare both keys
+ * too, so `MIRROR/x` beside `mirror` is refused. Every name is kept for the
+ * comparison, so an archive of more than `MAX_ENTRIES` entries is refused.
  *
  * A GNU header (`ustar  \0`) is refused, and so is any other magic. Where
  * POSIX keeps a name prefix (bytes 345 to 500), a GNU header keeps times and
@@ -73,9 +75,14 @@
  * Erasable TypeScript with node builtins only.
  */
 import { PinsError } from "./pins.ts";
-import { firstIgnorable, foldName, shownName } from "./pins-tar-names.ts";
+import {
+	firstIgnorable,
+	foldName,
+	shownName,
+	upcaseName,
+} from "./pins-tar-names.ts";
 
-export { foldName, shownName } from "./pins-tar-names.ts";
+export { foldName, shownName, upcaseName } from "./pins-tar-names.ts";
 
 export const BLOCK = 512;
 /** The largest member read: the manifest's largest asset. */
@@ -281,10 +288,11 @@ function parseHeader(block: Buffer, archive: string): TarHeader {
 export class TarScan {
 	readonly #archive: string;
 	readonly #member: string;
-	readonly #folded: string;
+	/** The member's two keys, `foldName` and `upcaseName`. */
+	readonly #memberKeys: readonly [string, string];
 	readonly #sink: (chunk: Buffer) => void;
-	/** Every name read so far, by its folded form. */
-	readonly #names = new Map<string, string>();
+	/** Every name read so far, by each of its two keys. */
+	readonly #names = [new Map<string, string>(), new Map<string, string>()];
 	#pending: Buffer = Buffer.alloc(0);
 	#left = 0;
 	#pad = 0;
@@ -299,7 +307,7 @@ export class TarScan {
 	constructor(archive: string, member: string, sink: (chunk: Buffer) => void) {
 		this.#archive = archive;
 		this.#member = member;
-		this.#folded = foldName(member);
+		this.#memberKeys = [foldName(member), upcaseName(member)];
 		this.#sink = sink;
 	}
 
@@ -383,7 +391,7 @@ export class TarScan {
 	}
 
 	#header(header: TarHeader): void {
-		if (this.#names.size >= MAX_ENTRIES) {
+		if ((this.#names[0]?.size ?? 0) >= MAX_ENTRIES) {
 			throw new PinsError(
 				"ARCHIVE_UNSUPPORTED",
 				`${this.#archive} has more than ${MAX_ENTRIES} entries; a release archive of one binary needs far fewer`,
@@ -420,28 +428,32 @@ export class TarScan {
 				`${this.#archive} has a ${kind} named ${shownName(name)}; a link can give ${this.#member} a second name or lead a path somewhere else, so no link is read anywhere in the archive`,
 			);
 		}
-		const folded = foldName(name);
-		const seen = this.#names.get(folded);
-		if (seen !== undefined) {
+		const keys = [foldName(name), upcaseName(name)] as const;
+		keys.forEach((key, which) => {
+			const seen = this.#names[which]?.get(key);
+			if (seen === undefined) return;
 			throw new PinsError(
 				"ARCHIVE_UNSAFE",
 				seen === name
 					? `${this.#archive} holds ${shownName(name)} twice; refusing to choose one`
-					: `${this.#archive} holds ${shownName(seen)} and ${shownName(name)}, which a case-insensitive file system (macOS, Windows) stores as one file; refusing to choose one`,
+					: `${this.#archive} holds ${shownName(seen)} and ${shownName(name)}, which a case-insensitive file system (${which === 0 ? "Linux casefold, macOS" : "NTFS"}) stores as one file; refusing to choose one`,
 			);
-		}
-		this.#names.set(folded, name);
-		if (folded.startsWith(`${this.#folded}/`)) {
-			throw new PinsError(
-				"ARCHIVE_UNSAFE",
-				`${this.#archive} has ${shownName(name)}, under ${this.#member}, so tar would make ${this.#member} a directory; refusing it`,
-			);
-		}
-		if (type !== "5" && this.#folded.startsWith(`${folded}/`)) {
-			throw new PinsError(
-				"ARCHIVE_UNSAFE",
-				`${this.#archive} has a ${kind} at ${shownName(name)}, where ${this.#member} needs a directory, so tar cannot extract both; refusing it`,
-			);
-		}
+		});
+		keys.forEach((key, which) => this.#names[which]?.set(key, name));
+		keys.forEach((key, which) => {
+			const member = this.#memberKeys[which] ?? "";
+			if (key.startsWith(`${member}/`)) {
+				throw new PinsError(
+					"ARCHIVE_UNSAFE",
+					`${this.#archive} has ${shownName(name)}, under ${this.#member}, so tar would make ${this.#member} a directory; refusing it`,
+				);
+			}
+			if (type !== "5" && member.startsWith(`${key}/`)) {
+				throw new PinsError(
+					"ARCHIVE_UNSAFE",
+					`${this.#archive} has a ${kind} at ${shownName(name)}, where ${this.#member} needs a directory, so tar cannot extract both; refusing it`,
+				);
+			}
+		});
 	}
 }

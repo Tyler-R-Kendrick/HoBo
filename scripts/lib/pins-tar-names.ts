@@ -55,18 +55,80 @@ export function firstIgnorable(name: string): number | undefined {
 }
 
 /**
- * A name as a case-insensitive, normalisation-insensitive file system sees it:
- * its bytes read as UTF-8, put in NFC and case-folded by
- * `toLowerCase().toUpperCase().toLowerCase()`. That joins every pair of code
- * points Unicode 15.1's full case folding joins under canonical equivalence
- * (`ẞ`, `ß` and `ss`), the folding Linux casefold directories apply;
- * `pins-archive-fold.test.ts` checks it for every code point. It also joins
- * some names those keep apart (`ı` with `i`), and bytes that are not UTF-8
- * all read as U+FFFD: both only refuse more.
+ * A name as a case-insensitive, normalisation-insensitive file system sees it,
+ * Unicode's canonical caseless key NFD(casefold(NFD(name))): its bytes read
+ * as UTF-8, put in NFD, case-folded by `toLowerCase().toUpperCase()
+ * .toLowerCase()`, and put in NFD again. NFD comes first so that marks are
+ * ordered before they are folded (NFC would compose U+0345 into a letter and
+ * fold it to an iota after the other marks). `pins-archive-fold.test.ts`
+ * checks that this joins each code point of Unicode 15.1 with its full case
+ * folding, the folding ext4 and f2fs casefold directories apply, and checks
+ * whole names on a random sample. It also joins some names those keep apart
+ * (`ı` with `i`), and bytes that are not UTF-8 all read as U+FFFD: both only
+ * refuse more. It does not model NTFS, which does not normalise: that is
+ * `upcaseName`, the reader's second key.
  */
 export function foldName(name: string): string {
-	const text = asText(name).normalize("NFC");
-	return text.toLowerCase().toUpperCase().toLowerCase().normalize("NFC");
+	const text = asText(name).normalize("NFD");
+	return text.toLowerCase().toUpperCase().toLowerCase().normalize("NFD");
+}
+
+/**
+ * The BMP code points whose simple uppercase (UnicodeData.txt) is one code
+ * point while their full uppercase, what `toUpperCase` gives, is several:
+ * the Greek letters with a subscript iota.
+ */
+const SIMPLE_UPPER_ONLY: ReadonlyMap<number, number> = new Map([
+	[0x1f80, 0x1f88],
+	[0x1f81, 0x1f89],
+	[0x1f82, 0x1f8a],
+	[0x1f83, 0x1f8b],
+	[0x1f84, 0x1f8c],
+	[0x1f85, 0x1f8d],
+	[0x1f86, 0x1f8e],
+	[0x1f87, 0x1f8f],
+	[0x1f90, 0x1f98],
+	[0x1f91, 0x1f99],
+	[0x1f92, 0x1f9a],
+	[0x1f93, 0x1f9b],
+	[0x1f94, 0x1f9c],
+	[0x1f95, 0x1f9d],
+	[0x1f96, 0x1f9e],
+	[0x1f97, 0x1f9f],
+	[0x1fa0, 0x1fa8],
+	[0x1fa1, 0x1fa9],
+	[0x1fa2, 0x1faa],
+	[0x1fa3, 0x1fab],
+	[0x1fa4, 0x1fac],
+	[0x1fa5, 0x1fad],
+	[0x1fa6, 0x1fae],
+	[0x1fa7, 0x1faf],
+	[0x1fb3, 0x1fbc],
+	[0x1fc3, 0x1fcc],
+	[0x1ff3, 0x1ffc],
+]);
+
+/**
+ * A name as NTFS compares it: each UTF-16 unit of its text, un-normalised,
+ * replaced by its simple uppercase, as the volume's $UpCase table does.
+ * Code points past the BMP are left as they are. Two names NTFS stores as
+ * one file have one `upcaseName`; `pins-archive-fold.test.ts` checks the
+ * mapping for every BMP code point of Unicode 15.1, and holds random names
+ * to it.
+ */
+export function upcaseName(name: string): string {
+	let upcased = "";
+	for (const char of asText(name)) {
+		const point = char.codePointAt(0) ?? 0;
+		const upper = char.toUpperCase();
+		const simple =
+			point > 0xffff
+				? undefined
+				: (SIMPLE_UPPER_ONLY.get(point) ??
+					(upper.length === 1 ? upper.charCodeAt(0) : undefined));
+		upcased += simple === undefined ? char : String.fromCharCode(simple);
+	}
+	return upcased;
 }
 
 /** A character for a message: itself, or an escape when it would not show (a control, a format character, a space other than U+0020). */

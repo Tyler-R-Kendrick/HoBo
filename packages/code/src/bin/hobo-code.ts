@@ -17,6 +17,7 @@ import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ENDING_SIGNALS } from "../../bin/ending-signals.mjs";
 import { formatHoboCodeResult, runHoboCodeCli } from "../cli.js";
 import { removeComposedDirsOnSignals } from "../composed-hobo.js";
 import type { DevMachine } from "../dev-machines.js";
@@ -32,29 +33,22 @@ import {
 } from "../interactive-shell.js";
 import { cleanupIsolation, createIsolationContext } from "../isolation.js";
 import { isJsonObject } from "../json.js";
+import { hangUpWhenLauncherGoes } from "../launcher-hangup.js";
 import { preferNamedEndpoint } from "../occupancy-endpoints.js";
-import {
-	authorizationLeaseDelay,
-	remoteSessionServeSshArgs,
-} from "../resident-session-cli.js";
 import { startSessionControlServer } from "../session-control-server.js";
+import { forwardResidentSessions } from "../session-forward.js";
 import type { ShellEngine } from "../shell-engine.js";
 import { createDefaultShellHost } from "../shell-host.js";
+import { endingSignalHold, signalStatus } from "../signal-hold.js";
 import { runResidentSshAgentProxy } from "../ssh-agent-proxy.js";
 
 // This is the process's entry point: when a `/hobo` verb composes HoBo here,
 // its `hobo-yard-*` store is removed on a signal too, not only on exit.
 removeComposedDirsOnSignals();
 
-// The launcher (bin/hobo-code.mjs) runs this process in a session of its own
-// and passes on the signals that end hobo-code. Killed outright, it passes on
-// nothing: its end of the IPC channel closes, and this process takes that as
-// the hangup it is otherwise never sent, so the shell restores the terminal
-// and the composed store is removed.
-if (process.channel !== undefined && process.platform !== "win32") {
-	process.once("disconnect", () => process.kill(process.pid, "SIGHUP"));
-	process.channel.unref();
-}
+// The launcher (bin/hobo-code.mjs) runs this process in a session of its own,
+// with an IPC channel: a launcher killed outright is a hangup here.
+hangUpWhenLauncherGoes();
 
 const rawArgv = process.argv.slice(2);
 const json = rawArgv.includes("--json");
@@ -193,7 +187,12 @@ if (argv[0] === "_station-agent") {
 		process.exitCode = await launchProductShell({ dense });
 	}
 } else {
-	const result = await runHoboCodeCli(argv, { json, dense });
+	// `session serve --host` and `mux --host` open a Station authorization.
+	// The ending signals are held from just before it is opened until what was
+	// opened is closed or handed over (the forward below closes its own), so
+	// that none ends hobo-code with it open (src/signal-hold.ts).
+	const signals = endingSignalHold();
+	const result = await runHoboCodeCli(argv, { json, dense, signals });
 	process.stdout.write(formatHoboCodeResult(result, { json, dense }));
 	const action =
 		result.data && isJsonObject(result.data)
@@ -279,41 +278,27 @@ if (argv[0] === "_station-agent") {
 		action.machine &&
 		action.port
 	) {
-		const { machine, port } = action;
-		process.stdout.write(
-			`browser: ${preferNamedEndpoint(`http://127.0.0.1:${port}/`, "sessions")}\nremote: ${machine.id} via Station-authorized SSH forwarding (${action.authorizationSessionId ?? "authorized"}; expires ${action.authorizationExpiresAt ?? "unknown"}; ${(action.auditTypes ?? []).join(", ") || "audited"})\nssh authentication: Station authorization gates ${action.identityAgent}; no key or token is copied\n`,
-		);
 		try {
-			const leaseMs = authorizationLeaseDelay(
-				action.authorizationExpiresAt ?? "",
+			process.exitCode = await forwardResidentSessions(
+				{
+					machine: action.machine,
+					port: action.port,
+					identityAgent: action.identityAgent,
+					...(action.authorizationSessionId !== undefined
+						? { authorizationSessionId: action.authorizationSessionId }
+						: undefined),
+					...(action.authorizationExpiresAt !== undefined
+						? { authorizationExpiresAt: action.authorizationExpiresAt }
+						: undefined),
+					...(action.auditTypes !== undefined
+						? { auditTypes: action.auditTypes }
+						: undefined),
+				},
+				signals,
 			);
-			process.exitCode = await new Promise<number>((resolve) => {
-				const child = spawn(
-					"ssh",
-					remoteSessionServeSshArgs(machine, port, action.identityAgent),
-					{
-						stdio: "inherit",
-					},
-				);
-				let expired = false;
-				let hardStop: NodeJS.Timeout | undefined;
-				const expiration = setTimeout(() => {
-					expired = true;
-					child.kill("SIGTERM");
-					hardStop = setTimeout(() => child.kill("SIGKILL"), 5_000);
-				}, leaseMs);
-				const finish = (code: number): void => {
-					clearTimeout(expiration);
-					if (hardStop) clearTimeout(hardStop);
-					resolve(code);
-				};
-				child.once("error", () => finish(1));
-				child.once("exit", (code, signal) =>
-					finish(expired ? 124 : signal === "SIGINT" ? 130 : (code ?? 1)),
-				);
-			});
 		} finally {
 			await action.closeAuthorization?.();
+			signals.release();
 		}
 	} else if (result.ok && action?.kind === "serve-sessions") {
 		const hoboHome =
@@ -338,16 +323,29 @@ if (argv[0] === "_station-agent") {
 			server.controlsUrlTemplate,
 			"evidence",
 		);
+		// Any signal that ends hobo-code stops the server the same way: the
+		// launcher passes SIGHUP (a closing terminal) and SIGQUIT on too, and
+		// either one, unhandled, ended the process with the server unclosed.
+		// Listen before saying where the server is, so a signal sent once the
+		// address is out reaches the close.
+		const stopped = new Promise<void>((resolve) => {
+			for (const signal of ENDING_SIGNALS)
+				process.once(signal, () => resolve());
+		});
 		process.stdout.write(
 			`browser: ${browser}\nevidence report: ${report}\nevidence controls: ${controls}\nhobo dev: HOBO_CODE_EVIDENCE_CONTROLS_URL=${controls}?parentOrigin=<app-origin>\nremote: forward ${new URL(browser).host} through a declared Station machine; the server never binds publicly\n`,
 		);
-		await new Promise<void>((resolve) => {
-			process.once("SIGINT", resolve);
-			process.once("SIGTERM", resolve);
-		});
+		await stopped;
 		await server.close();
 		process.exitCode = 0;
 	} else {
 		process.exitCode = result.exitCode;
 	}
+	// A signal held while the authorization was opened, which then went
+	// unused (the CLI failed after opening it, and closed it): it ends
+	// hobo-code now, as it would have, with the authorization closed.
+	if (signals.first !== undefined && action?.kind !== "forward-sessions") {
+		process.exitCode = signalStatus(signals.first);
+	}
+	signals.release();
 }

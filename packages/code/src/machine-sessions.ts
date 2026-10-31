@@ -193,8 +193,12 @@ export interface OpenedGateway {
 	resolveSshIdentity(pane: BrokeredPane): Promise<ResolvedSshIdentity>;
 	/** Resident proxy, used by tmux after this launcher exits. */
 	handoffSshIdentity(pane: BrokeredPane): Promise<ResolvedSshIdentity>;
-	/** End every live authorization and persist its terminal audit facts. */
-	close(): Promise<void>;
+	/**
+	 * End every live authorization and persist its terminal audit facts. Each
+	 * `pam.SessionEnded` says `reason`; without one, the gateway's stop says
+	 * `gateway-stop`.
+	 */
+	close(reason?: string): Promise<void>;
 }
 
 /**
@@ -277,7 +281,7 @@ export async function openStationGateway(
 		return upstreamSocket;
 	};
 	const localProxies = new Set<SshAgentProxy>();
-	let closed = false;
+	let stopped = false;
 	return {
 		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		broker: gateway as PaneSessionBroker,
@@ -325,11 +329,45 @@ export async function openStationGateway(
 				stop: proxy.stop,
 			};
 		},
-		async close() {
-			if (closed) return;
-			closed = true;
-			await Promise.all([...localProxies].map((proxy) => proxy.close()));
-			await gateway.stop();
+		// Every step is tried, and done only once it has succeeded: a close that
+		// failed part way (an audit that could not be written) can be retried,
+		// and the gateway's stop, with its pam.GatewayStopped, is always tried.
+		async close(reason) {
+			if (stopped) return;
+			const failures: unknown[] = [];
+			for (const proxy of localProxies) {
+				try {
+					await proxy.close();
+					localProxies.delete(proxy);
+				} catch (error) {
+					failures.push(error);
+				}
+			}
+			if (reason !== undefined) {
+				for (const session of gateway.listSessions()) {
+					try {
+						await gateway.endSession(session.sessionId, reason);
+					} catch (error) {
+						failures.push(error);
+					}
+				}
+			}
+			try {
+				await gateway.stop();
+				stopped = true;
+			} catch (error) {
+				failures.push(error);
+			}
+			if (failures.length > 0) {
+				throw new AggregateError(
+					failures,
+					failures
+						.map((failure) =>
+							failure instanceof Error ? failure.message : String(failure),
+						)
+						.join("; "),
+				);
+			}
 		},
 	};
 }

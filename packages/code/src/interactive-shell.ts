@@ -15,6 +15,7 @@
 import type { Readable, Writable } from "node:stream";
 import { type Component, matchesKey, TUI } from "@earendil-works/pi-tui";
 import { must } from "@hobo/core/total-access";
+import { ENDING_SIGNALS } from "../bin/ending-signals.mjs";
 import { HOBO_LOGO_TUI } from "./_generated-art/hobo-logo-tui.js";
 import {
 	harnessDisplayLabel,
@@ -3852,9 +3853,8 @@ export async function runInteractiveShell(
 	// otherwise leaves raw mode, a hidden cursor and bracketed paste enabled.
 	// hobo-code's launcher passes SIGINT and SIGQUIT on as well, and in raw
 	// mode neither comes from the keyboard: each asks the shell to quit.
-	const quitSignals = ["SIGTERM", "SIGHUP", "SIGINT", "SIGQUIT"] as const;
 	const onSignal = () => requestQuit();
-	for (const signal of quitSignals) process.once(signal, onSignal);
+	for (const signal of ENDING_SIGNALS) process.once(signal, onSignal);
 
 	try {
 		await done;
@@ -3862,7 +3862,8 @@ export async function runInteractiveShell(
 		clearInterval(tick);
 		clearInterval(paneTick);
 		if (maxMsTimer) clearTimeout(maxMsTimer);
-		for (const signal of quitSignals) process.removeListener(signal, onSignal);
+		for (const signal of ENDING_SIGNALS)
+			process.removeListener(signal, onSignal);
 		resizeStream.off?.("resize", onTerminalResize);
 		resizeStream.removeListener?.("resize", onTerminalResize);
 		// Leave the alternate screen (and raw mode) even if the driver threw —

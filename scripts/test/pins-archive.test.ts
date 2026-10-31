@@ -206,6 +206,35 @@ describe("a failure writing the member", () => {
 		});
 	}
 
+	it("removes the partial file and keeps the write failure when closing it fails too", async (t) => {
+		const dir = scratch("close-failed");
+		const path = join(dir, "a.tar.gz");
+		writeFileSync(path, ARCHIVE);
+		inject(t, "writeSync", "ENOSPC");
+		// As NFS reports a deferred write error: the descriptor is closed, and close says EIO.
+		const realClose = fs.closeSync;
+		t.mock.method(fs, "closeSync", (fd: number) => {
+			realClose(fd);
+			if (fd > 2) throw injected("EIO", "closeSync");
+		});
+		syncBuiltinESMExports();
+		await assert.rejects(
+			extractMember(path, "mirror", join(dir, "out"), sha256Hex(ARCHIVE)),
+			(error: Error) => {
+				assert.ok(error instanceof PinsError, String(error));
+				assert.equal(error.code, "ARCHIVE_WRITE_FAILED");
+				assert.ok(error.cause instanceof Error && "code" in error.cause);
+				assert.equal(error.cause.code, "ENOSPC");
+				const [closing] = error.suppressed;
+				assert.ok(closing instanceof Error && "code" in closing);
+				assert.equal(closing.code, "EIO");
+				assert.match(error.message, /closing .* afterwards failed too: EIO/u);
+				return true;
+			},
+		);
+		assert.deepEqual(readdirSync(dir), ["a.tar.gz"]);
+	});
+
 	for (const [name, code] of [
 		["writeSync", "ENOSPC"],
 		["fsyncSync", "EIO"],

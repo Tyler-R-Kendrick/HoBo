@@ -35,14 +35,32 @@ export type PinsErrorCode =
 /** Every refusal is named; a bare Error would be untraceable. */
 export class PinsError extends Error {
 	readonly code: PinsErrorCode;
+	/** Errors raised while cleaning up after this one, which must not replace it. */
+	readonly suppressed: readonly Error[];
 	/** `cause` keeps the error underneath, such as a file system error and its errno. */
 	constructor(
 		code: PinsErrorCode,
 		message: string,
-		options?: { readonly cause?: unknown },
+		options?: {
+			readonly cause?: unknown;
+			readonly suppressed?: readonly Error[];
+		},
 	) {
-		super(`${code}: ${message}`, options);
+		super(
+			`${code}: ${message}`,
+			options?.cause === undefined ? undefined : { cause: options.cause },
+		);
 		this.name = "PinsError";
 		this.code = code;
+		this.suppressed = options?.suppressed ?? [];
+	}
+
+	/** This error again, with `also` (a failure while `step`) recorded beside it and named in the message. */
+	withSuppressed(step: string, also: Error): PinsError {
+		return new PinsError(
+			this.code,
+			`${this.message.slice(this.code.length + 2)}; ${step} afterwards failed too: ${also.message}`,
+			{ cause: this.cause, suppressed: [...this.suppressed, also] },
+		);
 	}
 }

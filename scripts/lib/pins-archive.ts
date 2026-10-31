@@ -231,8 +231,26 @@ export async function extractMember(
 		writing("closing", partial, () => closeSync(out));
 		writing(`renaming ${partial} to`, dest, () => renameSync(partial, dest));
 	} catch (error) {
-		if (fd !== undefined) closeSync(fd);
-		rmSync(partial, { force: true });
+		// Every error thrown above is a PinsError; a failure while cleaning up
+		// is recorded beside it, never in its place, and the partial file is
+		// removed whether or not closing it worked.
+		let failure = error;
+		if (fd !== undefined) {
+			try {
+				closeSync(fd);
+			} catch (closeError) {
+				if (failure instanceof PinsError && closeError instanceof Error) {
+					failure = failure.withSuppressed(`closing ${partial}`, closeError);
+				}
+			}
+		}
+		try {
+			rmSync(partial, { force: true });
+		} catch (rmError) {
+			if (failure instanceof PinsError && rmError instanceof Error) {
+				failure = failure.withSuppressed(`removing ${partial}`, rmError);
+			}
+		}
 		const signal = guard.interrupted();
 		if (signal !== null) {
 			throw new PinsError(
@@ -240,7 +258,7 @@ export async function extractMember(
 				`unpacking ${member} was interrupted by ${signal}; nothing was kept`,
 			);
 		}
-		throw error;
+		throw failure;
 	} finally {
 		guard.release();
 	}

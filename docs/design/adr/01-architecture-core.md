@@ -926,7 +926,7 @@ Before this decision one sibling was pinned, by a gitlink, and obtained by a com
   - a member over 2 GiB;
   - archive bytes that do not hash to the pin;
   - a file that cannot be read (`ARCHIVE_UNREADABLE`: absent, a directory, unreadable);
-  - and, not a refusal of the archive, a failure to create, write, sync or rename the member's partial file (`ARCHIVE_WRITE_FAILED`: no space, an I/O error, no permission, or a write that makes no progress). Its message names the errno (`ENOSPC`, `EIO`, `EACCES`) and the error keeps the file system's own as its `cause`. It says nothing about the archive, so it is never reported as `ARCHIVE_MALFORMED`.
+  - and, not a refusal of the archive, a failure to create, write, sync or rename the member's partial file (`ARCHIVE_WRITE_FAILED`: no space, an I/O error, no permission, or a write that makes no progress). Its message names the errno (`ENOSPC`, `EIO`, `EACCES`) and the error keeps the file system's own as its `cause`. It says nothing about the archive, so it is never reported as `ARCHIVE_MALFORMED`. If closing or removing the partial file then fails too (an NFS server reports a deferred write error at close), that error is recorded beside the first, in its message and its `suppressed` list, and the partial file is removed all the same.
 - **The drift check.** `pins:status` reads the cached archive once: it is checked against the pin, and the entry against the member it holds.
   - An edited entry is `unpacked file stale`, and `pins:fetch` unpacks it again from the cached archive without a download.
   - An edited archive is a mismatch, and is downloaded again.

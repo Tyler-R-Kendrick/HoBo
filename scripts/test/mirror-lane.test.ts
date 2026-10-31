@@ -410,28 +410,41 @@ describe("startMirror", () => {
 		);
 	});
 
-	it("takes a health answer from another process on the port as the port being taken, not as mirror", async () => {
-		const other = createServer((_request, response) => {
-			response.writeHead(200, { "content-type": "application/json" });
-			response.end('{"status":"ok","uptime_ms":86400000,"version":"another"}');
-		});
-		await new Promise<void>((resolve) =>
-			other.listen(0, "127.0.0.1", () => resolve()),
-		);
-		try {
-			// SAFETY: a server listening on a TCP port reports an AddressInfo, never a pipe name.
-			const { port } = other.address() as AddressInfo;
-			await refusedStart(
-				{ bin: fakeMirror(), env: process.env, port },
-				(error: Error) =>
-					error instanceof MirrorLaneError &&
-					error.code === "MIRROR_START_FAILED" &&
-					/taken/u.test(error.message),
+	for (const [what, health] of [
+		[
+			"another version",
+			'{"status":"ok","uptime_ms":86400000,"version":"another"}',
+		],
+		// The same build, up for a day: mirror's own child is seconds old.
+		[
+			"the same version, up longer than mirror's child has lived",
+			'{"status":"ok","uptime_ms":86400000,"version":"fake"}',
+		],
+		["no uptime at all", '{"status":"ok","version":"fake"}'],
+	] as const) {
+		it(`takes a health answer from another process on the port (${what}) as the port being taken, not as mirror`, async () => {
+			const other = createServer((_request, response) => {
+				response.writeHead(200, { "content-type": "application/json" });
+				response.end(health);
+			});
+			await new Promise<void>((resolve) =>
+				other.listen(0, "127.0.0.1", () => resolve()),
 			);
-		} finally {
-			await new Promise<void>((resolve) => other.close(() => resolve()));
-		}
-	});
+			try {
+				// SAFETY: a server listening on a TCP port reports an AddressInfo, never a pipe name.
+				const { port } = other.address() as AddressInfo;
+				await refusedStart(
+					{ bin: fakeMirror(), env: process.env, port },
+					(error: Error) =>
+						error instanceof MirrorLaneError &&
+						error.code === "MIRROR_START_FAILED" &&
+						/taken/u.test(error.message),
+				);
+			} finally {
+				await new Promise<void>((resolve) => other.close(() => resolve()));
+			}
+		});
+	}
 
 	it("gives up with MIRROR_UNHEALTHY and stops the process when health never answers ok", async () => {
 		const pidFile = join(scratch("mirror-lane"), "pid");

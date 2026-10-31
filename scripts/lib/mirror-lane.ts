@@ -363,6 +363,8 @@ const BIND_RETRIES = 40;
 interface HealthAnswer {
 	readonly ok: boolean;
 	readonly version: string;
+	/** How long the answering process says it has been up; undefined when it does not say. */
+	readonly uptimeMs: number | undefined;
 }
 
 function healthOf(body: string): HealthAnswer {
@@ -371,19 +373,27 @@ function healthOf(body: string): HealthAnswer {
 		// SAFETY: JSON.parse yields a JSON value; its shape is checked below.
 		parsed = JSON.parse(body) as JsonValue;
 	} catch {
-		return { ok: false, version: "" };
+		return { ok: false, version: "", uptimeMs: undefined };
 	}
 	if (tagOf.call(parsed) !== "[object Object]") {
-		return { ok: false, version: "" };
+		return { ok: false, version: "", uptimeMs: undefined };
 	}
 	// SAFETY: the tag check above proves this JSON value is an object.
 	const record = parsed as { readonly [key: string]: JsonValue };
 	const version = record.version;
+	const uptime = record.uptime_ms;
 	return {
 		ok: record.status === "ok",
 		version: tagOf.call(version) === "[object String]" ? String(version) : "",
+		uptimeMs:
+			tagOf.call(uptime) === "[object Number]" && Number(uptime) >= 0
+				? Number(uptime)
+				: undefined,
 	};
 }
+
+/** Clock slack between mirror's uptime and the age the runner measures for the child. */
+const UPTIME_SLACK_MS = 100;
 
 function refused(error: Error): boolean {
 	return "code" in error && error.code === "ECONNREFUSED";
@@ -391,12 +401,16 @@ function refused(error: Error): boolean {
 
 /**
  * Ask the health route, after the banner, whether the process answering is
- * the one that printed it: the same version, and status ok.
+ * the one that printed it: status ok, the banner's version, and an uptime no
+ * longer than the child has existed (`spawnedAt`). A mirror of the same build
+ * that was already on the port has been up longer than this child; one that
+ * gives no uptime cannot be told apart and is not taken for it.
  */
 async function confirmHealth(
 	url: string,
 	ca: string | undefined,
 	version: string,
+	spawnedAt: number,
 ): Promise<Health> {
 	for (let attempt = 1; ; attempt += 1) {
 		try {
@@ -408,7 +422,10 @@ async function confirmHealth(
 					detail: `answered ${health.status} ${health.body.slice(0, 200)}`,
 				};
 			}
-			return answer.version === version
+			const age = Date.now() - spawnedAt;
+			return answer.version === version &&
+				answer.uptimeMs !== undefined &&
+				answer.uptimeMs <= age + UPTIME_SLACK_MS
 				? { kind: "ours" }
 				: { kind: "another", version: answer.version };
 		} catch (error) {
@@ -450,7 +467,9 @@ async function startOnce(
 	);
 	const children = options.children ?? new LaneChildren();
 	let child: ChildProcess;
+	let spawnedAt = 0;
 	try {
+		spawnedAt = Date.now();
 		child = children.spawn(options.bin, args, {
 			cwd,
 			env: mirrorEnv(options.env),
@@ -517,7 +536,7 @@ async function startOnce(
 			`${options.bin} announced ${url} but wrote no ${caFile}; it printed:\n${printed()}`,
 		);
 	}
-	const health = await confirmHealth(url, ca, announcement.version);
+	const health = await confirmHealth(url, ca, announcement.version, spawnedAt);
 	if (health.kind === "ours" && !gone() && !portTaken()) {
 		return {
 			url,

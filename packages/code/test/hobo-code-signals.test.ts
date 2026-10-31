@@ -76,6 +76,24 @@ function childrenOf(pid: number): number[] {
 		.filter((candidate) => statOf(candidate)?.[1] === String(pid));
 }
 
+/**
+ * A tmux server of the case's own: its socket lives under TMUX_TMPDIR, so
+ * nothing a run starts can reach the developer's server (their `hobo`
+ * session) or survive the case.
+ */
+function tmuxEnv(socketDir: string): NodeJS.ProcessEnv {
+	return { PATH: process.env.PATH ?? "", TMUX_TMPDIR: socketDir };
+}
+
+/** Whether a tmux server answers on the case's own socket. */
+function tmuxServerOn(socketDir: string): boolean {
+	const listed = spawnSync("tmux", ["list-sessions"], {
+		env: tmuxEnv(socketDir),
+		stdio: "ignore",
+	});
+	return listed.status === 0;
+}
+
 /** Poll until `done`, for at most `ms`; whether it came true. */
 async function until(done: () => boolean, ms: number): Promise<boolean> {
 	const deadline = Date.now() + ms;
@@ -128,6 +146,8 @@ interface Ended {
 	readonly terminalRestored: boolean;
 	/** With `busyVerb`: whether the `/hobo` command the shell started has ended. */
 	readonly grandchildEnded: boolean | undefined;
+	/** Whether the run left a tmux server on the case's own socket. */
+	readonly tmuxServerLeft: boolean;
 	readonly screen: string;
 }
 
@@ -167,6 +187,8 @@ async function endTheShell(ending: Ending, run: Run = {}): Promise<Ended> {
 	const tmp = join(root, "tmp");
 	mkdirSync(tmp);
 	const at = (name: string): string => join(root, name);
+	const tmuxDir = at("tmux");
+	mkdirSync(tmuxDir);
 	const busyHobo = at("busy-hobo.mjs");
 	if (run.busyVerb === true) {
 		writeFileSync(
@@ -192,6 +214,10 @@ async function endTheShell(ending: Ending, run: Run = {}): Promise<Ended> {
 		HOME: root,
 		HOBO_HOME: join(root, "home"),
 		TMPDIR: tmp,
+		TMUX_TMPDIR: tmuxDir,
+		// The shell seats the agent CLIs it finds on PATH in tmux; a test must
+		// not start the developer's own (`claude`, `codex`, ...).
+		HOBO_CODE_SEAT_AGENTS: "0",
 		TERM: "xterm-256color",
 		HOBO_CODE_ENGINE: "none",
 		HOBO_CODE_FROM_SOURCE: "0",
@@ -298,6 +324,7 @@ async function endTheShell(ending: Ending, run: Run = {}): Promise<Ended> {
 			left: stores(tmp),
 			childEnded: child !== undefined && !running(child),
 			childOutlivedIt: existsSync(at("outlived")),
+			tmuxServerLeft: tmuxServerOn(tmuxDir),
 			grandchildEnded:
 				grandchild === undefined ? undefined : !running(grandchild),
 			terminalRestored:
@@ -311,6 +338,10 @@ async function endTheShell(ending: Ending, run: Run = {}): Promise<Ended> {
 		writeFileSync(at("done"), "");
 		if (!(await until(() => closed, SIGNAL_GRACE_MS))) script.kill("SIGKILL");
 		await close;
+		spawnSync("tmux", ["kill-server"], {
+			env: tmuxEnv(tmuxDir),
+			stdio: "ignore",
+		});
 	}
 }
 
@@ -319,6 +350,7 @@ function expectRemoved(ended: Ended): void {
 	expect(ended.made, ended.screen.slice(-2000)).toHaveLength(1);
 	expect(ended.left).toEqual([]);
 	expect(ended.childEnded).toBe(true);
+	expect(ended.tmuxServerLeft).toBe(false);
 }
 
 /**
@@ -370,6 +402,7 @@ describe.skipIf(skipReason !== false)(
 				const ended = await endTheShell({ signal: "SIGKILL", to: "its child" });
 				expect(ended.made, ended.screen.slice(-2000)).toHaveLength(1);
 				expect(ended.childEnded).toBe(true);
+				expect(ended.tmuxServerLeft).toBe(false);
 				expect(ended.code).toBe(137);
 			},
 			RUN_TIMEOUT_MS,
@@ -394,6 +427,7 @@ describe.skipIf(skipReason !== false)(
 					expect(ended.grandchildEnded, ended.screen.slice(-2000)).toBe(true);
 					expect(ended.childEnded).toBe(true);
 					expect(ended.childOutlivedIt).toBe(false);
+					expect(ended.tmuxServerLeft).toBe(false);
 					expect(ended.code).toBe(0);
 				},
 				RUN_TIMEOUT_MS,

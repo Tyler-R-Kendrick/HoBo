@@ -220,6 +220,13 @@ export async function ensureInSessionPanes(options: {
 	readonly runner?: MuxRunner;
 	readonly session?: string;
 }): Promise<InSessionPanes> {
+	// Off for a shell that must not start the agent CLIs it finds on PATH: a
+	// test run, or anyone who wants the shell without agent seats.
+	if ((options.env ?? process.env).HOBO_CODE_SEAT_AGENTS === "0") {
+		return emptyInSessionPanes(
+			"agent seating is off (HOBO_CODE_SEAT_AGENTS=0)",
+		);
+	}
 	const runner = options.runner ?? tmuxRunner();
 	const session = safeWindowName(options.session ?? IN_SESSION_MUX);
 	const hasTmux = await runner.run(["-V"]);

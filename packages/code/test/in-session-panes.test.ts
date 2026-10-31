@@ -110,6 +110,28 @@ describe("in-session panes", () => {
 		expect(target?.name).toBe("hobo-code");
 	});
 
+	it("seats nothing and starts no tmux when HOBO_CODE_SEAT_AGENTS=0, though an agent CLI is on PATH", async () => {
+		// How a test keeps the developer's own agents out of the shell it starts.
+		const bin = mkdtempSync(join(tmpdir(), "hobo-panes-"));
+		writeFileSync(join(bin, "codex"), "");
+		const ran: string[] = [];
+		const runner: MuxRunner = {
+			run: async (args) => {
+				ran.push(args[0] ?? "");
+				return { code: 0, stdout: args[0] === "-V" ? "tmux 3.4" : "%1\n" };
+			},
+		};
+		const panes = await ensureInSessionPanes({
+			runner,
+			env: { PATH: bin, HOME: bin, HOBO_CODE_SEAT_AGENTS: "0" },
+			cwd: bin,
+			hoboHome: join(bin, ".hobo"),
+		});
+		expect(ran).toEqual([]);
+		expect(panes.windows).toEqual([]);
+		expect(panes.note).toMatch(/HOBO_CODE_SEAT_AGENTS=0/u);
+	});
+
 	it("seats detected coding CLIs and skips the harness", async () => {
 		const bin = mkdtempSync(join(tmpdir(), "hobo-panes-"));
 		writeFileSync(join(bin, "codex"), "");

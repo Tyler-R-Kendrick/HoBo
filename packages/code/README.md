@@ -345,7 +345,8 @@ occupancy, not a minted key). Each agent is a JSON plugin under
 `@ai-sdk/harness-*`; `cli` / `eve` / `sdk` are in-repo HarnessV1 adapters
 for runtimes the SDK does not ship yet. CLI plugins carry `runtime.prompt`
 one-shot argv so Cursor/Copilot/Gemini/Aider/Goose still run without a
-builtin SDK package. TTY seating still uses mux.
+builtin SDK package. TTY seating still uses mux. `HOBO_CODE_SEAT_AGENTS=0`
+turns seating off: the shell then starts no tmux session and no agent CLI.
 Programmatic turns use `createHarnessV1(spec)` or `createHarnessAgent(spec)`
 (AI SDK `HarnessAgent` + just-bash for host adapters; bridge adapters need
 an injected network sandbox).
@@ -891,7 +892,10 @@ hobo-code with 128+n.
 
 Vitest clears inherited Git repository selectors before loading tests, so a
 pre-commit run cannot redirect temporary repositories, worktrees, or indexes to
-the checkout being committed. Tests still set those variables explicitly for
+the checkout being committed. It also gives each test file a tmux server of its
+own (`TMUX_TMPDIR` under the test TMPDIR, `TMUX` cleared, the server killed
+after the file) and sets `HOBO_CODE_SEAT_AGENTS=0`, so no test reaches the
+developer's tmux or starts their agent CLIs (`test/isolate-tmux.ts`). Tests still set those variables explicitly for
 their own temporary repositories. Set `HOBO_TEST_MAX_WORKERS` to bound Vitest
 workers on slow or memory-constrained hosts and `HOBO_TEST_TIMEOUT` to adjust
 the default per-test and hook budgets. Turbo's strict environment passes both

@@ -2111,12 +2111,19 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 	},
 	async remove(context) {
 		const force = context.directivesOn.has("forceDelete");
-		const existing = await readSecret(context);
-		if (existing === undefined) return;
-		// Already being deleted: a second unforced DeleteSecret is
-		// InvalidRequestException, and there is nothing more to ask for. A forced
-		// delete still goes ahead, since it ends the recovery window now.
-		if (existing.deletedDate !== undefined && !force) return;
+		if (force) {
+			// A forced delete ends the recovery window whatever DeletedDate says,
+			// so it asks DescribeSecret only whether the secret exists, and an
+			// unreadable DeletedDate does not stop it. Nothing the describe answers
+			// chooses what is deleted: both calls name the secret by SecretId.
+			if ((await describeSecret(context)) === undefined) return;
+		} else {
+			// Already being deleted: a second unforced DeleteSecret is
+			// InvalidRequestException, and there is nothing more to ask for. An
+			// unreadable DeletedDate is refused here, since this needs to know.
+			const existing = await readSecret(context);
+			if (existing === undefined || existing.deletedDate !== undefined) return;
+		}
 		const response = await secretsCall(context, "DeleteSecret", {
 			SecretId: context.name,
 			...(force ? { ForceDeleteWithoutRecovery: true } : undefined),

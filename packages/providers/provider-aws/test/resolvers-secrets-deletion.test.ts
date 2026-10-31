@@ -721,13 +721,13 @@ describe("DeletedDate as a provider answers it", () => {
 		[true, "a boolean"],
 		[[], "an array"],
 		[{ seconds: 1523477145 }, "an object"],
-	])("refuses %o (%s) in read, reconcile and delete", async (deletedDate: JsonValue, _why: string) => {
+	])("refuses %o (%s) in read, reconcile and an unforced delete", async (deletedDate: JsonValue, _why: string) => {
 		const runner = harness(scheduledWith(deletedDate));
 
 		for (const refusal of [
 			await refusalOf(runner.read()),
 			await refusalOf(runner.reconcile({ restoreScheduled: true })),
-			await refusalOf(runner.remove({ forceDelete: true })),
+			await refusalOf(runner.remove()),
 		]) {
 			expect(refusal).toBeInstanceOf(ResolverError);
 			expect(refusal instanceof ResolverError ? refusal.code : "").toBe(
@@ -742,6 +742,26 @@ describe("DeletedDate as a provider answers it", () => {
 			"DescribeSecret",
 			"DescribeSecret",
 		]);
+	});
+
+	// A forced delete ends the recovery window whatever the date is, and the
+	// describe before it chooses nothing: both calls name the secret by
+	// SecretId. So an unreadable DeletedDate does not stop it.
+	it.each([
+		["soon"],
+		[1e13],
+		[true],
+	])("lets a forced delete go ahead when DeletedDate is %o", async (deletedDate) => {
+		const runner = harness(scheduledWith(deletedDate));
+
+		await runner.remove({ forceDelete: true });
+
+		expect(runner.aws.targets()).toEqual(["DescribeSecret", "DeleteSecret"]);
+		expect(runner.aws.calls[1]?.payload).toEqual({
+			SecretId: NAME,
+			ForceDeleteWithoutRecovery: true,
+		});
+		expect(runner.secrets.has(NAME)).toBe(false);
 	});
 
 	it("quotes a DeletedDate JSON cannot hold (1e400) as it was written, not as null", async () => {

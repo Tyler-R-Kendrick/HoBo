@@ -235,8 +235,11 @@ different suffix — is refused rather than interpolated into a hostname.
     refuses and says the restore did not take effect, and sends no
     `UpdateSecret`.
   - `delete` issues nothing more for it, and a `forceDelete: true` delete still
-    deletes it at once. An `InvalidRequestException` because someone scheduled it
-    between the describe and the delete counts as done.
+    deletes it at once, even when `DeletedDate` is unreadable (both calls name
+    the secret by `SecretId`, and force ends the window whatever the date is).
+    An unforced delete refuses an unreadable `DeletedDate`. An
+    `InvalidRequestException` because someone scheduled it between the describe
+    and the delete counts as done.
   - `restoreScheduled` and `forceDelete` are directives: they say how apply and
     delete act, not what the secret is, and `read` never reports them. The
     resolver lists them in its `directives`, so preview and drift leave them out

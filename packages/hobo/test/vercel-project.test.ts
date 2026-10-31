@@ -165,6 +165,24 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 		expect(outputs.url).toBe("https://hobo-hello-bindle-1.vercel.app");
 	});
 
+	it("retries a Project not found in any letter case", async () => {
+		const { fetch, routes } = scripted({
+			[DEPLOY]: [
+				reply(404, {
+					error: { code: "not_found", message: "project not found" },
+				}),
+				DEPLOYED,
+			],
+			[CREATE]: [CREATED],
+		});
+		const provider = createVercelDeployProvider({ token: "tok", fetch });
+
+		const outputs = await provider.apply(programFor("dep-1"));
+
+		expect(routes()).toEqual([DEPLOY, CREATE, DEPLOY]);
+		expect(outputs.deploymentId).toBe("dpl_1");
+	});
+
 	it.each([
 		[
 			"a 404 with another code",
@@ -174,22 +192,45 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 					message: "Deployment not found",
 				},
 			}),
+			404,
 			"deployment_not_found",
 		],
 		[
 			"a 404 for something other than the project",
 			reply(404, { error: { code: "not_found", message: "Team not found" } }),
+			404,
 			"not_found",
 		],
-		["a 404 whose body is not JSON", plainReply(404, "Not Found"), undefined],
-	])("does not retry %s", async (_case, refusal, code) => {
+		[
+			"a 404 that says Project not found under another code",
+			reply(404, {
+				error: { code: "forbidden", message: "Project not found" },
+			}),
+			404,
+			"forbidden",
+		],
+		[
+			"a status other than 404 that says not_found, Project not found",
+			reply(400, {
+				error: { code: "not_found", message: "Project not found" },
+			}),
+			400,
+			"not_found",
+		],
+		[
+			"a 404 whose body is not JSON",
+			plainReply(404, "Not Found"),
+			404,
+			undefined,
+		],
+	])("does not retry %s", async (_case, refusal, status, code) => {
 		const { fetch, routes } = scripted({ [DEPLOY]: [refusal] });
 		const provider = createVercelDeployProvider({ token: "tok", fetch });
 
 		const pending = provider.apply(programFor("dep-1"));
 
 		await expect(pending).rejects.toBeInstanceOf(VercelApiError);
-		await expect(pending).rejects.toMatchObject({ status: 404, code });
+		await expect(pending).rejects.toMatchObject({ status, code });
 		expect(routes()).toEqual([DEPLOY]);
 	});
 

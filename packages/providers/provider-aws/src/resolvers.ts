@@ -1689,36 +1689,107 @@ async function readSecret(
 	);
 }
 
+/** The largest distance from the epoch a JavaScript date holds, in milliseconds. */
+const MAX_DATE_MS = 8.64e15;
+
 /**
- * Whether AWS has scheduled this secret for deletion. DescribeSecret answers
- * `DeletedDate`, "The date the secret is scheduled for deletion. If it is not
- * scheduled for deletion, this field is omitted." Until that date the secret
- * still holds its name: CreateSecret, UpdateSecret and a second unforced
- * DeleteSecret answer InvalidRequestException ("The secret is scheduled for
- * deletion").
+ * RFC 3339 `date-time` (section 5.6) with at most nanosecond precision: the
+ * form a provider that answers DeletedDate as text writes it in
+ * ("2026-11-30T05:30:25.033060027Z"). The calendar fields are checked below.
  */
-function scheduledForDeletion(record: JsonObject): boolean {
-	const deletedDate = record.DeletedDate;
-	return deletedDate !== undefined && deletedDate !== null;
+const RFC3339_DATE_TIME =
+	/^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:[Zz]|[+-](\d{2}):(\d{2}))$/u;
+
+/** Days in a month of the proleptic Gregorian calendar RFC 3339 uses. */
+function daysInMonth(year: number, month: number): number {
+	const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+	return (
+		[31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1] ?? 0
+	);
+}
+
+/** Whether text is an RFC 3339 date-time whose every field is in range. */
+function isRfc3339DateTime(text: string): boolean {
+	const match = RFC3339_DATE_TIME.exec(text);
+	if (match === null) return false;
+	// An absent offset is "Z", so it reads as 0; a field the pattern guarantees
+	// defaults to a value that fails its range check.
+	const [
+		year = 0,
+		month = 0,
+		day = 0,
+		hour = 24,
+		minute = 60,
+		second = 60,
+		offsetHour = 0,
+		offsetMinute = 0,
+	] = match.slice(1).map((field) => Number(field ?? "0"));
+	return (
+		month >= 1 &&
+		month <= 12 &&
+		day >= 1 &&
+		day <= daysInMonth(year, month) &&
+		hour <= 23 &&
+		minute <= 59 &&
+		// A leap second (60) has no JavaScript date, so it is refused rather
+		// than rolled into the next minute.
+		second <= 59 &&
+		offsetHour <= 23 &&
+		offsetMinute <= 59
+	);
 }
 
 /**
- * `DeletedDate` as an ISO 8601 instant. AWS's JSON protocol answers a timestamp
- * as epoch seconds; a string is passed through as the provider wrote it.
+ * DescribeSecret's `DeletedDate`, read at the boundary: `undefined` when AWS
+ * omits it, which the API says it does exactly when the secret "is not
+ * scheduled for deletion"; otherwise the date as an ISO 8601 instant.
  *
- * Nothing more is read into it than the API says. DescribeSecret calls it "The
- * date the secret is scheduled for deletion"; DeleteSecret's `DeletionDate`,
- * the end of the recovery window, is "the date and time of the delete request
- * plus the number of days in RecoveryWindowInDays", and the API does not say
- * the two are equal. So the date is reported as `DeletedDate`, never as the
- * day the secret will be gone.
+ * AWS's JSON protocol answers a timestamp as epoch seconds, fractional or not
+ * (`1523477145.729`). A provider that answers text must answer an RFC 3339
+ * date-time, which is reported as written; it is at most 35 characters of
+ * digits, separators and a zone, so nothing in it needs redacting. Anything
+ * else (a date out of range, other text, another type) is unreadable, and the
+ * secret's state with it, so it is refused rather than guessed at: the value
+ * is quoted only bounded and redacted, like any provider text.
+ *
+ * Nothing more is read into the date than the API says. DescribeSecret calls it
+ * "The date the secret is scheduled for deletion"; DeleteSecret's
+ * `DeletionDate`, the end of the recovery window, is "the date and time of the
+ * delete request plus the number of days in RecoveryWindowInDays", and the API
+ * does not say the two are equal. So the date is reported as `DeletedDate`,
+ * never as the day the secret will be gone.
  */
-function deletedDateOf(record: JsonObject): string {
+function deletedDateOf(
+	context: AwsResolverContext,
+	record: JsonObject,
+): string | undefined {
 	const value = record.DeletedDate;
-	if (isJsonNumber(value) && Number.isFinite(value)) {
-		return new Date(value * 1000).toISOString();
+	if (value === undefined || value === null) return undefined;
+	if (isJsonNumber(value)) {
+		const ms = Math.round(value * 1000);
+		if (Number.isFinite(ms) && Math.abs(ms) <= MAX_DATE_MS) {
+			return new Date(ms).toISOString();
+		}
+	} else if (isJsonString(value) && isRfc3339DateTime(value)) {
+		return value;
 	}
-	return isJsonString(value) ? value : "an unreported date";
+	throw unparseable(
+		`secretsmanager describe ${context.name}`,
+		`AWS returned a DeletedDate that is neither epoch seconds within the range of a date nor an RFC 3339 date-time (${context.redact(JSON.stringify(value), 80)}), so whether the secret is scheduled for deletion cannot be read; it is refused rather than assumed`,
+	);
+}
+
+/**
+ * Whether AWS has scheduled this secret for deletion: DescribeSecret answered
+ * a readable `DeletedDate`. Through the recovery window the secret still holds
+ * its name: CreateSecret, UpdateSecret and a second unforced DeleteSecret
+ * answer InvalidRequestException ("The secret is scheduled for deletion").
+ */
+function scheduledForDeletion(
+	context: AwsResolverContext,
+	record: JsonObject,
+): boolean {
+	return deletedDateOf(context, record) !== undefined;
 }
 
 /**
@@ -1739,9 +1810,9 @@ function restoreDeclared(context: AwsResolverContext): boolean {
 /** What apply will do with a secret scheduled for deletion, in one sentence. */
 function scheduledNote(
 	context: AwsResolverContext,
-	record: JsonObject,
+	deletedDate: string,
 ): string {
-	const scheduled = `the secret is scheduled for deletion (DeletedDate ${deletedDateOf(record)})`;
+	const scheduled = `the secret is scheduled for deletion (DeletedDate ${deletedDate})`;
 	return restoreDeclared(context)
 		? `${scheduled}; apply will restore it, with its previous versions (restoreScheduled: true)`
 		: `${scheduled}; apply refuses it: declare restoreScheduled: true to restore it with its previous versions, or destroy it with forceDelete: true to delete it now`;
@@ -1797,15 +1868,13 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 		// so it is reported, not hidden: as `delete` (the provider is deleting
 		// it), with the date and what apply will do. Reporting it absent would
 		// tell a preview that apply creates it, which CreateSecret refuses.
-		if (scheduledForDeletion(existing)) {
+		const deletedDate = deletedDateOf(context, existing);
+		if (deletedDate !== undefined) {
 			return outcome(
 				"delete",
 				secretArn(existing, `secretsmanager describe ${context.name}`),
-				{
-					...secretOutputs(context.name, existing),
-					deletedDate: deletedDateOf(existing),
-				},
-				[scheduledNote(context, existing), ...secretDiagnostics(context)],
+				{ ...secretOutputs(context.name, existing), deletedDate },
+				[scheduledNote(context, deletedDate), ...secretDiagnostics(context)],
 			);
 		}
 		return outcome(
@@ -1821,8 +1890,10 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 		const diagnostics = [...secretDiagnostics(context)];
 		let existing = await readSecret(context);
 		let restored = false;
+		const deletedDate =
+			existing === undefined ? undefined : deletedDateOf(context, existing);
 
-		if (existing !== undefined && scheduledForDeletion(existing)) {
+		if (existing !== undefined && deletedDate !== undefined) {
 			// CreateSecret cannot take the name back while the deletion is pending.
 			// Someone deleted this secret on purpose, so bringing it back is the
 			// declaration's call, never a default: without restoreScheduled this
@@ -1830,12 +1901,11 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 			if (!restoreDeclared(context)) {
 				throw new ResolverError(
 					"RESOLVER_PROVIDER_REJECTED",
-					`secretsmanager ${context.name}: ${scheduledNote(context, existing)}`,
+					`secretsmanager ${context.name}: ${scheduledNote(context, deletedDate)}`,
 				);
 			}
 			// RestoreSecret "Cancels the scheduled deletion of a secret by removing
 			// the DeletedDate time stamp", and keeps the versions written out of band.
-			const deletedDate = deletedDateOf(existing);
 			jsonResult(
 				context,
 				await secretsCall(context, "RestoreSecret", {
@@ -1917,7 +1987,7 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 		// Already being deleted: a second unforced DeleteSecret is
 		// InvalidRequestException, and there is nothing more to ask for. A forced
 		// delete still goes ahead, since it ends the recovery window now.
-		if (scheduledForDeletion(existing) && !force) return;
+		if (scheduledForDeletion(context, existing) && !force) return;
 		const response = await secretsCall(context, "DeleteSecret", {
 			SecretId: context.name,
 			...(force ? { ForceDeleteWithoutRecovery: true } : undefined),
@@ -1931,7 +2001,7 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 			// the deletion this asked for is already under way.
 			if (code === "InvalidRequestException" && !force) {
 				const now = await readSecret(context);
-				if (now === undefined || scheduledForDeletion(now)) return;
+				if (now === undefined || scheduledForDeletion(context, now)) return;
 			}
 		}
 		jsonResult(context, response, `secretsmanager delete ${context.name}`);

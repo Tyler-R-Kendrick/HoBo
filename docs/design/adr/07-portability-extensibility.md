@@ -938,6 +938,8 @@ The `aws.secrets-manager/v1` resolver never read `DeletedDate`, so it handled a 
    - a diagnostic: "scheduled for deletion (DeletedDate <instant>)", then what apply will do.
 
    The date is named for the field it came from, because the API gives it no more meaning than that. DescribeSecret calls `DeletedDate` "The date the secret is scheduled for deletion". DeleteSecret's `DeletionDate` is "the date and time of the delete request plus the number of days in RecoveryWindowInDays", and the API does not say the two are the same instant. The resolver uses `DeletedDate` only to tell that the secret is scheduled, which the API does say: the field is omitted otherwise.
+
+   `DeletedDate` is parsed where DescribeSecret's answer is read. AWS's JSON protocol answers it as epoch seconds, fractional or not, and the resolver reports that as an ISO 8601 instant to the millisecond. A provider that answers text must answer an RFC 3339 date-time, which is reported as written. Anything else makes the secret's state unreadable: a date outside the range a date can hold, other text, another type. `read()`, `reconcile()` and `delete()` then refuse with `RESOLVER_OUTPUT_UNPARSEABLE`, and the refusal quotes the value only bounded and redacted, as it would any provider text.
 2. **The resolver-backed `IacProvider` shows it** (`packages/hobo/src/resolver-iac-provider.ts`).
    - Preview reads "exists as <id>, and the provider is deleting it." with the resolver's diagnostics, and `changes: 1`.
    - Drift is `true`, determined, with the same text. A resource on its way out is neither "would be created" nor "clean".

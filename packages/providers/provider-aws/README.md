@@ -216,7 +216,10 @@ different suffix — is refused rather than interpolated into a hostname.
     will do. The date is DescribeSecret's `DeletedDate` as AWS reports it, not
     a promise of when the secret is gone: the API calls it "the date the secret
     is scheduled for deletion", and does not equate it with DeleteSecret's
-    `DeletionDate`, the end of the recovery window.
+    `DeletionDate`, the end of the recovery window. It must be epoch seconds
+    (fractional allowed) or an RFC 3339 date-time. Anything else is refused
+    as `RESOLVER_OUTPUT_UNPARSEABLE` by `read`, `reconcile` and `delete` alike,
+    because the secret's state cannot be read.
     Preview and drift say so; neither reports it absent.
   - `reconcile` **fails closed** by default (`RESOLVER_PROVIDER_REJECTED`): someone
     deleted it on purpose. Declare `restoreScheduled: true` to restore it with its

@@ -61,8 +61,11 @@ const NAME = "hobo-stripe";
 
 interface FakeSecret {
 	description: string | undefined;
-	/** Epoch seconds, as AWS's JSON protocol answers a timestamp; unset when not scheduled. */
-	deletedDate: number | undefined;
+	/**
+	 * DescribeSecret's DeletedDate, unset when not scheduled. Epoch seconds, as
+	 * AWS's JSON protocol answers a timestamp, unless a test answers another form.
+	 */
+	deletedDate: JsonValue | undefined;
 }
 
 function reply(status: number, value: JsonValue): TransportResponse {
@@ -468,5 +471,107 @@ describe("the directives, declared through secretsManager()", () => {
 		expect(outcome.action).toBe("update");
 		expect(runner.aws.targets()).toContain("RestoreSecret");
 		expect(runner.secrets.get(NAME)?.deletedDate).toBeUndefined();
+	});
+});
+
+/** The refusal a call ended in, or undefined when it did not refuse (or was never made). */
+async function refusalOf(
+	call: Promise<unknown> | undefined,
+): Promise<Error | undefined> {
+	return (call ?? Promise.resolve()).then(
+		() => undefined,
+		(error: Error) => error,
+	);
+}
+
+function scheduledWith(deletedDate: JsonValue): Map<string, FakeSecret> {
+	return new Map([[NAME, { description: undefined, deletedDate }]]);
+}
+
+// DescribeSecret's DeletedDate is a Timestamp; AWS's JSON protocol answers it
+// as epoch seconds, which may be fractional (the API reference's own example
+// answers LastChangedDate as 1523477145.729). A provider that answers text
+// (mirror.cloud's emulator writes "2026-11-30T05:30:25.033060027Z") must
+// answer an RFC 3339 date-time. Anything else leaves the secret's state
+// unreadable, so read, reconcile and delete all refuse it.
+describe("DeletedDate as a provider answers it", () => {
+	it("reads fractional epoch seconds to the millisecond", async () => {
+		const runner = harness(scheduledWith(1523477145.729));
+
+		const observed = await runner.read();
+
+		expect(observed?.outputs.deletedDate).toBe("2018-04-11T20:05:45.729Z");
+		expect(observed?.diagnostics.join(" ")).toContain(
+			"(DeletedDate 2018-04-11T20:05:45.729Z)",
+		);
+	});
+
+	it.each([
+		[
+			"2026-11-30T05:30:25.033060027Z",
+			"nanoseconds, as the emulator writes it",
+		],
+		["2026-11-30T05:30:25Z", "whole seconds"],
+		["2026-11-30T07:30:25.5+02:00", "a numeric offset"],
+		["2028-02-29T00:00:00Z", "a leap day"],
+	])("reports the RFC 3339 date-time %s (%s) as written", async (text) => {
+		const runner = harness(scheduledWith(text));
+
+		const observed = await runner.read();
+
+		expect(observed?.action).toBe("delete");
+		expect(observed?.outputs.deletedDate).toBe(text);
+		expect(observed?.diagnostics.join(" ")).toContain(`(DeletedDate ${text})`);
+	});
+
+	it.each([
+		["soon", "text that is not a date"],
+		["2026-11-30", "a date with no time"],
+		["2026-11-30T05:30:25", "a time with no zone"],
+		["2026-13-01T00:00:00Z", "month 13"],
+		["2026-02-29T00:00:00Z", "February 29 in a common year"],
+		["2026-11-30T24:00:00Z", "hour 24"],
+		["2026-11-30T05:30:60Z", "a leap second"],
+		["2026-11-30T05:30:25.0330600271Z", "ten fractional digits"],
+		["1523477145.729", "epoch seconds written as text"],
+		[1e13, "epoch seconds past the range of a date"],
+		[-1e13, "epoch seconds before the range of a date"],
+		[true, "a boolean"],
+		[{ seconds: 1523477145 }, "an object"],
+	])("refuses %o (%s) in read, reconcile and delete", async (deletedDate: JsonValue, _why: string) => {
+		const runner = harness(scheduledWith(deletedDate));
+
+		for (const refusal of [
+			await refusalOf(runner.read()),
+			await refusalOf(runner.reconcile({ restoreScheduled: true })),
+			await refusalOf(runner.remove({ forceDelete: true })),
+		]) {
+			expect(refusal).toBeInstanceOf(ResolverError);
+			expect(refusal instanceof ResolverError ? refusal.code : "").toBe(
+				"RESOLVER_OUTPUT_UNPARSEABLE",
+			);
+			expect(refusal?.message).toContain("DeletedDate");
+		}
+		expect(runner.aws.targets()).toEqual([
+			"DescribeSecret",
+			"DescribeSecret",
+			"DescribeSecret",
+		]);
+	});
+
+	it("quotes an unreadable DeletedDate only bounded and redacted", async () => {
+		const leaked = "n0tARealSecretAccessKey0000000000000000x";
+		const runner = harness(
+			scheduledWith(`expires ${leaked} ${"later ".repeat(500)}`),
+		);
+
+		const refusal = await refusalOf(runner.read());
+
+		expect(refusal instanceof ResolverError ? refusal.code : "").toBe(
+			"RESOLVER_OUTPUT_UNPARSEABLE",
+		);
+		expect(refusal?.message).not.toContain(leaked);
+		expect(refusal?.message).toContain("[redacted]");
+		expect(refusal?.message.length).toBeLessThan(500);
 	});
 });

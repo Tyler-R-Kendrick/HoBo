@@ -26,6 +26,7 @@ import type { IncomingHttpHeaders, OutgoingHttpHeaders } from "node:http";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
+import { checkServerIdentity, type PeerCertificate } from "node:tls";
 
 import type { PactRequest, PactResponse } from "./pact.js";
 import type { ProviderStub } from "./verify.js";
@@ -213,15 +214,28 @@ function outgoingHeaders(
 }
 
 /**
- * The TLS name to present and verify: the base URL's host, never the `Host`
- * header. A loopback emulator's certificate names the address it was reached
- * at (and, for mirror, `api.vercel.com`), not every provider host a rewritten
- * request carries (`s3.us-east-1.amazonaws.com`). An IP literal sends no SNI
- * and is verified against the certificate's IP addresses.
+ * TLS is verified against the base URL's host, never the `Host` header. A
+ * loopback emulator's certificate names the address it was reached at (and,
+ * for mirror, `api.vercel.com`), not every provider host a rewritten request
+ * carries (`s3.us-east-1.amazonaws.com`), and node:https would otherwise take
+ * both the SNI name and the name it checks from the `Host` header. An IP
+ * literal sends no SNI and is checked against the certificate's IP addresses.
  */
-function serverName(url: URL): string | undefined {
+interface TlsIdentity {
+	readonly servername: string;
+	checkServerIdentity(
+		host: string,
+		certificate: PeerCertificate,
+	): Error | undefined;
+}
+
+function tlsIdentity(url: URL): TlsIdentity {
 	const name = url.hostname.replace(/^\[|\]$/gu, "");
-	return isIP(name) === 0 ? name : undefined;
+	return {
+		servername: isIP(name) === 0 ? name : "",
+		checkServerIdentity: (_host, certificate) =>
+			checkServerIdentity(name, certificate),
+	};
 }
 
 function causeCode(error: Error): string {
@@ -259,7 +273,7 @@ export function exchangeHttp(
 	const timeoutMs = parsed.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 	const cap = parsed.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
 	const tls = base.protocol === "https:";
-	const name = tls ? serverName(base) : undefined;
+	const identity = tls ? tlsIdentity(base) : undefined;
 	const send = tls ? httpsRequest : httpRequest;
 
 	return new Promise((resolve, reject) => {
@@ -280,7 +294,7 @@ export function exchangeHttp(
 				headers: outgoingHeaders(request, parsed.host),
 				agent: false,
 				...(parsed.ca === undefined ? undefined : { ca: parsed.ca }),
-				...(name === undefined ? undefined : { servername: name }),
+				...identity,
 			},
 			(response) => {
 				const chunks: Buffer[] = [];

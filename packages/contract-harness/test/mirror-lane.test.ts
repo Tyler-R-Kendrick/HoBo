@@ -6,6 +6,10 @@ import {
 } from "node:http";
 import type { AddressInfo } from "node:net";
 
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { afterEach, describe, expect, it } from "vitest";
 
 import { HttpProviderError, parseHttpEndpoint } from "../src/http-provider.js";
@@ -15,6 +19,7 @@ import {
 	mirrorControl,
 	mirrorLaneEndpoint,
 	readMirrorJournal,
+	recordMirrorLaneReport,
 } from "../src/mirror-lane.js";
 
 type Seen = {
@@ -217,5 +222,49 @@ describe("mirrorControl", () => {
 				body: `{"requests":1,"retryAfter":2}`,
 			},
 		]);
+	});
+});
+
+describe("recordMirrorLaneReport", () => {
+	const report = {
+		consumer: "HoboVercelDeploy",
+		provider: "VercelApi",
+		interactions: 4,
+		ok: true,
+		failures: [],
+	};
+
+	it("writes <name>.json where HOBO_MIRROR_REPORTS points, for the runner to print", () => {
+		const dir = mkdtempSync(join(tmpdir(), "mirror-reports-"));
+		try {
+			recordMirrorLaneReport(
+				{ HOBO_MIRROR_REPORTS: dir },
+				"hobo-vercel-api",
+				report,
+			);
+			expect(readdirSync(dir)).toEqual(["hobo-vercel-api.json"]);
+			expect(
+				JSON.parse(readFileSync(join(dir, "hobo-vercel-api.json"), "utf8")),
+			).toEqual(report);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("writes nothing when the variable is unset (a file run on its own)", () => {
+		expect(() =>
+			recordMirrorLaneReport({}, "hobo-vercel-api", report),
+		).not.toThrow();
+	});
+
+	it.each([
+		"../escape",
+		"a/b",
+		".hidden",
+		"",
+	])("refuses the name %j", (name) => {
+		expect(() =>
+			recordMirrorLaneReport({ HOBO_MIRROR_REPORTS: tmpdir() }, name, report),
+		).toThrow(/MIRROR_REPORT_NAME_INVALID/u);
 	});
 });

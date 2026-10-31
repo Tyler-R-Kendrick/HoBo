@@ -73,3 +73,11 @@ message ResponseMatchingRule {
   string path = 1;
   repeated ResponseMatcher matchers = 2;
 }
+// A provider verification the mirror lane prints (src/mirror-lane.ts).
+message MirrorLaneReport {
+  string consumer = 1;
+  string provider = 2;
+  uint32 interactions = 3;
+  bool ok = 4;
+  repeated InteractionFailure failures = 5;
+}

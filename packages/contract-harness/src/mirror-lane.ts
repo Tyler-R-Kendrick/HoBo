@@ -13,12 +13,16 @@
  *   original `Host`. The guard is not touched: the rewrite happens after it.
  * - `readMirrorJournal` parses `GET /_mirror/journal` into frozen entries, and
  *   `mirrorControl` reaches the emulator's own `/_mirror/*` routes.
+ * - `recordMirrorLaneReport` leaves a pact verification report where the
+ *   runner prints it (`HOBO_MIRROR_REPORTS`), so the lane's output carries the
+ *   report whatever the test reporter shows of a passing test.
  *
  * Parse, don't validate: a journal answer becomes `MirrorJournalEntry`
  * values (`data-models/contract-harness.proto` `MirrorJournalEntry`) or a
  * refusal naming what is missing.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 import {
 	exchangeHttp,
@@ -26,19 +30,24 @@ import {
 	type HttpExchangeResponse,
 	parseHttpEndpoint,
 } from "./http-provider.js";
+import type { InteractionFailure } from "./verify.js";
 
 // public-contract: the variables `scripts/run-mirror-lane.mts` sets for every mirror test.
 export const MIRROR_URL_ENV = "HOBO_MIRROR_URL";
 // public-contract: the PEM file of the emulator's CA, set only when the lane serves TLS.
 export const MIRROR_CA_ENV = "HOBO_MIRROR_CA";
+// public-contract: a directory the runner reads verification reports from and prints after the lane.
+export const MIRROR_REPORTS_ENV = "HOBO_MIRROR_REPORTS";
+
+export type MirrorLaneErrorCode =
+	| "MIRROR_URL_REQUIRED"
+	| "MIRROR_JOURNAL_UNREADABLE"
+	| "MIRROR_REPORT_NAME_INVALID";
 
 export class MirrorLaneError extends Error {
-	readonly code: "MIRROR_URL_REQUIRED" | "MIRROR_JOURNAL_UNREADABLE";
+	readonly code: MirrorLaneErrorCode;
 
-	constructor(
-		code: "MIRROR_URL_REQUIRED" | "MIRROR_JOURNAL_UNREADABLE",
-		message: string,
-	) {
+	constructor(code: MirrorLaneErrorCode, message: string) {
 		super(`${code}: ${message}`);
 		this.name = "MirrorLaneError";
 		this.code = code;
@@ -216,4 +225,34 @@ export async function readMirrorJournal(
 			});
 		}),
 	);
+}
+
+// domain-view: a provider verification as the lane prints it; data-models/contract-harness.proto MirrorLaneReport is its wire form.
+export interface MirrorLaneReport {
+	readonly consumer: string;
+	readonly provider: string;
+	readonly interactions: number;
+	readonly ok: boolean;
+	readonly failures: readonly InteractionFailure[];
+}
+
+/**
+ * Write `report` as `<name>.json` into the directory `HOBO_MIRROR_REPORTS`
+ * names; nothing when it is unset (a file run on its own). The name is one
+ * path segment.
+ */
+export function recordMirrorLaneReport(
+	env: Readonly<Record<string, string | undefined>>,
+	name: string,
+	report: MirrorLaneReport,
+): void {
+	const dir = env[MIRROR_REPORTS_ENV];
+	if (dir === undefined || dir === "") return;
+	if (!/^[A-Za-z0-9._-]+$/u.test(name) || name.startsWith(".")) {
+		throw new MirrorLaneError(
+			"MIRROR_REPORT_NAME_INVALID",
+			`report name ${JSON.stringify(name)} must be one plain path segment`,
+		);
+	}
+	writeFileSync(join(dir, `${name}.json`), `${JSON.stringify(report)}\n`);
 }

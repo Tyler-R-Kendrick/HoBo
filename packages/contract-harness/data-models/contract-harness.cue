@@ -92,3 +92,12 @@ package contract_harness
 	path: =~"^\\$((\\.[A-Za-z_$][A-Za-z0-9_$-]*)|(\\[[0-9]+\\]))*$"
 	matchers: [#ResponseMatcher, ...#ResponseMatcher]
 }
+
+#MirrorLaneReport: {
+	consumer:     #ParticipantName
+	provider:     #ParticipantName
+	interactions: int & >=1
+	ok:           bool
+	failures:     [...#InteractionFailure]
+	if ok {failures: []}
+}

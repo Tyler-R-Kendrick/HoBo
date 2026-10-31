@@ -34,14 +34,18 @@ export {
 export {
 	createMirrorTransport,
 	MIRROR_CA_ENV,
+	MIRROR_REPORTS_ENV,
 	MIRROR_URL_ENV,
 	type MirrorJournalEntry,
 	type MirrorJournalFilter,
 	MirrorLaneError,
+	type MirrorLaneErrorCode,
+	type MirrorLaneReport,
 	type MirrorTransportRequest,
 	mirrorControl,
 	mirrorLaneEndpoint,
 	readMirrorJournal,
+	recordMirrorLaneReport,
 } from "./mirror-lane.js";
 export { createMockProviderFromPact } from "./mock.js";
 export type {

@@ -15,9 +15,11 @@
  * one wins, so a chain that consulted these in a different order would have
  * `rails activate` apply a rail to a Station the operator was not looking at.
  *
- * **The HoBo home** is taken from the explicit dependency, then the injected
- * env, then the ambient env, then the default. The explicit one must win, or a
- * caller that isolated itself would still read somebody else's Stations.
+ * **The HoBo home** is taken from the explicit dependency, else from
+ * `resolveHoboHome` over the injected env (the ambient one when none is
+ * injected), the rule every other command uses: an empty or blank `HOBO_HOME`
+ * is unset there, not a path. The explicit one must win, or a caller that
+ * isolated itself would still read somebody else's Stations.
  *
  * `activate` and `up` both reach for the Station client afterwards to enrich
  * their result with pins — and both swallow a failure there. That is right: the
@@ -340,6 +342,23 @@ describe("home resolution", () => {
 		});
 		const status = await run(["status"], { hoboHome: dir });
 		expect(JSON.stringify(status.result)).toContain("station:edge");
+	});
+
+	it("treats an empty or blank HOBO_HOME as unset, as every command does", async () => {
+		// `HOBO_HOME= hobo station init` used to try to mkdir "" and fail.
+		for (const blank of ["", "   "]) {
+			const user = home();
+			const command = createStationCommand({
+				env: { HOBO_HOME: blank, HOME: user },
+				log: () => {},
+			});
+			const result = (await command.run({
+				args: ["init"],
+				flags: { name: "edge" },
+			} as never)) as Record<string, unknown>;
+			expect(result.ok).toBe(true);
+			expect(JSON.stringify(result.data)).toContain(join(user, ".hobo"));
+		}
 	});
 
 	it("falls back to the injected environment", async () => {

@@ -76,14 +76,21 @@ export class HoboHomeUnavailable extends Error {
 	}
 }
 
-/** `HOBO_HOME`, or `<HOME or os.homedir()>/.hobo`. Never a temp directory. */
+/**
+ * `HOBO_HOME`, or `<HOME or os.homedir()>/.hobo`. Never a temp directory. An
+ * empty or blank (whitespace-only) value counts as unset: `HOBO_HOME= hobo …`
+ * is how a shell unsets it for one command.
+ */
 export function resolveHoboHome(env: HoboHomeEnv = process.env): string {
 	const explicit = env.HOBO_HOME;
-	if (explicit !== undefined && explicit.length > 0) return explicit;
+	if (isSet(explicit)) return explicit;
 	const home = env.HOME;
-	if (home !== undefined && home.length > 0)
-		return join(home, HOBO_HOME_DIRNAME);
+	if (isSet(home)) return join(home, HOBO_HOME_DIRNAME);
 	return join(accountHome(), HOBO_HOME_DIRNAME);
+}
+
+function isSet(value: string | undefined): value is string {
+	return value !== undefined && value.trim().length > 0;
 }
 
 function accountHome(): string {

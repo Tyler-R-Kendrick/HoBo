@@ -26,6 +26,13 @@ describe("resolveHoboHome", () => {
 		);
 	});
 
+	it("treats a blank HOBO_HOME or HOME as unset", () => {
+		expect(resolveHoboHome({ HOBO_HOME: "  ", HOME: "/home/a" })).toBe(
+			"/home/a/.hobo",
+		);
+		expect(resolveHoboHome({ HOME: " \t" })).toBe(join(homedir(), ".hobo"));
+	});
+
 	it("uses HOME from the environment it is given, not the process's", () => {
 		expect(resolveHoboHome({ HOME: "/home/a" })).toBe("/home/a/.hobo");
 	});

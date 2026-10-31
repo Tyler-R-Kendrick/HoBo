@@ -8,6 +8,7 @@
  */
 
 import type { CommandModule } from "@hobo/cli";
+import { resolveHoboHome } from "@hobo/core/hobo-home";
 import {
 	createManagementContext,
 	stationDown,
@@ -20,7 +21,6 @@ import {
 	stationUp,
 } from "@hobo/management";
 import { createStationClient } from "@hobo/stations";
-import { defaultHoboHome } from "./bare-metal-yard.js";
 import { loadHoboProfile, setDefaultStation } from "./hobo-profile.js";
 import { isJsonString, type JsonObject } from "./json.js";
 
@@ -38,13 +38,9 @@ function flagString(flags: JsonObject, ...names: string[]): string | undefined {
 	return undefined;
 }
 
+/** The explicit home, else the one rule every command uses, over the injected env or the ambient one. */
 function resolveHome(deps: StationCommandDeps): string {
-	return (
-		deps.hoboHome ??
-		deps.env?.HOBO_HOME ??
-		process.env.HOBO_HOME ??
-		defaultHoboHome()
-	);
+	return deps.hoboHome ?? resolveHoboHome(deps.env ?? process.env);
 }
 
 function resolveStationId(

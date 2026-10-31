@@ -105,7 +105,7 @@ async function reported(listener: Beacon, role: string): Promise<Reported> {
 	return report;
 }
 
-describe("run-mirror-lane.mts, stopped by a signal", () => {
+describe("run-mirror-lane.mts, stopped early: by a signal, its mirror gone, its stdout closed", () => {
 	for (const [signal, code] of [
 		["SIGTERM", 143],
 		["SIGINT", 130],
@@ -197,6 +197,28 @@ describe("run-mirror-lane.mts, stopped by a signal", () => {
 		assert.equal(exitCode, 1, lane.output());
 		assert.match(lane.output(), /fail {2}test:mirror — MIRROR_EXITED/u);
 		await Promise.all([pnpm.ended, worker.ended]);
+	});
+
+	it("fails when its stdout is closed before it finishes, as `| head -1` closes it", async () => {
+		const listener = await beacon();
+		open.push(listener);
+		const lane = runner({
+			MIRROR_BIN: fakeMirror(),
+			FAKE_BEACON: String(listener.port),
+			PATH: `${fakePnpmDir()}${delimiter}${process.env.PATH ?? ""}`,
+		});
+		const exit = once(lane.child, "exit");
+
+		await reported(listener, "mirror");
+		const pnpm = await reported(listener, "pnpm");
+		// Whatever reads the runner's output stops reading; then the package
+		// run passes, and the runner has its report still to write.
+		lane.child.stdout?.destroy();
+		pnpm.tell("pass");
+		const [exitCode] = await exit;
+
+		assert.equal(exitCode, 1, lane.output());
+		assert.match(lane.output(), /stdout closed before the lane finished/u);
 	});
 
 	it("a second SIGINT during the grace period kills everything at once and exits", async () => {

@@ -29,8 +29,9 @@
  * never been compared with api.vercel.com; this lane is "emulated", never
  * "live". It is not part of `agent:check`.
  *
- * Exit: 0 every package passed, 1 a package failed or the emulator could not
- * run, 2 wrong usage.
+ * Exit: 0 every package passed, 1 a package failed, the emulator could not
+ * run or exited while in use, or the report could not be written (stdout
+ * closed), 2 wrong usage.
  */
 import {
 	mkdirSync,
@@ -261,10 +262,22 @@ for (const [signal, code] of STOPPING_SIGNALS) {
 		void cleanUp().finally(() => process.exit(signalled));
 	});
 }
-// After a SIGHUP the terminal may be gone; a write that fails then is not the lane's failure.
+/**
+ * Set when stdout or stderr fails a write (EPIPE: whatever read it, `head -1`
+ * say, has gone): the report is incomplete, so the run fails, whatever the
+ * packages did. After a SIGHUP the terminal may be gone; a write that fails
+ * then is not the lane's failure.
+ */
+let outputLost = false;
 for (const stream of [process.stdout, process.stderr]) {
 	stream.on("error", () => {
-		if (signalled === undefined) process.exitCode = 1;
+		if (signalled !== undefined || outputLost) return;
+		outputLost = true;
+		if (stream === process.stdout) {
+			say(
+				"mirror-lane: stdout closed before the lane finished; its report is incomplete, so the lane fails",
+			);
+		}
 	});
 }
 // The last word, which cannot wait: no group the lane started outlives it,
@@ -343,4 +356,4 @@ try {
 } finally {
 	await cleanUp();
 }
-process.exit(signalled ?? status);
+process.exit(signalled ?? (outputLost ? 1 : status));

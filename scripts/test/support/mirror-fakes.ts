@@ -105,8 +105,10 @@ const FAKE_PNPM = `#!/usr/bin/env node
 const { connect } = require("node:net");
 const { spawn } = require("node:child_process");
 const port = Number(process.env.FAKE_BEACON);
-const report = (role) => { const socket = connect(port, "127.0.0.1", () => socket.write(JSON.stringify({ role, pid: process.pid }) + "\\n")); };
-report("pnpm");
+const socket = connect(port, "127.0.0.1", () => socket.write(JSON.stringify({ role: "pnpm", pid: process.pid }) + "\\n"));
+// The order "pass" on that socket: the package run passes (exits 0).
+let orders = "";
+socket.on("data", (chunk) => { orders += chunk.toString("utf8"); if (orders.split("\\n").includes("pass")) process.exit(0); });
 // What a package run starts in turn; it ignores SIGTERM, as a busy worker can.
 spawn(process.execPath, ["-e", [
 	"process.on('SIGTERM', () => {});",

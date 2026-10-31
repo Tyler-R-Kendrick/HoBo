@@ -17,6 +17,7 @@ import {
 	type HttpTransport,
 	parseResolveOutcome,
 	parseResolveRequest,
+	parseResolverDirectives,
 	RESOLVER_CONTRACT,
 	type ResolveOutcome,
 	type ResolveRequest,
@@ -330,6 +331,8 @@ interface BoundResource {
 	readonly plan: ResourcePlan;
 	readonly productId: string;
 	readonly resolver: ResourceResolver;
+	/** The resolver's directives, parsed (a frozen copy, refused if malformed). */
+	readonly directives: readonly string[];
 	readonly request: ResolveRequest;
 }
 
@@ -421,7 +424,10 @@ export function createResolverBackedIacProvider(
 				credentialRef,
 			}),
 		);
-		return { plan: resource, productId, resolver, request };
+		// The registry is structural, so it may not be core's: the directive list
+		// is parsed here as well, and a malformed one is a typed refusal.
+		const directives = parseResolverDirectives(resolver);
+		return { plan: resource, productId, resolver, directives, request };
 	}
 
 	return {
@@ -468,7 +474,7 @@ export function createResolverBackedIacProvider(
 			const { differing, unobservable, directives } = compareDesired(
 				isJsonObject(desiredJson) ? desiredJson : {},
 				isJsonObject(observedJson) ? observedJson : {},
-				bound.resolver.directives ?? [],
+				bound.directives,
 			);
 			const notCompared = directiveNote(directives);
 			if (differing.length > 0) {
@@ -575,7 +581,7 @@ export function createResolverBackedIacProvider(
 			const { differing, unobservable, directives } = compareDesired(
 				isJsonObject(desiredJson) ? desiredJson : {},
 				isJsonObject(observedJson) ? observedJson : {},
-				bound.resolver.directives ?? [],
+				bound.directives,
 			);
 			// A reason has no closing period of its own, so a note gets one first.
 			const directiveTail =

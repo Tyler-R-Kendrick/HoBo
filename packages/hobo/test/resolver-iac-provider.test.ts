@@ -15,6 +15,7 @@ import {
 	RESOLVER_CONTRACT,
 	type ResolveOutcome,
 	type ResolveRequest,
+	ResolverError,
 	type ResourceResolver,
 	type TransportResponse,
 } from "@hobo/core";
@@ -622,6 +623,39 @@ describe("resolver-backed IacProvider: refresh", () => {
 		);
 	});
 
+	it.each([
+		[5, "a number"],
+		["purgeOnDelete", "a string"],
+		[["purgeOnDelete", "purgeOnDelete"], "a repeated name"],
+	])("refuses, as a typed refusal, a registry outside core whose resolver lists %o (%s) as its directives", async (directives: JsonValue, _why: string) => {
+		const store = await storeWithPlan([
+			steeredNode({ title: "sessions", purgeOnDelete: true }),
+		]);
+		const resolver = Object.assign(steeredResolver([]), { directives });
+		const driver = createResolverBackedIacProvider({
+			store,
+			// A structural registry, not createResolverRegistry, so nothing
+			// checked the resolver on the way in.
+			registry: { get: () => resolver, list: () => [resolver] },
+			transport: unreachableTransport,
+			credentialRef: CREDENTIAL_REF,
+		});
+
+		for (const call of [
+			driver.preview(program("sessions", "preview")),
+			driver.refresh(program("sessions")),
+		]) {
+			const refusal = await call.then(
+				() => undefined,
+				(error: Error) => error,
+			);
+			expect(refusal).toBeInstanceOf(ResolverError);
+			expect(refusal instanceof ResolverError ? refusal.code : "").toBe(
+				"RESOLVER_PRODUCT_UNSUPPORTED",
+			);
+		}
+	});
+
 	it("reports drift when the resource the plan describes is gone", async () => {
 		const store = await storeWithPlan([kvNode("sessions")]);
 		const account = createFakeCloudflareAccount();
@@ -780,12 +814,25 @@ function steeredNode(realizationParameters: JsonObject): ResourcePlan {
 	};
 }
 
-/** A resolver whose read() reports `outputs` (the title by default), and that reads `directives` as directives. */
+/** A driver over {@link steeredResolver}, registered through core's registry. */
 function steeredDriver(
 	store: RuntimeLocalEventStore,
 	directives: readonly string[],
 	outputs: JsonObject = { title: "sessions" },
 ) {
+	return createResolverBackedIacProvider({
+		store,
+		registry: createResolverRegistry([steeredResolver(directives, outputs)]),
+		transport: unreachableTransport,
+		credentialRef: CREDENTIAL_REF,
+	});
+}
+
+/** A resolver whose read() reports `outputs` (the title by default), and that reads `directives` as directives. */
+function steeredResolver(
+	directives: readonly string[],
+	outputs: JsonObject = { title: "sessions" },
+): ResourceResolver {
 	const outcome: ResolveOutcome = {
 		contract: RESOLVER_CONTRACT,
 		action: "noop",
@@ -793,7 +840,7 @@ function steeredDriver(
 		outputs,
 		diagnostics: [],
 	};
-	const resolver: ResourceResolver = {
+	return {
 		providerId: "steered",
 		productId: STEERED_PRODUCT_ID,
 		directives,
@@ -807,10 +854,4 @@ function steeredDriver(
 			// nothing to do
 		},
 	};
-	return createResolverBackedIacProvider({
-		store,
-		registry: createResolverRegistry([resolver]),
-		transport: unreachableTransport,
-		credentialRef: CREDENTIAL_REF,
-	});
 }

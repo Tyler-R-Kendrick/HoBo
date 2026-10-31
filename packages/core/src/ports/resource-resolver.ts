@@ -299,7 +299,7 @@ export function createResolverRegistry(
 				resolver.productId,
 			);
 		}
-		byProduct.set(resolver.productId, resolver);
+		byProduct.set(resolver.productId, registered(resolver));
 	}
 
 	const ordered = Object.freeze(
@@ -342,18 +342,27 @@ function assertResolverContract(value: ResourceResolver): void {
 			value.productId,
 		);
 	}
-	assertDirectives(value);
+	parseResolverDirectives(value);
 }
 
+/** The directives of a resolver that names none. */
+const NO_DIRECTIVES: readonly string[] = Object.freeze([]);
+
 /**
- * A directive list names parameters, so it is refused at registration unless
- * it is a list of distinct parameter names: it decides which declared keys a
- * caller leaves out of a desired-versus-observed comparison, and an entry that
- * names nothing, or names a key twice, is a resolver nobody reviewed.
+ * A resolver's directives, parsed: a frozen copy of its list, or an empty
+ * list when it names none. The list decides which declared keys a caller may
+ * leave out of a desired-versus-observed comparison, so anything but a list of
+ * distinct parameter names (a string, a number, an empty or repeated name) is
+ * refused with a typed `RESOLVER_PRODUCT_UNSUPPORTED`, never iterated as
+ * whatever it happens to be. `createResolverRegistry` registers this copy, and
+ * a caller holding a resolver from anywhere else reads it through here too, so
+ * mutating the array a resolver was built with changes nothing afterwards.
  */
-function assertDirectives(value: ResourceResolver): void {
-	const { directives } = value;
-	if (directives === undefined) return;
+export function parseResolverDirectives(
+	resolver: ResourceResolver,
+): readonly string[] {
+	const { directives } = resolver;
+	if (directives === undefined) return NO_DIRECTIVES;
 	const names: readonly JsonValue[] = isJsonArray(directives) ? directives : [];
 	const wellFormed =
 		isJsonArray(directives) &&
@@ -362,10 +371,34 @@ function assertDirectives(value: ResourceResolver): void {
 	if (!wellFormed) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
-			`resolver ${JSON.stringify(value.productId)} directives: expected distinct parameter names matching ${DIRECTIVE_PATTERN.source}, received ${JSON.stringify(directives)}`,
-			value.productId,
+			`resolver ${JSON.stringify(resolver.productId)} directives: expected distinct parameter names matching ${DIRECTIVE_PATTERN.source}, received ${JSON.stringify(directives)}`,
+			resolver.productId,
 		);
 	}
+	return Object.freeze([...directives]);
+}
+
+/**
+ * The resolver as registered: unchanged when it names no directives, else a
+ * frozen view that carries the parsed copy and delegates every call to it.
+ */
+function registered(resolver: ResourceResolver): ResourceResolver {
+	const directives = parseResolverDirectives(resolver);
+	if (resolver.directives === undefined) return resolver;
+	const view: ResourceResolver = {
+		providerId: resolver.providerId,
+		productId: resolver.productId,
+		directives,
+		reconcile: (request, transport) => resolver.reconcile(request, transport),
+		delete: (request, transport) => resolver.delete(request, transport),
+		...(resolver.read === undefined
+			? undefined
+			: {
+					read: async (request: ResolveRequest, transport: HttpTransport) =>
+						resolver.read?.(request, transport),
+				}),
+	};
+	return Object.freeze(view);
 }
 
 function parseResolvedResourceRef(

@@ -879,6 +879,12 @@ detach, expires with the authorization, and drains redemption/end facts to the
 Station's Yard audit feed. Private keys and session tokens are never copied
 into pane commands or remote hosts; a missing installed agent fails closed.
 
+`hobo-code session serve --host <machine> --port <n>` forwards the resident
+session browser over SSH under such an authorization, and closes the
+authorization when the forward ends, however it ends: when ssh exits, or on
+SIGINT, SIGTERM, SIGHUP or SIGQUIT, which stop ssh first and then end
+hobo-code with 128+n.
+
 ## Package layout
 
 `src/`, `test/`, `contracts/`, `data-models/` — konsistent production package.

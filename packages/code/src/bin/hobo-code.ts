@@ -14,7 +14,7 @@
  * not this coding harness.
  */
 import { spawn } from "node:child_process";
-import { tmpdir } from "node:os";
+import { constants as osConstants, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatHoboCodeResult, runHoboCodeCli } from "../cli.js";
@@ -50,6 +50,9 @@ removeComposedDirsOnSignals();
 // The launcher (bin/hobo-code.mjs) runs this process in a session of its own,
 // with an IPC channel: a launcher killed outright is a hangup here.
 hangUpWhenLauncherGoes();
+
+/** The signals that end hobo-code, all of which the launcher passes on. */
+const ENDING_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"] as const;
 
 const rawArgv = process.argv.slice(2);
 const json = rawArgv.includes("--json");
@@ -291,20 +294,42 @@ if (argv[0] === "_station-agent") {
 					},
 				);
 				let expired = false;
+				let stoppedBy: NodeJS.Signals | undefined;
 				let hardStop: NodeJS.Timeout | undefined;
+				const stopSsh = (signal: NodeJS.Signals): void => {
+					child.kill(signal);
+					hardStop ??= setTimeout(() => child.kill("SIGKILL"), 5_000);
+				};
 				const expiration = setTimeout(() => {
 					expired = true;
-					child.kill("SIGTERM");
-					hardStop = setTimeout(() => child.kill("SIGKILL"), 5_000);
+					stopSsh("SIGTERM");
 				}, leaseMs);
+				// A signal that ends hobo-code ends the forward, not the process
+				// straight away: ssh is stopped (it may have had the signal from
+				// the launcher's group already), and the authorization is closed
+				// below before hobo-code ends with 128+n.
+				const onSignal = (signal: NodeJS.Signals): void => {
+					stoppedBy ??= signal;
+					stopSsh(signal);
+				};
+				for (const signal of ENDING_SIGNALS) process.on(signal, onSignal);
 				const finish = (code: number): void => {
 					clearTimeout(expiration);
 					if (hardStop) clearTimeout(hardStop);
+					for (const signal of ENDING_SIGNALS) process.off(signal, onSignal);
 					resolve(code);
 				};
 				child.once("error", () => finish(1));
 				child.once("exit", (code, signal) =>
-					finish(expired ? 124 : signal === "SIGINT" ? 130 : (code ?? 1)),
+					finish(
+						expired
+							? 124
+							: stoppedBy !== undefined
+								? 128 + osConstants.signals[stoppedBy]
+								: signal === "SIGINT"
+									? 130
+									: (code ?? 1),
+					),
 				);
 			});
 		} finally {
@@ -339,14 +364,8 @@ if (argv[0] === "_station-agent") {
 		// Listen before saying where the server is, so a signal sent once the
 		// address is out reaches the close.
 		const stopped = new Promise<void>((resolve) => {
-			for (const signal of [
-				"SIGINT",
-				"SIGTERM",
-				"SIGHUP",
-				"SIGQUIT",
-			] as const) {
+			for (const signal of ENDING_SIGNALS)
 				process.once(signal, () => resolve());
-			}
 		});
 		process.stdout.write(
 			`browser: ${browser}\nevidence report: ${report}\nevidence controls: ${controls}\nhobo dev: HOBO_CODE_EVIDENCE_CONTROLS_URL=${controls}?parentOrigin=<app-origin>\nremote: forward ${new URL(browser).host} through a declared Station machine; the server never binds publicly\n`,

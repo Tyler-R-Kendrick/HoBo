@@ -14,7 +14,12 @@
  * - ends at P's directory or name, in a file that runs or loads something by a
  *   computed path (`spawn`, `import()` of a non-literal, `createRequire`,
  *   `symlink`, `new Worker`): `join(root, "packages", "adapters",
- *   "adapter-hono")` linked into a generated app.
+ *   "adapter-hono")` linked into a generated app, or
+ *   `new URL("../../hobo", import.meta.url)` linked into a temporary root. It
+ *   ends at P where it names P in more than one segment (`packages/hobo`,
+ *   `@hobo/hobo`, `runtimes/runtime-local`), right after `..`, or by P's name
+ *   right after `node_modules`. One segment after a computed root
+ *   (`join(evidence, "events")`) is a name, not a path to P.
  *
  * A path that goes on into P's tracked source, or its `node_modules`, needs no
  * build of P and is not a reach; nor is one that names P only in the middle of
@@ -47,22 +52,20 @@ export function runtimeReaches(
 	packages: readonly PackageDir[],
 ): Map<string, string> {
 	const reached = new Map<string, string>();
-	// Each way a path can name a package, and whether it may end there: its
-	// directory, its name, and each run of its directory's trailing segments
-	// (`runtimes/runtime-local`, `runtime-local`), as a path relative to a
-	// sibling or to the packages directory reads it.
+	// Each way a path can name a package: its directory, its name, and each
+	// run of its directory's trailing segments (`runtimes/runtime-local`,
+	// `runtime-local`), as a path relative to a sibling or to the packages
+	// directory reads it.
 	const names = packages.flatMap((pkg) => {
 		const dir = pkg.dir.split("/");
 		return [
-			{ name: pkg.name, parts: dir, whole: dir.length > 1 },
-			{ name: pkg.name, parts: pkg.name.split("/"), whole: true },
-			...dir
-				.slice(1)
-				.map((_, k) => ({
-					name: pkg.name,
-					parts: dir.slice(k + 1),
-					whole: false,
-				})),
+			{ name: pkg.name, parts: dir, byName: false },
+			{ name: pkg.name, parts: pkg.name.split("/"), byName: true },
+			...dir.slice(1).map((_, k) => ({
+				name: pkg.name,
+				parts: dir.slice(k + 1),
+				byName: false,
+			})),
 		];
 	});
 	for (const text of facts.paths) {
@@ -70,13 +73,19 @@ export function runtimeReaches(
 			.split(/[\\/]/u)
 			.filter((part) => part !== "" && part !== ".");
 		parts.forEach((_, i) => {
-			if (i > 0 && !ANCHORS.has(parts[i - 1]!)) return;
-			for (const { name, parts: named, whole } of names) {
+			const anchor = parts[i - 1];
+			if (anchor !== undefined && !ANCHORS.has(anchor)) return;
+			for (const { name, parts: named, byName } of names) {
 				if (!named.every((part, j) => parts[i + j] === part)) continue;
 				const next = parts[i + named.length];
+				// Where a path that stops here is a path to the package.
+				const ends =
+					named.length > 1 ||
+					anchor === ".." ||
+					(anchor === "node_modules" && byName);
 				if (
 					next === "dist" ||
-					(next === undefined && whole && facts.loadsComputed)
+					(next === undefined && ends && facts.loadsComputed)
 				)
 					if (!reached.has(name)) reached.set(name, text);
 			}

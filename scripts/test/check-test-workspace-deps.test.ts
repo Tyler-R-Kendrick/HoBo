@@ -913,6 +913,31 @@ describe("checkTestWorkspaceDeps", () => {
 		);
 	});
 
+	it("counts a path that ends at another package's directory after `..` or a computed root, where the file links or loads by a computed path", () => {
+		const symlink = 'import { symlinkSync } from "node:fs";\n';
+		within(
+			grouped({
+				"packages/app/test/link.test.ts": `${symlink}import { fileURLToPath } from "node:url";\nsymlinkSync(fileURLToPath(new URL("../../lib", import.meta.url)), "/tmp/x/lib", "dir");\n`,
+				"packages/app/test/grouped.test.ts": `${symlink}${JOIN}symlinkSync(join(process.cwd(), "..", "runtimes", "rt"), "/tmp/x/rt", "dir");\n`,
+				// A bare segment that happens to be a package's directory name is
+				// not a path to it, nor is one segment after a computed root.
+				"packages/app/test/bare.test.ts": `${symlink}${JOIN}symlinkSync("lib", "/tmp/x/lib", "dir");\nsymlinkSync(join(process.cwd(), "lib"), "/tmp/x/lib", "dir");\n`,
+				// Nothing here links or loads, so naming the directory reaches nothing.
+				"packages/app/test/quiet.test.ts":
+					'export const lib = new URL("../../lib", import.meta.url);\n',
+			}),
+			(dir) =>
+				assert.deepEqual(unmodelledIn(dir), [
+					reaching(
+						"packages/app/test/grouped.test.ts",
+						"@s/rt",
+						"*/../runtimes/rt",
+					),
+					reaching("packages/app/test/link.test.ts", "@s/lib", "../../lib"),
+				]),
+		);
+	});
+
 	it("checks a declared runtime reach: each need must be ordered for every test task that loads it", () => {
 		const run = [
 			'import { spawn } from "node:child_process";',

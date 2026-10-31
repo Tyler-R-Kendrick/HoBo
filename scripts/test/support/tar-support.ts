@@ -8,15 +8,20 @@ import { gzipSync } from "node:zlib";
 export interface TarEntry {
 	readonly name: string;
 	readonly body?: Uint8Array | string;
-	/** ustar type flag: "0" file (default), "2" symlink, "5" directory, "x" pax. */
+	/** ustar type flag: "0" file (default), "\0" old file, "2" symlink, "5" directory, "x" pax. */
 	readonly type?: string;
 	readonly linkname?: string;
 	/** Corrupt the header checksum. */
 	readonly badChecksum?: boolean;
 	/** The size the header claims, when it is not the body's length (no data follows then). */
 	readonly claimedSize?: number;
-	/** The magic at offset 257, when it is not POSIX ustar's (`""` writes a v7 header). */
+	/**
+	 * The eight bytes at offset 257, magic then version: POSIX ustar's
+	 * `ustar\0` `00` unless given, GNU's `ustar  \0`, or `""` for a v7 header.
+	 */
 	readonly magic?: string;
+	/** The ustar prefix field (offset 345), written as given; `name` is then not split. */
+	readonly prefix?: string;
 }
 
 function put(block: Buffer, text: string, at: number, length: number): void {
@@ -30,7 +35,10 @@ function octalField(value: number, length: number): string {
 function header(entry: TarEntry, size: number): Buffer {
 	const block = Buffer.alloc(512);
 	const name = entry.name;
-	if (name.length > 100) {
+	if (entry.prefix !== undefined) {
+		put(block, name, 0, 100);
+		put(block, entry.prefix, 345, 155);
+	} else if (name.length > 100) {
 		const cut = name.lastIndexOf("/", 155);
 		put(block, name.slice(cut + 1), 0, 100);
 		put(block, name.slice(0, cut), 345, 155);
@@ -46,9 +54,7 @@ function header(entry: TarEntry, size: number): Buffer {
 	put(block, "        ", 148, 8);
 	put(block, type, 156, 1);
 	put(block, entry.linkname ?? "", 157, 100);
-	const magic = entry.magic ?? "ustar\0";
-	put(block, magic, 257, 6);
-	if (magic === "ustar\0") put(block, "00", 263, 2);
+	put(block, entry.magic ?? "ustar\u000000", 257, 8);
 	let sum = 0;
 	for (const byte of block) sum += byte;
 	if (entry.badChecksum === true) sum += 1;

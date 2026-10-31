@@ -188,6 +188,36 @@ describe("readMirrorJournal", () => {
 			200,
 			`[{"RequestID":"r","ServiceID":"s","Operation":"o","Tier":"emulate","ErrorCode":""}]`,
 		],
+		[
+			"an entry whose tier mirror does not have",
+			200,
+			`[${ENTRY.replace(`"Tier":"emulate"`, `"Tier":"live"`)}]`,
+		],
+		[
+			"an entry with an empty tier",
+			200,
+			`[${ENTRY.replace(`"Tier":"emulate"`, `"Tier":""`)}]`,
+		],
+		[
+			"an entry whose status is no HTTP status",
+			200,
+			`[${ENTRY.replace(`"Status":200`, `"Status":0`)}]`,
+		],
+		[
+			"an entry whose status is past 599",
+			200,
+			`[${ENTRY.replace(`"Status":200`, `"Status":600`)}]`,
+		],
+		[
+			"an entry whose status is not an integer",
+			200,
+			`[${ENTRY.replace(`"Status":200`, `"Status":200.5`)}]`,
+		],
+		[
+			"an entry with an empty operation",
+			200,
+			`[${ENTRY.replace(`"Operation":"CreateProject"`, `"Operation":""`)}]`,
+		],
 	])("refuses %s", async (_name, status, body) => {
 		const mirror = await fakeMirror((_seen, response) =>
 			answerJson(response, status, body),
@@ -195,6 +225,19 @@ describe("readMirrorJournal", () => {
 		await expect(
 			readMirrorJournal(parseHttpEndpoint({ baseUrl: mirror.url })),
 		).rejects.toMatchObject({ code: "MIRROR_JOURNAL_UNREADABLE" });
+	});
+
+	it("names the field and the value it refused", async () => {
+		const mirror = await fakeMirror((_seen, response) =>
+			answerJson(
+				response,
+				200,
+				`[${ENTRY.replace(`"Tier":"emulate"`, `"Tier":"live"`)}]`,
+			),
+		);
+		await expect(
+			readMirrorJournal(parseHttpEndpoint({ baseUrl: mirror.url })),
+		).rejects.toThrow(/Tier "live" is not one of emulate, mock, proxy/u);
 	});
 });
 

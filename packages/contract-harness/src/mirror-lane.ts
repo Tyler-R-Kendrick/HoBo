@@ -127,12 +127,20 @@ export function mirrorControl(
 	});
 }
 
+// public-contract: the tiers mirror answers at (data-models/contract-harness.cue #MirrorJournalEntry.tier).
+export const MIRROR_TIERS = Object.freeze([
+	"emulate",
+	"mock",
+	"proxy",
+] as const);
+export type MirrorTier = (typeof MIRROR_TIERS)[number];
+
 // domain-view: a parsed, frozen journal entry; data-models/contract-harness.proto MirrorJournalEntry is its wire form.
 export interface MirrorJournalEntry {
 	readonly requestId: string;
 	readonly serviceId: string;
 	readonly operation: string;
-	readonly tier: string;
+	readonly tier: MirrorTier;
 	readonly status: number;
 	readonly errorCode: string;
 }
@@ -151,19 +159,50 @@ interface JsonRecord {
 
 const tagOf = Object.prototype.toString;
 
-function field(
-	record: JsonRecord,
-	key: string,
-	kind: "[object String]" | "[object Number]",
-): string | number {
+function unreadable(message: string): MirrorLaneError {
+	return new MirrorLaneError("MIRROR_JOURNAL_UNREADABLE", message);
+}
+
+/** A string field; `nonEmpty` as the CUE model's `string & !=""`. */
+function textField(record: JsonRecord, key: string, nonEmpty: boolean): string {
 	const value = record[key];
-	if (tagOf.call(value) !== kind) {
-		throw new MirrorLaneError(
-			"MIRROR_JOURNAL_UNREADABLE",
-			`a journal entry has no ${kind === "[object String]" ? "string" : "number"} ${key}`,
+	if (tagOf.call(value) !== "[object String]") {
+		throw unreadable(`a journal entry has no string ${key}`);
+	}
+	const read = String(value);
+	if (nonEmpty && read === "") {
+		throw unreadable(`a journal entry has an empty ${key}`);
+	}
+	return read;
+}
+
+function isTier(value: string): value is MirrorTier {
+	return MIRROR_TIERS.some((tier) => tier === value);
+}
+
+function tier(record: JsonRecord): MirrorTier {
+	const value = textField(record, "Tier", false);
+	if (!isTier(value)) {
+		throw unreadable(
+			`a journal entry's Tier ${JSON.stringify(value)} is not one of ${MIRROR_TIERS.join(", ")}`,
 		);
 	}
-	return kind === "[object String]" ? String(value) : Number(value);
+	return value;
+}
+
+/** An HTTP status, 100 to 599, as the CUE model's `int & >=100 & <=599`. */
+function status(record: JsonRecord): number {
+	const value = record.Status;
+	if (tagOf.call(value) !== "[object Number]") {
+		throw unreadable("a journal entry has no number Status");
+	}
+	const read = Number(value);
+	if (!Number.isInteger(read) || read < 100 || read > 599) {
+		throw unreadable(
+			`a journal entry's Status ${read} is not an HTTP status (an integer from 100 to 599)`,
+		);
+	}
+	return read;
 }
 
 /** Newest first, as the emulator keeps them. */
@@ -216,12 +255,12 @@ export async function readMirrorJournal(
 			// SAFETY: the tag check above proves this JSON value is an object.
 			const record = entry as JsonRecord;
 			return Object.freeze({
-				requestId: String(field(record, "RequestID", "[object String]")),
-				serviceId: String(field(record, "ServiceID", "[object String]")),
-				operation: String(field(record, "Operation", "[object String]")),
-				tier: String(field(record, "Tier", "[object String]")),
-				status: Number(field(record, "Status", "[object Number]")),
-				errorCode: String(field(record, "ErrorCode", "[object String]")),
+				requestId: textField(record, "RequestID", true),
+				serviceId: textField(record, "ServiceID", true),
+				operation: textField(record, "Operation", true),
+				tier: tier(record),
+				status: status(record),
+				errorCode: textField(record, "ErrorCode", false),
 			});
 		}),
 	);

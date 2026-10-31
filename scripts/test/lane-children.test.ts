@@ -13,7 +13,7 @@ import { once } from "node:events";
 import process from "node:process";
 import { afterEach, beforeEach, describe, it } from "node:test";
 
-import { LaneChildren } from "../lib/lane-children.ts";
+import { LaneChildren, MAX_STOP_GRACE_MS } from "../lib/lane-children.ts";
 import { beacon } from "./support/mirror-fakes.ts";
 
 /** Every `process.kill(pid, signal)` the code under test made. */
@@ -145,5 +145,55 @@ describe("LaneChildren", () => {
 		} finally {
 			await listener.close();
 		}
+	});
+});
+
+/** A refusal of `graceMs` that says what a grace may be, and names the value. */
+function refusesGrace(graceMs: number) {
+	return (error: Error) =>
+		error instanceof RangeError &&
+		error.message.includes(
+			"graceMs must be a whole number of milliseconds from 0 to 2147483647",
+		) &&
+		error.message.includes(String(graceMs));
+}
+
+describe("LaneChildren's stop grace: what a timer holds, or a refusal", () => {
+	// Node runs a timer longer than 2147483647 ms after 1 ms (TimeoutOverflowWarning),
+	// so such a grace would SIGKILL at once.
+	for (const graceMs of [
+		3e9,
+		MAX_STOP_GRACE_MS + 1,
+		-1,
+		1.5,
+		Number.NaN,
+		Number.POSITIVE_INFINITY,
+	]) {
+		it(`refuses a grace of ${graceMs} ms when constructed`, () => {
+			assert.throws(() => new LaneChildren({ graceMs }), refusesGrace(graceMs));
+		});
+	}
+
+	it("takes a grace of 0 and of MAX_STOP_GRACE_MS (2147483647 ms)", () => {
+		assert.equal(MAX_STOP_GRACE_MS, 2_147_483_647);
+		new LaneChildren({ graceMs: 0 });
+		new LaneChildren({ graceMs: MAX_STOP_GRACE_MS });
+	});
+
+	it("refuses such a grace for one stop and for stopAll, before it signals or closes anything", async () => {
+		const children = new LaneChildren();
+		const child = node(children, "setInterval(() => {}, 1 << 30)");
+		await once(child, "spawn");
+
+		assert.throws(() => children.stop(child, 3e9), refusesGrace(3e9));
+		await assert.rejects(children.stopAll(3e9), refusesGrace(3e9));
+
+		assert.deepEqual(toGroup(child.pid), []);
+		// Still open: a refused stopAll closed nothing.
+		const another = node(children, "process.exit(0)");
+		await once(another, "exit");
+		const exit = once(child, "exit");
+		await children.stopAll();
+		await exit;
 	});
 });

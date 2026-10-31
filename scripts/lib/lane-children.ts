@@ -58,9 +58,23 @@ function signal(child: ChildProcess, name: NodeJS.Signals): void {
  */
 export const MAX_STOP_GRACE_MS = 2_147_483_647;
 
+/** `graceMs` as a timer holds it, or a RangeError: a grace past the limit would SIGKILL after 1 ms. */
+function checkedGrace(graceMs: number): number {
+	if (
+		!Number.isInteger(graceMs) ||
+		graceMs < 0 ||
+		graceMs > MAX_STOP_GRACE_MS
+	) {
+		throw new RangeError(
+			`LaneChildren: graceMs must be a whole number of milliseconds from 0 to ${MAX_STOP_GRACE_MS} (the longest delay a timer holds; a longer one fires after 1 ms), not ${graceMs}`,
+		);
+	}
+	return graceMs;
+}
+
 /** How a `LaneChildren` stops what it started. */
 export interface LaneChildrenOptions {
-	/** How long a stop waits after SIGTERM before it sends SIGKILL, at most `MAX_STOP_GRACE_MS`; 5000 by default. */
+	/** How long a stop waits after SIGTERM before it sends SIGKILL: 0 to `MAX_STOP_GRACE_MS`, else a RangeError; 5000 by default. */
 	readonly graceMs?: number;
 }
 
@@ -72,7 +86,7 @@ export class LaneChildren {
 	#closed = false;
 
 	constructor(options: LaneChildrenOptions = {}) {
-		this.#graceMs = options.graceMs ?? 5_000;
+		this.#graceMs = checkedGrace(options.graceMs ?? 5_000);
 	}
 
 	/**
@@ -105,9 +119,11 @@ export class LaneChildren {
 	 * `graceMs` (the constructor's grace by default) if the child is still
 	 * running, and the exit handler's sweep.
 	 * Resolves once the child has exited. A child that has already exited is
-	 * not signalled at all, and a second stop waits on the first.
+	 * not signalled at all, and a second stop waits on the first. A grace a
+	 * timer cannot hold is a RangeError, before anything is signalled.
 	 */
 	stop(child: ChildProcess, graceMs = this.#graceMs): Promise<void> {
+		checkedGrace(graceMs);
 		const inProgress = this.#stopping.get(child);
 		if (inProgress !== undefined) return inProgress;
 		if (child.pid === undefined || !running(child)) return Promise.resolve();
@@ -125,8 +141,9 @@ export class LaneChildren {
 		return stopped;
 	}
 
-	/** Start nothing more and stop every child; resolves once each has exited. */
+	/** Start nothing more and stop every child; resolves once each has exited. A bad grace rejects, closing nothing. */
 	async stopAll(graceMs = this.#graceMs): Promise<void> {
+		checkedGrace(graceMs);
 		this.#closed = true;
 		await Promise.all(
 			[...this.#live].map((child) => this.stop(child, graceMs)),

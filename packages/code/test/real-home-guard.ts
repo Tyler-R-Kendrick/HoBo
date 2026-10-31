@@ -152,8 +152,11 @@ export interface HomeChanges {
 
 export function describeChanges(changes: HomeChanges): string {
 	return [
-		"packages/code tests wrote into a real HoBo home. Give the test its own",
-		"hoboHome (or HOME) in a temp dir it removes. During the run:",
+		"A real HoBo home changed while packages/code tests ran: this run, or",
+		"another process during it, wrote there. Give each test its own hoboHome",
+		"(or HOME) in a temp dir it removes; if a HoBo session or another",
+		"checkout's suite was writing there, run again once it is done.",
+		"During the run:",
 		...section("appeared", changes.gained),
 		...section("changed", changes.changed),
 		...section("removed", changes.removed),

@@ -241,7 +241,7 @@ describe("the guard", () => {
 			writeFileSync(join(home, ".hobo", "durable", "old.json"), "{}");
 			mkdirSync(join(temp, ".hobo"), { recursive: true });
 		});
-		expect(run.output).not.toMatch(/wrote into a real HoBo home/u);
+		expect(run.output).not.toMatch(/A real HoBo home changed/u);
 		expect(run.status).toBe(0);
 	});
 
@@ -255,6 +255,10 @@ describe("the guard", () => {
 		expect(run.status).toBe(1);
 		expect(run.output).toContain(
 			join(run.home, ".hobo", "durable", "leak.json"),
+		);
+		// It cannot tell who wrote: a HoBo session may have, meanwhile.
+		expect(run.output.replace(/\s+/gu, " ")).toContain(
+			"A real HoBo home changed while packages/code tests ran: this run, or another process during it, wrote there.",
 		);
 	});
 
@@ -318,7 +322,7 @@ describe("the guard", () => {
 			},
 			{ setupFiles: ISOLATION, env: { HOBO_HOME: "{home}/.hobo" } },
 		);
-		expect(run.output).not.toMatch(/wrote into a real HoBo home/u);
+		expect(run.output).not.toMatch(/A real HoBo home changed/u);
 		expect(run.status).toBe(0);
 		expect(existsSync(join(run.home, ".hobo", "durable", "leak.json"))).toBe(
 			false,
@@ -341,7 +345,7 @@ describe("the guard", () => {
 				env: { HOBO_HOME: "{home}/.local/state/hobo" },
 			},
 		);
-		expect(run.output).not.toMatch(/wrote into a real HoBo home/u);
+		expect(run.output).not.toMatch(/A real HoBo home changed/u);
 		expect(run.status).toBe(0);
 		expect(
 			existsSync(join(run.home, ".local", "state", "hobo", "durable")),

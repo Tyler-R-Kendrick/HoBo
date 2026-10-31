@@ -83,4 +83,33 @@ describe("forwardResidentSessions", () => {
 		expect(vi.getTimerCount()).toBe(0);
 		signals.release();
 	});
+
+	it("ends with 128+n when ssh's exit is seen before the signal that ended it", async () => {
+		// The launcher signals hobo-code's whole group, ssh included. Node can
+		// hand hobo-code ssh's exit before the signal: they reach different
+		// threads. The status was then ssh's (1), not 128+n.
+		const proc = source();
+		const signals = endingSignalHold(proc);
+		signals.hold();
+		const child = ssh();
+		const forwarded = forwardResidentSessions(
+			{
+				machine,
+				port: 4242,
+				identityAgent: "/run/agent.sock",
+				authorizationExpiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+			},
+			signals,
+			{
+				stdout: new Writable({ write: (_chunk, _encoding, done) => done() }),
+				startSsh: () => child,
+			},
+		);
+		await vi.waitFor(() => expect(child.listenerCount("exit")).toBe(1));
+		child.emit("exit", null, "SIGTERM");
+		proc.send("SIGTERM");
+		await expect(forwarded).resolves.toBe(143);
+		expect(child.kills).toEqual([]);
+		signals.release();
+	});
 });

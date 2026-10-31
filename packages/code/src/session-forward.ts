@@ -111,16 +111,23 @@ export async function forwardResidentSessions(
 			resolve(code);
 		};
 		child.once("error", () => finish(1));
-		child.once("exit", (code, signal) =>
-			finish(
-				expired
-					? 124
-					: stoppedBy !== undefined
-						? signalStatus(stoppedBy)
-						: signal === "SIGINT"
-							? 130
-							: (code ?? 1),
-			),
-		);
+		child.once("exit", (code, signal) => {
+			// The launcher's signal reaches ssh, in hobo-code's group, as it
+			// reaches hobo-code, and Node can hand hobo-code ssh's exit first:
+			// the two reach different threads. Let that signal reach its
+			// listener before the status is decided, or it was ssh's (1).
+			ended = true;
+			void handleSignalsAlreadySent().then(() =>
+				finish(
+					expired
+						? 124
+						: stoppedBy !== undefined
+							? signalStatus(stoppedBy)
+							: signal === "SIGINT"
+								? 130
+								: (code ?? 1),
+				),
+			);
+		});
 	});
 }

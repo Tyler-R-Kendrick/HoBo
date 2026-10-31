@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: parsePactDocument is the package's public parse boundary for untyped pact JSON (every package's pact tests hand it JSON.parse output); its typeof checks and narrowing casts are that boundary's contract, unchanged since it was written. */
 import type { Dirent } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
@@ -65,6 +64,7 @@ export class PactParseError extends Error {
 	}
 }
 
+/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: from here to the matching oxlint-enable is the parser as it stood before the mirror lane (d7aa2f45 and earlier): the public parse boundary for untyped pact JSON, whose typeof checks and narrowing casts are its contract. New code goes after the enable and is linted. */
 export function parsePactDocument(
 	input: unknown,
 	source?: string,
@@ -185,7 +185,8 @@ function parseInteraction(
 	const request = parseRequest(record.request, `${prefix}.request`, issues);
 	const response = parseResponse(record.response, `${prefix}.response`, issues);
 	const providerStates = parseProviderStateList(
-		record.providerStates,
+		// SAFETY: a pact document is parsed JSON, so each of its values is a JSON value.
+		record.providerStates as PactJsonValue | undefined,
 		prefix,
 		issues,
 	);
@@ -196,22 +197,6 @@ function parseInteraction(
 		request: request ?? { method: "GET", path: "/" },
 		response: response ?? { status: 200 },
 	};
-}
-
-function parseProviderStateList(
-	value: unknown,
-	prefix: string,
-	issues: string[],
-): readonly PactProviderState[] | undefined {
-	if (value === undefined) return undefined;
-	try {
-		// SAFETY: a pact document is parsed JSON, so each of its values is a JSON value.
-		return readProviderStates(value as PactJsonValue, prefix);
-	} catch (error) {
-		if (!(error instanceof ProviderStateError)) throw error;
-		issues.push(error.message.replace(/^PROVIDER_STATE_INVALID: /u, ""));
-		return undefined;
-	}
 }
 
 function parseRequest(
@@ -332,4 +317,21 @@ function parseStringMap(
 	}
 
 	return result;
+}
+/* oxlint-enable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion */
+
+/** One interaction's Pact v3 `providerStates`, or the issue that says what is wrong with them. */
+function parseProviderStateList(
+	value: PactJsonValue | undefined,
+	prefix: string,
+	issues: string[],
+): readonly PactProviderState[] | undefined {
+	if (value === undefined) return undefined;
+	try {
+		return readProviderStates(value, prefix);
+	} catch (error) {
+		if (!(error instanceof ProviderStateError)) throw error;
+		issues.push(error.message.replace(/^PROVIDER_STATE_INVALID: /u, ""));
+		return undefined;
+	}
 }

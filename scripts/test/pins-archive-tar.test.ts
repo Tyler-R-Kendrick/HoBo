@@ -444,6 +444,31 @@ const CASES: readonly Case[] = [
 		member: "ssh",
 		reader: "ARCHIVE_UNSAFE",
 	},
+	// Default-ignorable code points, which HFS+ and some Linux casefold kernels drop.
+	{
+		what: "mirror, then mi\u200drror (a zero-width joiner)",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{ name: utf8("mi\u200drror"), body: EVIL },
+		],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "mirror, then \ufeffmirror (a byte order mark)",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{ name: utf8("\ufeffmirror"), body: EVIL },
+		],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "mirror, and a file named with a variation selector",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{ name: utf8("x\ufe0f"), body: "x" },
+		],
+		reader: "ARCHIVE_UNSAFE",
+	},
 	{
 		what: "MIRROR/x, then mirror",
 		entries: [

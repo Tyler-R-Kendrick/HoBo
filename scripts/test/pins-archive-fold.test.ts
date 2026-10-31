@@ -4,19 +4,22 @@
  * accept an archive whose second copy of the member overwrites the first
  * there. `support/unicode-casefold.json` holds, for every assigned code point
  * of Unicode 15.1, its full case folding under canonical equivalence (Linux
- * casefold directories, APFS) and its simple uppercase (NTFS); its generator
- * is `support/unicode-casefold.py`. `foldName` may join more than either.
+ * casefold directories) and its simple uppercase (NTFS), and the
+ * Default_Ignorable_Code_Point ranges; its generator is
+ * `support/unicode-casefold.py`. `foldName` may join more than either.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import { foldName } from "../lib/pins-tar.ts";
+import { DEFAULT_IGNORABLE, firstIgnorable } from "../lib/pins-tar-names.ts";
 
 interface Table {
 	readonly unicode: string;
 	readonly fold: readonly (readonly [number, string])[];
 	readonly upcase: readonly (readonly [number, number])[];
+	readonly ignorable: readonly (readonly [number, number])[];
 }
 
 function readTable(): Table {
@@ -71,5 +74,26 @@ describe("foldName", () => {
 		assert.equal(fold("ẞH"), fold("ssh"));
 		assert.equal(fold("ßh"), fold("ssh"));
 		assert.equal(fold("STRAẞE"), fold("strasse"));
+	});
+});
+
+describe("default-ignorable code points", () => {
+	it("are Unicode 15.1's Default_Ignorable_Code_Point, every range of it", () => {
+		assert.deepEqual(DEFAULT_IGNORABLE, TABLE.ignorable);
+	});
+
+	it("are found in a name, whichever of them it holds and wherever", () => {
+		const missed: string[] = [];
+		for (const [low, high] of TABLE.ignorable) {
+			for (let point = low; point <= high; point += 1) {
+				const name = asBytes(`mi${String.fromCodePoint(point)}rror`);
+				if (firstIgnorable(name) !== point) {
+					missed.push(`U+${point.toString(16).toUpperCase()}`);
+				}
+			}
+		}
+		assert.deepEqual(missed, []);
+		assert.equal(firstIgnorable(asBytes("mirror")), undefined);
+		assert.equal(firstIgnorable(asBytes("caf\u00e9")), undefined);
 	});
 });

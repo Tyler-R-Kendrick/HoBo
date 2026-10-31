@@ -73,6 +73,9 @@
  * Erasable TypeScript with node builtins only.
  */
 import { PinsError } from "./pins.ts";
+import { firstIgnorable, foldName, shownName } from "./pins-tar-names.ts";
+
+export { foldName, shownName } from "./pins-tar-names.ts";
 
 export const BLOCK = 512;
 /** The largest member read: the manifest's largest asset. */
@@ -171,38 +174,6 @@ function octal(
  * The path an entry of `type` stored as `raw` is extracted to, in the one
  * spelling the reader compares; any other spelling is refused.
  */
-const UTF8 = new TextDecoder("utf-8", { fatal: true });
-
-/** A character for a message: itself, or an escape when it would not show (a control, a format character, a space other than U+0020). */
-function shownChar(char: string): string {
-	if (char === '"' || char === "\\") return `\\${char}`;
-	if (char === " " || !/[\p{C}\p{Z}]/u.test(char)) return char;
-	return `\\u{${(char.codePointAt(0) ?? 0).toString(16)}}`;
-}
-
-/**
- * A name for a message, quoted: its bytes read as UTF-8, so `café` is shown
- * as `café` and not as the latin1 of its bytes, with anything unprintable
- * escaped. Bytes that are not UTF-8 are shown as `\xNN`.
- */
-export function shownName(raw: string): string {
-	let text: string | undefined;
-	try {
-		text = UTF8.decode(Buffer.from(raw, "latin1"));
-	} catch {
-		text = undefined;
-	}
-	let shown = "";
-	for (const char of text ?? raw) {
-		const code = char.charCodeAt(0);
-		shown +=
-			text === undefined && code >= 0x80
-				? `\\x${code.toString(16).padStart(2, "0")}`
-				: shownChar(char);
-	}
-	return `"${shown}"`;
-}
-
 function entryPath(raw: string, type: string, archive: string): string {
 	const shown = shownName(raw);
 	if (type === "0" && raw.endsWith("/")) {
@@ -231,6 +202,13 @@ function entryPath(raw: string, type: string, archive: string): string {
 			`${archive} has an entry named ${shown}, with a "." or empty segment: tar extracts it where the plain name goes but does not find it by that name; refusing it`,
 		);
 	}
+	const ignorable = firstIgnorable(path);
+	if (ignorable !== undefined) {
+		throw new PinsError(
+			"ARCHIVE_UNSAFE",
+			`${archive} has an entry named ${shown}, holding U+${ignorable.toString(16).toUpperCase().padStart(4, "0")}, a default-ignorable code point, which HFS+ and some Linux casefold kernels drop from names, so it can be another name's file there; refusing it`,
+		);
+	}
 	if (path.includes("\\")) {
 		throw new PinsError(
 			"ARCHIVE_UNSAFE",
@@ -238,22 +216,6 @@ function entryPath(raw: string, type: string, archive: string): string {
 		);
 	}
 	return path;
-}
-
-/**
- * A name as a case-insensitive, normalisation-insensitive file system sees it:
- * its bytes read as UTF-8, put in NFC and case-folded by
- * `toLowerCase().toUpperCase().toLowerCase()`. That joins every pair Unicode's
- * full case folding joins under canonical equivalence (`ẞ`, `ß` and `ss`, as
- * Linux casefold directories and APFS do) and every pair NTFS's simple
- * uppercase joins; `pins-archive-fold.test.ts` checks both for every code
- * point against a Unicode 15.1 table. It also joins some names those keep
- * apart (`ı` with `i`), and bytes that are not UTF-8 all read as U+FFFD: both
- * only refuse more.
- */
-export function foldName(name: string): string {
-	const text = Buffer.from(name, "latin1").toString("utf8").normalize("NFC");
-	return text.toLowerCase().toUpperCase().toLowerCase().normalize("NFC");
 }
 
 function parseHeader(block: Buffer, archive: string): TarHeader {

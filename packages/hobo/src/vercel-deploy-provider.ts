@@ -32,6 +32,14 @@ import {
 // as a `VercelApiError`. A deploy to an existing project makes no other call, so
 // a credential scoped to deployments alone keeps working.
 //
+// The project is created in the scope `teamId` names, or in the token's own
+// scope when there is none. Vercel answers "Project not found" for a project
+// that exists only in another scope, so a missing `teamId`, or a wrong one the
+// token can still deploy to, makes a second project there rather than failing.
+// The outputs say what happened: `projectCreated` is "true" when this
+// deployment created the project, and `scope` is the `teamId`, or "personal"
+// (`IacOutputs` values are strings).
+//
 // HONEST SCOPE: the live Vercel call is credential-gated (activates only when a
 // real `VERCEL_TOKEN` reaches `createVercelClient`) and is NOT exercised in this
 // sandbox. Only request formation (against a mocked fetch), provider selection,
@@ -82,7 +90,8 @@ export interface VercelDeployProviderOptions {
 	// The Vercel project/deployment name. Defaults to "hobo-hello-bindle". The
 	// project is created when a deploy finds the account has none by that name.
 	readonly projectName?: string;
-	// The team id, when the token is a team token.
+	// The team id, when the project lives in a team. Without it, every request
+	// (and a project create) is in the token's own scope.
 	readonly teamId?: string;
 	// The artifact directory to deploy. Defaults to
 	// packages/hobo/fixtures/deploy/vercel.
@@ -99,6 +108,7 @@ export function createVercelDeployProvider(
 	const projectName = options.projectName ?? "hobo-hello-bindle";
 	const target = options.target ?? "production";
 	const templateDir = options.templateDir ?? defaultTemplateDir();
+	const scope = options.teamId ?? "personal";
 	const client = createVercelClient({
 		token: options.token,
 		...(options.fetch !== undefined ? { fetch: options.fetch } : undefined),
@@ -128,12 +138,13 @@ export function createVercelDeployProvider(
 			const files = readVercelFileTree(templateDir);
 			const request = { name: projectName, files, target };
 			let result: VercelDeploymentResult;
+			let projectCreated = false;
 			try {
 				result = await client.createDeployment(request);
 			} catch (error) {
 				if (!(error instanceof Error) || !isProjectNotFound(error)) throw error;
 				// A 409 here means someone made it meanwhile: it exists either way.
-				await client.createProject(projectName);
+				projectCreated = (await client.createProject(projectName)).created;
 				// Once only: a refusal of this deployment propagates.
 				result = await client.createDeployment(request);
 			}
@@ -142,6 +153,8 @@ export function createVercelDeployProvider(
 				deploymentId: result.id,
 				provider: "vercel",
 				target,
+				projectCreated: String(projectCreated),
+				scope,
 			};
 			byDeployment.set(program.deploymentId, outputs);
 			return outputs;

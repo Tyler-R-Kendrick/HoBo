@@ -117,6 +117,10 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 
 		expect(routes()).toEqual([DEPLOY]);
 		expect(outputs.url).toBe("https://hobo-hello-bindle-1.vercel.app");
+		expect(outputs).toMatchObject({
+			projectCreated: "false",
+			scope: "personal",
+		});
 		const deploy = parseJsonObject(first(sent).init.body ?? "");
 		expect(deploy.project).toBe("hobo-hello-bindle");
 	});
@@ -137,6 +141,7 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 		expect(routes()).toEqual([DEPLOY, CREATE, DEPLOY]);
 		expect(outputs.url).toBe("https://hobo-hello-bindle-1.vercel.app");
 		expect(outputs.deploymentId).toBe("dpl_1");
+		expect(outputs).toMatchObject({ projectCreated: "true", scope: "team_7" });
 		for (const { url } of sent) {
 			expect(new URL(url).search).toBe("?teamId=team_7");
 		}
@@ -163,6 +168,35 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 
 		expect(routes()).toEqual([DEPLOY, CREATE, DEPLOY]);
 		expect(outputs.url).toBe("https://hobo-hello-bindle-1.vercel.app");
+		expect(outputs).toMatchObject({
+			projectCreated: "false",
+			scope: "personal",
+		});
+	});
+
+	// The project lives in team_acme, but the provider was given no teamId, so
+	// Vercel looks for it in the token's own scope, answers "Project not found",
+	// and the create makes a second project of that name there. That does not
+	// fail; the outputs say it happened, and where.
+	it("with no teamId, creates the project in the personal scope and says so", async () => {
+		const { fetch, sent, routes } = scripted({
+			[DEPLOY]: [PROJECT_NOT_FOUND, DEPLOYED],
+			[CREATE]: [CREATED],
+		});
+		const provider = createVercelDeployProvider({
+			token: "tok",
+			fetch,
+			projectName: "acme-site",
+		});
+
+		const outputs = await provider.apply(programFor("dep-1"));
+
+		expect(routes()).toEqual([DEPLOY, CREATE, DEPLOY]);
+		for (const { url } of sent) expect(new URL(url).search).toBe("");
+		expect(outputs).toMatchObject({
+			projectCreated: "true",
+			scope: "personal",
+		});
 	});
 
 	it("retries a Project not found in any letter case", async () => {
@@ -311,12 +345,15 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 		});
 		const provider = createVercelDeployProvider({ token: "tok", fetch });
 
-		await provider.apply(programFor("dep-1"));
-		await provider.apply(programFor("dep-1"));
+		const earlier = await provider.apply(programFor("dep-1"));
+		const again = await provider.apply(programFor("dep-1"));
 		const later = await provider.apply(programFor("dep-2"));
 
 		expect(routes()).toEqual([DEPLOY, CREATE, DEPLOY, DEPLOY]);
+		expect(again).toEqual(earlier);
+		expect(earlier.projectCreated).toBe("true");
 		expect(later.url).toBe("https://two.vercel.app");
+		expect(later.projectCreated).toBe("false");
 	});
 
 	it("preview still makes no request", async () => {

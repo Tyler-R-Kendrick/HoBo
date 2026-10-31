@@ -140,6 +140,17 @@ Vercel's status, `error.code` and `error.message`. A credential binding's scope
 needs `POST` on `/v13/deployments`, and `POST` on `/v9/projects` for that first
 deploy; it needs no `GET` on the project.
 
+The project is created in the scope `teamId` names, or in the token's own scope
+when there is no `teamId`. Vercel answers "Project not found" for a project that
+lives only in another scope, so a missing `teamId`, or a wrong one the token can
+still deploy to, does not fail: it creates a second project of that name there
+and deploys to it. Set `teamId` (`createVercelDeployProvider({ token, teamId })`)
+for a project that lives in a team. `selectIacProvider` passes none, so
+`hobo up` with `VERCEL_TOKEN` deploys, and creates, in the token's own scope.
+The outputs say what happened: `projectCreated` is `"true"` when this deployment
+created the project and `"false"` otherwise, and `scope` is the `teamId`, or
+`"personal"` when there is none.
+
 **Credentials from OpenSesame (`HOBO_CREDENTIALS=opensesame`, [ADR-0170](../../docs/design/adr/02-identity-security.md#adr-0170)).**
 The composed `hobo` then relaunches itself once, before composing anything, as
 `opensesame dev --agent --schema <generated> run -- <this invocation>` (through

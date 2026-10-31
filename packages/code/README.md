@@ -433,11 +433,13 @@ hobo-code mux --host box.example  # same panes, over ssh
   claude    · coding-agent · bin:/home/you/.local/bin/claude
   codex     · coding-agent · bin:/home/you/.local/bin/codex
   ollama    · inference    · bin:/usr/local/bin/ollama
- in-session · stay in hobo-code · chat first · optional tmux attach -t hobo
+ in-session · stay in hobo-code · chat first · optional tmux attach -t =hobo
 ```
 
 Re-running is idempotent: an existing session is reused and only missing
 windows are added — it never duplicates or kills a pane you are working in.
+mux names its session exactly (tmux's `=hobo`): a session whose name only
+begins with it, such as `hobo-old`, is never joined or written to.
 
 **Panes open in the devenv workspace, one virtual worktree per agent.** The
 workspace is the directory that declares the toolchain (`DEVENV_ROOT`, else the

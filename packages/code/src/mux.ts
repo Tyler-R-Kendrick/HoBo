@@ -70,16 +70,23 @@ export interface MuxPlan {
 }
 
 /**
- * Pin a `-t` target to a session.
+ * Pin a `-t` target to the session named exactly `session`.
  *
  * tmux treats `-t <name>` on new-window/list-windows as a *window* target, so
  * a bare session name can prefix-match a window instead: with session "hobo"
  * and window "hobo-code", `new-window -t hobo` failed with "index 0 in use"
  * and the session silently came up with one pane. The trailing colon means
- * "this session, tmux's choice of window".
+ * "this session, tmux's choice of window". A session name, too, is matched
+ * as a prefix when no session has exactly that name: with only "hobo-old"
+ * there, `hobo:` meant "hobo-old". The leading `=` asks for an exact match.
  */
 export function sessionTarget(session: string): string {
-	return `${session}:`;
+	return `=${session}:`;
+}
+
+/** A `-t` target for the session named exactly `session` (see sessionTarget). */
+export function exactSession(session: string): string {
+	return `=${session}`;
 }
 
 /** tmux window names cannot contain dots or colons without confusing targets. */
@@ -293,7 +300,11 @@ export async function applyMux(
 	plan: MuxPlan,
 	runner: MuxRunner,
 ): Promise<ApplyResult> {
-	const has = await runner.run(["has-session", "-t", plan.session]);
+	const has = await runner.run([
+		"has-session",
+		"-t",
+		exactSession(plan.session),
+	]);
 	const existed = has.code === 0;
 	const created: string[] = [];
 
@@ -369,13 +380,17 @@ export async function applyMux(
 					const removed = await runner.run([
 						"kill-window",
 						"-t",
-						`${plan.session}:${createdName}`,
+						`${sessionTarget(plan.session)}=${createdName}`,
 					]);
 					if (removed.code === 0) surviving.delete(createdName);
 					rolledBack = rolledBack && removed.code === 0;
 				}
 			} else {
-				const removed = await runner.run(["kill-session", "-t", plan.session]);
+				const removed = await runner.run([
+					"kill-session",
+					"-t",
+					exactSession(plan.session),
+				]);
 				rolledBack = removed.code === 0;
 				if (rolledBack) surviving.clear();
 			}
@@ -403,6 +418,6 @@ export async function applyMux(
 
 /** The command a human runs to join the session — local or over ssh. */
 export function attachCommand(session: string, host?: string): string {
-	const local = `tmux attach -t ${safeWindowName(session)}`;
+	const local = `tmux attach -t ${exactSession(safeWindowName(session))}`;
 	return host ? `ssh -t ${host} ${JSON.stringify(local)}` : local;
 }

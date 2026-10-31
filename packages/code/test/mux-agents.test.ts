@@ -147,9 +147,9 @@ describe("uniform mux targets", () => {
 	});
 
 	it("builds an attach command for local and remote alike", () => {
-		expect(attachCommand("hobo")).toBe("tmux attach -t hobo");
+		expect(attachCommand("hobo")).toBe("tmux attach -t =hobo");
 		expect(attachCommand("hobo", "box")).toBe(
-			'ssh -t box "tmux attach -t hobo"',
+			'ssh -t box "tmux attach -t =hobo"',
 		);
 	});
 });
@@ -253,7 +253,7 @@ describe("applyMux", () => {
 			},
 		};
 		const result = await applyMux(plan, runner);
-		expect(seen).toEqual(["hobo:"]);
+		expect(seen).toEqual(["=hobo:"]);
 		expect(result.created).toEqual(["hobo-code", "claude"]);
 	});
 
@@ -300,7 +300,7 @@ describe("applyMux", () => {
 		expect(result.ok).toBe(false);
 		expect(result.detail).toContain("codex");
 		expect(result.detail).toContain("rollback complete");
-		expect(base.calls).toContainEqual(["kill-session", "-t", "hobo"]);
+		expect(base.calls).toContainEqual(["kill-session", "-t", "=hobo"]);
 		expect(result.created).toEqual([]);
 	});
 
@@ -319,7 +319,7 @@ describe("applyMux", () => {
 		};
 		const result = await applyMux(plan, runner);
 		expect(result.ok).toBe(false);
-		expect(base.calls).toContainEqual(["kill-window", "-t", "hobo:codex"]);
+		expect(base.calls).toContainEqual(["kill-window", "-t", "=hobo:=codex"]);
 		expect(base.calls.some((call) => call[0] === "kill-session")).toBe(false);
 	});
 

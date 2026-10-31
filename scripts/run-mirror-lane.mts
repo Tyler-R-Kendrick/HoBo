@@ -9,7 +9,8 @@
  * `MIRROR_CLOCK=controllable`, `MIRROR_VERCEL_FAULTS=1`) on a free loopback
  * port, sets `HOBO_MIRROR_URL` (and `HOBO_MIRROR_CA` with `--tls`), runs each
  * package's own `test:mirror` script one after another, always stops the
- * emulator, prints what its journal recorded, and exits 1 if any package
+ * emulator, prints what its journal recorded and the pact verification
+ * reports the tests left in `HOBO_MIRROR_REPORTS`, and exits 1 if any package
  * failed.
  *
  * The binary is `MIRROR_BIN` (a local build, refused in CI unless
@@ -26,7 +27,7 @@
  * run, 2 wrong usage.
  */
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import process from "node:process";
@@ -109,6 +110,20 @@ function runPackage(name: string, env: NodeJS.ProcessEnv): Promise<number> {
 	});
 }
 
+/** The provider verifications the tests recorded (`recordMirrorLaneReport`). */
+function printReports(dir: string): void {
+	const files = readdirSync(dir)
+		.filter((name) => name.endsWith(".json"))
+		.sort();
+	for (const file of files) {
+		const text = readFileSync(join(dir, file), "utf8").trim();
+		console.log(`mirror-lane: pact provider report ${file}: ${text}`);
+	}
+	if (files.length === 0) {
+		console.log("mirror-lane: no pact provider report was recorded");
+	}
+}
+
 async function printJournal(mirror: RunningMirror): Promise<void> {
 	try {
 		const summary = await summarizeJournal(mirror);
@@ -136,12 +151,17 @@ async function printJournal(mirror: RunningMirror): Promise<void> {
 const options = readArgs();
 let mirror: RunningMirror | undefined;
 let tlsDir: string | undefined;
+let reportDir: string | undefined;
 
 async function cleanUp(): Promise<void> {
 	await mirror?.stop();
 	mirror = undefined;
 	if (tlsDir !== undefined) rmSync(tlsDir, { recursive: true, force: true });
 	tlsDir = undefined;
+	if (reportDir !== undefined) {
+		rmSync(reportDir, { recursive: true, force: true });
+	}
+	reportDir = undefined;
 }
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
@@ -168,9 +188,11 @@ try {
 	if (mirror.caFile !== undefined) {
 		console.log(`mirror-lane:   tls ca ${mirror.caFile}`);
 	}
+	reportDir = mkdtempSync(join(tmpdir(), "hobo-mirror-reports-"));
 	const env = sanitizeNodeOptions({
 		...process.env,
 		HOBO_MIRROR_URL: mirror.url,
+		HOBO_MIRROR_REPORTS: reportDir,
 		...(mirror.caFile === undefined
 			? undefined
 			: { HOBO_MIRROR_CA: mirror.caFile }),
@@ -181,6 +203,7 @@ try {
 		results.push({ name, code: await runPackage(name, env) });
 	}
 	await printJournal(mirror);
+	printReports(reportDir);
 	for (const result of results) {
 		console.log(
 			`mirror-lane: ${result.name} ${result.code === 0 ? "passed" : `FAILED (exit ${result.code})`}`,

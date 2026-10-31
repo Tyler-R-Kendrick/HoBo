@@ -94,6 +94,8 @@
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
 		"test": "vitest run",
+		"pretest:mirror": "pnpm --filter @hobo/contract-harness run build",
+		"test:mirror": "vitest run --config vitest.mirror.config.ts",
 		"pretest:ci-e2e": "node --experimental-strip-types ../../scripts/ensure-built.mts",
 		"test:ci-e2e": "vitest run --config vitest.ci-e2e.config.ts"
 	}

@@ -30,3 +30,29 @@ package schema gate and reject insecure origins, malformed identities and embedd
 credentials. Credentials stay outside the link. Relay writes
 continue through the existing durable account/setup commands and projections;
 the CLI does not introduce a parallel event journal or read model.
+
+## Vercel API (`hobo-vercel-api.pact.json`)
+
+`HoboVercelDeploy` to `VercelApi`: what the composed hobo's two Vercel paths
+send (the resolver plane's project lookup and create, the deploy provider's
+`POST /v13/deployments`) and the answers they read, including Vercel's 404
+envelope for a project nobody created and for a deployment to one. The
+interactions run in order; the provider state is that neither `hobo-pact-site`
+nor `hobo-pact-missing` exists before the first.
+
+- Consumer: `test/hobo-vercel-api.contract.test.ts` (default lane) runs the
+  real resolver and client against `createMockProviderFromPact`; every request
+  must find its interaction and carry its declared headers, and every
+  interaction must be used.
+- Provider: `test/mirror/hobo-vercel-api.provider.mirror.test.ts` (the mirror
+  lane, `pnpm run test:mirror` at the root, ADR-0174) sends each interaction
+  over real HTTP to a mirror.cloud emulator and runs `verifyPact` on its
+  answers. The ids Vercel generates are admitted by the pact's Pact v3 `regex`
+  matching rules and nothing else. That is mirror's reading of Vercel's OpenAPI
+  document, not `api.vercel.com`.
+
+`test/mirror/vercel-deploy.mirror.test.ts` runs `createVercelClient` and
+`createVercelDeployProvider` against the same emulator: a deployment it accepts
+and records once, its `READY` state after the emulator's clock moves, and the
+404 for a project nobody created. The deploy provider does not create the
+project it deploys to.

@@ -1,0 +1,122 @@
+{
+	"consumer": { "name": "HoboVercelDeploy" },
+	"provider": { "name": "VercelApi" },
+	"interactions": [
+		{
+			"description": "a project nobody created is a 404 with Vercel's error envelope",
+			"request": {
+				"method": "GET",
+				"path": "/v9/projects/hobo-pact-site",
+				"headers": { "authorization": "Bearer hobo_pact_token" }
+			},
+			"response": {
+				"status": 404,
+				"body": { "error": { "code": "not_found" } }
+			}
+		},
+		{
+			"description": "create the project",
+			"request": {
+				"method": "POST",
+				"path": "/v9/projects",
+				"headers": {
+					"authorization": "Bearer hobo_pact_token",
+					"content-type": "application/json"
+				},
+				"body": { "name": "hobo-pact-site" }
+			},
+			"response": {
+				"status": 200,
+				"headers": { "content-type": "application/json" },
+				"body": {
+					"id": "prj_8b8788b1b182",
+					"name": "hobo-pact-site",
+					"framework": null
+				},
+				"matchingRules": {
+					"body": {
+						"$.id": { "matchers": [{ "match": "regex", "regex": "^prj_[0-9a-f]+$" }] }
+					}
+				}
+			}
+		},
+		{
+			"description": "deploy inline files to that project",
+			"request": {
+				"method": "POST",
+				"path": "/v13/deployments",
+				"headers": {
+					"authorization": "Bearer hobo_pact_token",
+					"content-type": "application/json"
+				},
+				"body": {
+					"name": "hobo-pact-site",
+					"project": "hobo-pact-site",
+					"files": [
+						{
+							"file": "index.html",
+							"data": "PGgxPmhvYm88L2gxPg==",
+							"encoding": "base64"
+						}
+					],
+					"target": "production",
+					"projectSettings": { "framework": null }
+				}
+			},
+			"response": {
+				"status": 200,
+				"headers": { "content-type": "application/json" },
+				"body": {
+					"id": "dpl_d9f691d3c56a4bff",
+					"url": "hobo-pact-site-56affb.vercel.app",
+					"name": "hobo-pact-site",
+					"target": "production",
+					"readyState": "QUEUED"
+				},
+				"matchingRules": {
+					"body": {
+						"$.id": { "matchers": [{ "match": "regex", "regex": "^dpl_[0-9a-f]+$" }] },
+						"$.url": {
+							"matchers": [
+								{ "match": "regex", "regex": "^hobo-pact-site-[0-9a-z]+\\.vercel\\.app$" }
+							]
+						}
+					}
+				}
+			}
+		},
+		{
+			"description": "a deployment that names a project nobody created is a 404",
+			"request": {
+				"method": "POST",
+				"path": "/v13/deployments",
+				"headers": {
+					"authorization": "Bearer hobo_pact_token",
+					"content-type": "application/json"
+				},
+				"body": {
+					"name": "hobo-pact-missing",
+					"project": "hobo-pact-missing",
+					"files": [
+						{
+							"file": "index.html",
+							"data": "PGgxPmhvYm88L2gxPg==",
+							"encoding": "base64"
+						}
+					],
+					"target": "production",
+					"projectSettings": { "framework": null }
+				}
+			},
+			"response": {
+				"status": 404,
+				"body": { "error": { "code": "not_found" } }
+			}
+		}
+	],
+	"metadata": {
+		"pactSpecification": { "version": "3.0.0" },
+		"providerStates": "The interactions run in order: no project hobo-pact-site or hobo-pact-missing exists before the first. The provider test deletes both first.",
+		"verifiedAgainst": "the mirror.cloud emulator (pnpm run test:mirror, ADR-0174): mirror's reading of Vercel's OpenAPI document, never compared with api.vercel.com"
+	}
+}

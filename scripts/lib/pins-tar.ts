@@ -49,7 +49,9 @@
  *   `tar` extracts it where the plain name goes, yet `tar -xzf A mirror`
  *   does not find it;
  * - ends in `/` and is a regular file: `tar` extracts it as a directory (the
- *   old convention for type `\0`, which GNU tar applies to type `0` too).
+ *   old convention for type `\0`, which GNU tar applies to type `0` too);
+ * - has a backslash: `tar` on Windows reads it as `/`, so `bin\mirror` is
+ *   `bin/mirror` there.
  *
  * A directory's one trailing `/` is dropped before it is compared.
  *
@@ -57,6 +59,12 @@
  * devminor) is read in one form only, which GNU tar reads to the same number
  * (`NUMERIC`); a field in any other form is refused. The checksum must be the
  * unsigned sum; tar also takes the signed one, and that is refused too.
+ *
+ * Some of these refuse what `tar` reads alike, rather than model it: the
+ * signed checksum, a numeric field with one leading NUL, another `isspace`
+ * byte before its digits, bytes after its terminator or base-256 digits, a
+ * GNU header, `./` and `//` in names, every link, a backslash, case
+ * variants. mirror's archives use none of them.
  *
  * The scan ends at the two zero blocks that end the archive; what follows them
  * is not read, as `tar` does not read it. A single zero block followed by an
@@ -163,8 +171,40 @@ function octal(
  * The path an entry of `type` stored as `raw` is extracted to, in the one
  * spelling the reader compares; any other spelling is refused.
  */
+const UTF8 = new TextDecoder("utf-8", { fatal: true });
+
+/** A character for a message: itself, or an escape when it would not show (a control, a format character, a space other than U+0020). */
+function shownChar(char: string): string {
+	if (char === '"' || char === "\\") return `\\${char}`;
+	if (char === " " || !/[\p{C}\p{Z}]/u.test(char)) return char;
+	return `\\u{${(char.codePointAt(0) ?? 0).toString(16)}}`;
+}
+
+/**
+ * A name for a message, quoted: its bytes read as UTF-8, so `café` is shown
+ * as `café` and not as the latin1 of its bytes, with anything unprintable
+ * escaped. Bytes that are not UTF-8 are shown as `\xNN`.
+ */
+export function shownName(raw: string): string {
+	let text: string | undefined;
+	try {
+		text = UTF8.decode(Buffer.from(raw, "latin1"));
+	} catch {
+		text = undefined;
+	}
+	let shown = "";
+	for (const char of text ?? raw) {
+		const code = char.charCodeAt(0);
+		shown +=
+			text === undefined && code >= 0x80
+				? `\\x${code.toString(16).padStart(2, "0")}`
+				: shownChar(char);
+	}
+	return `"${shown}"`;
+}
+
 function entryPath(raw: string, type: string, archive: string): string {
-	const shown = JSON.stringify(raw);
+	const shown = shownName(raw);
 	if (type === "0" && raw.endsWith("/")) {
 		throw new PinsError(
 			"ARCHIVE_UNSAFE",
@@ -189,6 +229,12 @@ function entryPath(raw: string, type: string, archive: string): string {
 		throw new PinsError(
 			"ARCHIVE_UNSAFE",
 			`${archive} has an entry named ${shown}, with a "." or empty segment: tar extracts it where the plain name goes but does not find it by that name; refusing it`,
+		);
+	}
+	if (path.includes("\\")) {
+		throw new PinsError(
+			"ARCHIVE_UNSAFE",
+			`${archive} has an entry named ${shown}, with a backslash, which tar on Windows reads as a path separator (\`bin\\mirror\` is \`bin/mirror\` there); refusing it`,
 		);
 	}
 	return path;
@@ -246,7 +292,7 @@ function parseHeader(block: Buffer, archive: string): TarHeader {
 		const kind = REFUSED_KIND.get(type);
 		throw new PinsError(
 			"ARCHIVE_UNSUPPORTED",
-			`${archive} has a type ${JSON.stringify(type)} entry${kind === undefined ? "" : ` (${kind})`}, whose data tar reads as that entry's own; only regular files, devices, directories and FIFOs are read`,
+			`${archive} has a type ${shownBytes(type)} entry${kind === undefined ? "" : ` (${kind})`}, whose data tar reads as that entry's own; only regular files, devices, directories and FIFOs are read`,
 		);
 	}
 	for (const [what, start, length] of NUMERIC_FIELDS) {
@@ -409,7 +455,7 @@ export class TarScan {
 		if (type === "1" || type === "2") {
 			throw new PinsError(
 				"ARCHIVE_UNSAFE",
-				`${this.#archive} has a ${kind} named ${name}; a link can give ${this.#member} a second name or lead a path somewhere else, so no link is read anywhere in the archive`,
+				`${this.#archive} has a ${kind} named ${shownName(name)}; a link can give ${this.#member} a second name or lead a path somewhere else, so no link is read anywhere in the archive`,
 			);
 		}
 		const folded = foldName(name);
@@ -418,21 +464,21 @@ export class TarScan {
 			throw new PinsError(
 				"ARCHIVE_UNSAFE",
 				seen === name
-					? `${this.#archive} holds ${name} twice; refusing to choose one`
-					: `${this.#archive} holds ${JSON.stringify(seen)} and ${JSON.stringify(name)}, which a case-insensitive file system (macOS, Windows) stores as one file; refusing to choose one`,
+					? `${this.#archive} holds ${shownName(name)} twice; refusing to choose one`
+					: `${this.#archive} holds ${shownName(seen)} and ${shownName(name)}, which a case-insensitive file system (macOS, Windows) stores as one file; refusing to choose one`,
 			);
 		}
 		this.#names.set(folded, name);
 		if (folded.startsWith(`${this.#folded}/`)) {
 			throw new PinsError(
 				"ARCHIVE_UNSAFE",
-				`${this.#archive} has ${name}, under ${this.#member}, so tar would make ${this.#member} a directory; refusing it`,
+				`${this.#archive} has ${shownName(name)}, under ${this.#member}, so tar would make ${this.#member} a directory; refusing it`,
 			);
 		}
 		if (type !== "5" && this.#folded.startsWith(`${folded}/`)) {
 			throw new PinsError(
 				"ARCHIVE_UNSAFE",
-				`${this.#archive} has a ${kind} at ${name}, where ${this.#member} needs a directory, so tar cannot extract both; refusing it`,
+				`${this.#archive} has a ${kind} at ${shownName(name)}, where ${this.#member} needs a directory, so tar cannot extract both; refusing it`,
 			);
 		}
 	}

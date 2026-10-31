@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 import fs, {
 	closeSync,
 	existsSync,
+	mkdirSync,
 	openSync,
 	readdirSync,
 	readFileSync,
@@ -206,6 +207,38 @@ describe("a failure writing the member", () => {
 		});
 	}
 
+	it("names each path once when the rename into place fails", async () => {
+		const dir = scratch("rename-failed");
+		const path = join(dir, "a.tar.gz");
+		writeFileSync(path, ARCHIVE);
+		// A directory with something in it where the entry goes: rename(2) cannot replace it.
+		const dest = join(dir, "out");
+		mkdirSync(join(dest, "x"), { recursive: true });
+		await assert.rejects(
+			extractMember(path, "mirror", dest, sha256Hex(ARCHIVE)),
+			(error: Error) => {
+				assert.ok(error instanceof PinsError, String(error));
+				assert.equal(error.code, "ARCHIVE_WRITE_FAILED");
+				assert.ok(error.cause instanceof Error && "code" in error.cause);
+				const errno = String(error.cause.code);
+				assert.equal(error.message.split(errno).length - 1, 1, error.message);
+				assert.equal(
+					error.message.split(`'${dest}'`).length - 1,
+					1,
+					error.message,
+				);
+				assert.equal(
+					error.message.split(`${dest}.`).length - 1,
+					1,
+					error.message,
+				);
+				return true;
+			},
+		);
+		assert.deepEqual(readdirSync(dir).sort(), ["a.tar.gz", "out"]);
+		assert.deepEqual(readdirSync(dest), ["x"]);
+	});
+
 	it("removes the partial file and keeps the write failure when closing it fails too", async (t) => {
 		const dir = scratch("close-failed");
 		const path = join(dir, "a.tar.gz");
@@ -250,7 +283,7 @@ describe("a failure writing the member", () => {
 				(error: Error) => {
 					assert.ok(error instanceof PinsError, String(error));
 					assert.equal(error.code, "ARCHIVE_WRITE_FAILED");
-					assert.match(error.message, new RegExp(`\\(${code}\\)`, "u"));
+					assert.equal(error.message.split(code).length - 1, 1, error.message);
 					assert.ok(error.cause instanceof Error && "code" in error.cause);
 					assert.equal(error.cause.code, code);
 					return true;

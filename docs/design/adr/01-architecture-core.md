@@ -927,6 +927,13 @@ Before this decision one sibling was pinned, by a gitlink, and obtained by a com
   - archive bytes that do not hash to the pin;
   - a file that cannot be read (`ARCHIVE_UNREADABLE`: absent, a directory, unreadable);
   - and, not a refusal of the archive, a failure to create, write, sync or rename the member's partial file (`ARCHIVE_WRITE_FAILED`: no space, an I/O error, no permission, or a write that makes no progress). Its message names the errno (`ENOSPC`, `EIO`, `EACCES`) and the error keeps the file system's own as its `cause`. It says nothing about the archive, so it is never reported as `ARCHIVE_MALFORMED`. If closing or removing the partial file then fails too (an NFS server reports a deferred write error at close), that error is recorded beside the first, in its message and its `suppressed` list, and the partial file is removed all the same.
+- **Refused although tar reads it alike.** Some refusals cover archives `tar` would extract without trouble, because modelling them buys mirror nothing and each is a place for the two readers to drift apart. mirror's archives (`tar --format=ustar`, `gzip -n`, `LICENSE` and `mirror`) contain none of them:
+  - a checksum that is the signed sum of the header (tar takes the signed or the unsigned one);
+  - a numeric field with one NUL before its digits (tar skips one), with a C `isspace` byte other than a space before them, with bytes after the NUL or space that ends them (tar ignores those), or in base-256;
+  - NULs after the gzip stream (gzip ignores them);
+  - a GNU-format header, a `./` or `//` in a name, a link anywhere, and two names that are one file only on a case-insensitive file system;
+  - a name with a backslash, which is a separator to tar on Windows (`bin\mirror` is `bin/mirror` there);
+  - more than 10,000 entries, or more skipped data than 32 times the archive's size plus 1 MiB.
 - **The drift check.** `pins:status` reads the cached archive once: it is checked against the pin, and the entry against the member it holds.
   - An edited entry is `unpacked file stale`, and `pins:fetch` unpacks it again from the cached archive without a download.
   - An edited archive is a mismatch, and is downloaded again.

@@ -46,7 +46,7 @@ function archiveFile(bytes: Buffer) {
 	return { dir, path };
 }
 
-/** GNU tar is the reference; elsewhere these comparisons say why they did not run. */
+/** GNU tar is the reference; without it, the tests that compare with it are skipped and say why. */
 const gnuTar = (() => {
 	const probe = spawnSync("tar", ["--version"], { encoding: "utf8" });
 	return probe.status === 0 && /GNU tar/u.test(probe.stdout)
@@ -55,7 +55,7 @@ const gnuTar = (() => {
 })();
 const gnuOnly =
 	gnuTar === undefined
-		? "needs GNU tar, which this machine does not have"
+		? "needs GNU tar on PATH, and this machine's tar is another one or none"
 		: false;
 
 /** What GNU tar lists, and what it extracts into a fresh directory. */
@@ -85,7 +85,7 @@ describe("entry types the reader does not model", () => {
 		["7", "contiguous file"],
 		["D", "GNU dumpdir"],
 	] as const) {
-		it(`refuses a type ${type} (${kind}) entry, whose data GNU tar never reads as headers`, async (t) => {
+		it(`refuses a type ${type} (${kind}) entry`, async () => {
 			const bytes = decoy(type);
 			const { dir, path } = archiveFile(bytes);
 			const dest = join(dir, "out");
@@ -94,10 +94,12 @@ describe("entry types the reader does not model", () => {
 				refusal("ARCHIVE_UNSUPPORTED"),
 			);
 			assert.equal(existsSync(dest), false);
-			if (gnuOnly !== false) {
-				t.diagnostic(gnuOnly);
-				return;
-			}
+		});
+
+		it(`GNU tar reads a type ${type} (${kind}) entry's data as its own, never as headers`, {
+			skip: gnuOnly,
+		}, () => {
+			const { path } = archiveFile(decoy(type));
 			const seen = asGnuTarSees(path);
 			assert.deepEqual(seen.listed, ["decoy"]);
 			assert.equal(seen.extracted.includes("mirror"), false);
@@ -200,6 +202,29 @@ describe("entry types the reader does not model", () => {
 });
 
 describe("member names", () => {
+	it("names an entry in a refusal by its UTF-8 text, with anything unprintable escaped", async () => {
+		const utf8 = (name: string): string =>
+			Buffer.from(name, "utf8").toString("latin1");
+		for (const [name, shown] of [
+			[utf8("caf\u00e9/../x"), '"caf\u00e9/../x"'],
+			[utf8("\u202emirror/../x"), '"\\u{202e}mirror/../x"'],
+			[utf8("a\u00a0b/../x"), '"a\\u{a0}b/../x"'],
+			["\xff/../x", '"\\xff/../x"'],
+		] as const) {
+			const bytes = tarGz([
+				{ name: "mirror", body: BINARY },
+				{ name, body: "x" },
+			]);
+			const { dir, path } = archiveFile(bytes);
+			await assert.rejects(
+				extractMember(path, "mirror", join(dir, "out"), sha256Hex(bytes)),
+				(error: Error) =>
+					refusal("ARCHIVE_UNSAFE")(error) && error.message.includes(shown),
+				shown,
+			);
+		}
+	});
+
 	it("refuses a second copy of the member spelled another way", async () => {
 		for (const second of [".//mirror", "./mirror", "./mirror/", "mirror/"]) {
 			const bytes = tarGz([

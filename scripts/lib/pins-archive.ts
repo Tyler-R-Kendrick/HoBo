@@ -212,18 +212,23 @@ export function writeAll(
 	}
 }
 
-/** Run `act` on `path`: a file system error becomes ARCHIVE_WRITE_FAILED naming its errno, a PinsError passes through. */
-function writing<T>(what: string, path: string, act: () => T): T {
+/**
+ * Run `act`, the step named `step`: a file system error becomes
+ * ARCHIVE_WRITE_FAILED, its message node's own (the errno first, then the
+ * path for a call that takes one), and a PinsError passes through. `step`
+ * names a path only where node's message does not.
+ */
+function writing<T>(step: string, act: () => T): T {
 	try {
 		return act();
 	} catch (error) {
 		if (error instanceof PinsError) throw error;
 		const errno =
-			error instanceof Error && "code" in error ? error.code : undefined;
+			error instanceof Error && "code" in error ? String(error.code) : "";
 		const detail = error instanceof Error ? error.message : String(error);
 		throw new PinsError(
 			"ARCHIVE_WRITE_FAILED",
-			`${what} ${path} failed${errno === undefined ? "" : ` (${String(errno)})`}: ${detail}`,
+			`${step} failed: ${errno === "" || detail.startsWith(`${errno}:`) ? detail : `${errno}: ${detail}`}`,
 			{ cause: error },
 		);
 	}
@@ -256,10 +261,12 @@ export async function extractMember(
 	let fd: number | undefined;
 	try {
 		// O_CREAT | O_EXCL: never an existing file, never through a link.
-		fd = writing("creating", partial, () => openSync(partial, "wx", 0o600));
+		fd = writing("creating the partial file", () =>
+			openSync(partial, "wx", 0o600),
+		);
 		const out = fd;
 		const read = await readMember(archive, member, (chunk) => {
-			writing(`writing ${member} to`, partial, () => writeAll(out, chunk));
+			writing(`writing ${member} to ${partial}`, () => writeAll(out, chunk));
 		});
 		if (read.archive !== sha256) {
 			throw new PinsError(
@@ -267,13 +274,15 @@ export async function extractMember(
 				`${archive} hashed to ${read.archive} while ${member} was read from it, but the pin says ${sha256}; nothing was kept`,
 			);
 		}
-		writing("syncing", partial, () => {
+		writing(`syncing ${partial}`, () => {
 			fsyncSync(out);
 			fchmodSync(out, 0o755);
 		});
 		fd = undefined;
-		writing("closing", partial, () => closeSync(out));
-		writing(`renaming ${partial} to`, dest, () => renameSync(partial, dest));
+		writing(`closing ${partial}`, () => closeSync(out));
+		writing("renaming the partial file into place", () =>
+			renameSync(partial, dest),
+		);
 	} catch (error) {
 		// Every error thrown above is a PinsError; a failure while cleaning up
 		// is recorded beside it, never in its place, and the partial file is

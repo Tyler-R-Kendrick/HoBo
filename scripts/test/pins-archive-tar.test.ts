@@ -354,6 +354,15 @@ const CASES: readonly Case[] = [
 		],
 		reader: "ARCHIVE_MALFORMED",
 	},
+	{
+		what: "bin/mirror, then bin\\mirror, which tar on Windows reads as bin/mirror",
+		entries: [
+			{ name: "bin/mirror", body: GOOD },
+			{ name: "bin\\mirror", body: EVIL },
+		],
+		member: "bin/mirror",
+		reader: "ARCHIVE_UNSAFE",
+	},
 	// The gzip stream: read to its end and checked, as gzip under tar checks it.
 	{
 		what: "two gzip members, LICENSE in the first and mirror in the second",

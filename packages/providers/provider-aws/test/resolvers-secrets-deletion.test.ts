@@ -89,6 +89,8 @@ interface FakeOptions {
 	readonly refuseDelete?: boolean;
 	/** What RestoreSecret does after answering success: nothing, or remove the secret. */
 	readonly restore?: "takes-no-effect" | "secret-vanishes";
+	/** DescribeSecret's DeletedDate as raw JSON text, for values JSON.stringify cannot write (1e400). */
+	readonly rawDeletedDate?: string;
 }
 
 /** One account's Secrets Manager, holding secrets through their recovery window. */
@@ -119,12 +121,23 @@ function fakeSecretsManager(
 		const idValue = payload.SecretId ?? payload.Name;
 		const name = isJsonString(idValue) ? idValue : "";
 		const secret = secrets.get(name);
-		const scheduled = secret?.deletedDate !== undefined;
+		// A null DeletedDate is the field's absence, as Smithy reads it.
+		const scheduled =
+			secret?.deletedDate !== undefined && secret.deletedDate !== null;
 		switch (target) {
 			case "DescribeSecret":
-				return secret === undefined
-					? fault("ResourceNotFoundException", NOT_FOUND)
-					: reply(200, describe(name, secret));
+				if (secret === undefined) {
+					return fault("ResourceNotFoundException", NOT_FOUND);
+				}
+				if (options.rawDeletedDate !== undefined) {
+					const body = JSON.stringify(describe(name, secret)).slice(0, -1);
+					return {
+						status: 200,
+						headers: {},
+						body: `${body},"DeletedDate":${options.rawDeletedDate}}`,
+					};
+				}
+				return reply(200, describe(name, secret));
 			case "CreateSecret": {
 				if (scheduled) return fault("InvalidRequestException", SCHEDULED);
 				if (secret !== undefined) {
@@ -571,51 +584,142 @@ function scheduledWith(deletedDate: JsonValue): Map<string, FakeSecret> {
 // as epoch seconds, which may be fractional (the API reference's own example
 // answers LastChangedDate as 1523477145.729). A provider that answers text
 // (mirror.cloud's emulator writes "2026-11-30T05:30:25.033060027Z") must
-// answer an RFC 3339 date-time. Anything else leaves the secret's state
-// unreadable, so read, reconcile and delete all refuse it.
+// answer an RFC 3339 date-time. Either becomes one canonical instant: UTC,
+// upper-case T and Z, a four-digit year, at least three fraction digits and at
+// most nine, no trailing zero past the third, a leap second kept as 60. A null
+// is the field's absence (Smithy's null-as-absent): not scheduled. Anything
+// else leaves the secret's state unreadable, so it is refused.
 describe("DeletedDate as a provider answers it", () => {
-	it("reads fractional epoch seconds to the millisecond", async () => {
-		const runner = harness(scheduledWith(1523477145.729));
+	it.each([
+		[1523477145.729, "2018-04-11T20:05:45.729Z", "fractional seconds"],
+		[1523477145.7296, "2018-04-11T20:05:45.730Z", "rounded to the millisecond"],
+		[1764480625, "2025-11-30T05:30:25.000Z", "whole seconds"],
+		[0, "1970-01-01T00:00:00.000Z", "the epoch"],
+		[-62167219200, "0000-01-01T00:00:00.000Z", "the first instant of 0000"],
+		[
+			253402300799.999,
+			"9999-12-31T23:59:59.999Z",
+			"the last millisecond of 9999",
+		],
+	])("reads epoch seconds %o (%s) as %s", async (seconds, instant) => {
+		const runner = harness(scheduledWith(seconds));
 
 		const observed = await runner.read();
 
-		expect(observed?.outputs.deletedDate).toBe("2018-04-11T20:05:45.729Z");
+		expect(observed?.action).toBe("delete");
+		expect(observed?.outputs.deletedDate).toBe(instant);
 		expect(observed?.diagnostics.join(" ")).toContain(
-			"(DeletedDate 2018-04-11T20:05:45.729Z)",
+			`(DeletedDate ${instant})`,
 		);
 	});
 
 	it.each([
 		[
 			"2026-11-30T05:30:25.033060027Z",
+			"2026-11-30T05:30:25.033060027Z",
 			"nanoseconds, as the emulator writes it",
 		],
-		["2026-11-30T05:30:25Z", "whole seconds"],
-		["2026-11-30T07:30:25.5+02:00", "a numeric offset"],
-		["2028-02-29T00:00:00Z", "a leap day"],
-	])("reports the RFC 3339 date-time %s (%s) as written", async (text) => {
+		["2026-11-30T05:30:25Z", "2026-11-30T05:30:25.000Z", "whole seconds"],
+		["2026-11-30T05:30:25.5000Z", "2026-11-30T05:30:25.500Z", "trailing zeros"],
+		[
+			"2026-11-30T05:30:25.0330600271Z",
+			"2026-11-30T05:30:25.033060027Z",
+			"ten fraction digits, kept to the nanosecond",
+		],
+		["2026-11-30t05:30:25z", "2026-11-30T05:30:25.000Z", "lower-case t and z"],
+		["2026-11-30T05:30:25-00:00", "2026-11-30T05:30:25.000Z", "-00:00"],
+		["2026-11-30T05:30:25+00:00", "2026-11-30T05:30:25.000Z", "+00:00"],
+		[
+			"2026-11-30T07:30:25.5+02:00",
+			"2026-11-30T05:30:25.500Z",
+			"an offset east",
+		],
+		[
+			"2026-11-30T23:30:00-01:00",
+			"2026-12-01T00:30:00.000Z",
+			"an offset across midnight",
+		],
+		["2028-02-29T00:00:00Z", "2028-02-29T00:00:00.000Z", "a leap day"],
+		[
+			"2000-02-29T00:00:00Z",
+			"2000-02-29T00:00:00.000Z",
+			"a leap day in a year divisible by 400",
+		],
+		["2016-12-31T23:59:60Z", "2016-12-31T23:59:60.000Z", "a leap second"],
+		[
+			"2017-01-01T08:59:60.5+09:00",
+			"2016-12-31T23:59:60.500Z",
+			"a leap second at an offset",
+		],
+		[
+			"0000-01-01T00:00:00Z",
+			"0000-01-01T00:00:00.000Z",
+			"the first instant of 0000",
+		],
+		[
+			"9999-12-31T23:59:59.999999999Z",
+			"9999-12-31T23:59:59.999999999Z",
+			"the last nanosecond of 9999",
+		],
+	])("reads the RFC 3339 date-time %s as %s (%s)", async (text, instant) => {
 		const runner = harness(scheduledWith(text));
 
 		const observed = await runner.read();
 
 		expect(observed?.action).toBe("delete");
-		expect(observed?.outputs.deletedDate).toBe(text);
-		expect(observed?.diagnostics.join(" ")).toContain(`(DeletedDate ${text})`);
+		expect(observed?.outputs.deletedDate).toBe(instant);
+		expect(observed?.diagnostics.join(" ")).toContain(
+			`(DeletedDate ${instant})`,
+		);
+	});
+
+	it("reads a null DeletedDate as not scheduled, in read, reconcile and delete", async () => {
+		const runner = harness(scheduledWith(null));
+
+		const observed = await runner.read();
+		const reconciled = await runner.reconcile();
+		await runner.remove();
+
+		expect(observed?.action).toBe("adopt");
+		expect(observed?.outputs.deletedDate).toBeUndefined();
+		expect(reconciled.action).toBe("adopt");
+		expect(runner.aws.targets()).toEqual([
+			"DescribeSecret",
+			"DescribeSecret",
+			"DescribeSecret",
+			"DeleteSecret",
+		]);
 	});
 
 	it.each([
 		["soon", "text that is not a date"],
+		["", "an empty string"],
 		["2026-11-30", "a date with no time"],
 		["2026-11-30T05:30:25", "a time with no zone"],
+		["2026-11-30 05:30:25Z", "a space for T"],
+		["2026-11-30T05:30:25.Z", "an empty fraction"],
+		["2026-11-30T05:30:25+0530", "an offset with no colon"],
+		["2026-00-01T00:00:00Z", "month 00"],
 		["2026-13-01T00:00:00Z", "month 13"],
+		["2026-11-00T05:30:25Z", "day 00"],
+		["2026-11-31T05:30:25Z", "November 31"],
 		["2026-02-29T00:00:00Z", "February 29 in a common year"],
+		["1900-02-29T00:00:00Z", "February 29 in a century not divisible by 400"],
 		["2026-11-30T24:00:00Z", "hour 24"],
-		["2026-11-30T05:30:60Z", "a leap second"],
-		["2026-11-30T05:30:25.0330600271Z", "ten fractional digits"],
+		["2026-11-30T05:60:25Z", "minute 60"],
+		["2026-11-30T05:30:61Z", "second 61"],
+		["2026-11-30T05:30:60Z", "a leap second that does not end a UTC day"],
+		["2026-11-30T05:30:25+24:00", "offset hour 24"],
+		["2026-11-30T05:30:25+05:60", "offset minute 60"],
+		["0000-01-01T00:30:00+01:00", "an instant before 0000 in UTC"],
+		["9999-12-31T23:30:00-01:00", "an instant after 9999 in UTC"],
 		["1523477145.729", "epoch seconds written as text"],
-		[1e13, "epoch seconds past the range of a date"],
-		[-1e13, "epoch seconds before the range of a date"],
+		[8.64e12, "epoch seconds in the year 275760"],
+		[3e11, "epoch seconds in the year 11476"],
+		[253402300800, "epoch seconds in the year 10000"],
+		[-62167219201, "epoch seconds before 0000"],
 		[true, "a boolean"],
+		[[], "an array"],
 		[{ seconds: 1523477145 }, "an object"],
 	])("refuses %o (%s) in read, reconcile and delete", async (deletedDate: JsonValue, _why: string) => {
 		const runner = harness(scheduledWith(deletedDate));
@@ -629,13 +733,27 @@ describe("DeletedDate as a provider answers it", () => {
 			expect(refusal instanceof ResolverError ? refusal.code : "").toBe(
 				"RESOLVER_OUTPUT_UNPARSEABLE",
 			);
-			expect(refusal?.message).toContain("DeletedDate");
+			expect(refusal?.message).toContain(
+				`AWS returned a DeletedDate (${JSON.stringify(deletedDate)})`,
+			);
 		}
 		expect(runner.aws.targets()).toEqual([
 			"DescribeSecret",
 			"DescribeSecret",
 			"DescribeSecret",
 		]);
+	});
+
+	it("quotes a DeletedDate JSON cannot hold (1e400) as it was written, not as null", async () => {
+		const runner = harness(scheduledWith(0), { rawDeletedDate: "1e400" });
+
+		const refusal = await refusalOf(runner.read());
+
+		expect(refusal instanceof ResolverError ? refusal.code : "").toBe(
+			"RESOLVER_OUTPUT_UNPARSEABLE",
+		);
+		expect(refusal?.message).toContain("AWS returned a DeletedDate (1e400)");
+		expect(refusal?.message).not.toContain("(null)");
 	});
 
 	it("quotes an unreadable DeletedDate only bounded and redacted", async () => {

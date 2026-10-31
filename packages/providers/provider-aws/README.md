@@ -217,9 +217,12 @@ different suffix — is refused rather than interpolated into a hostname.
     a promise of when the secret is gone: the API calls it "the date the secret
     is scheduled for deletion", and does not equate it with DeleteSecret's
     `DeletionDate`, the end of the recovery window. It must be epoch seconds
-    (fractional allowed) or an RFC 3339 date-time. Anything else is refused
-    as `RESOLVER_OUTPUT_UNPARSEABLE` by `read`, `reconcile` and `delete` alike,
-    because the secret's state cannot be read.
+    (fractional allowed, rounded to the millisecond) or an RFC 3339 date-time
+    (either case, any fraction digits, a leap second at the end of a UTC day),
+    in the years 0000 to 9999. Both are reported as one canonical UTC instant,
+    `YYYY-MM-DDTHH:MM:SS.fffZ`, with the fraction kept to the nanosecond. A
+    `null` is the field's absence: not scheduled. Anything else is refused as
+    `RESOLVER_OUTPUT_UNPARSEABLE`, because the secret's state cannot be read.
     Preview and drift say so; neither reports it absent.
   - `reconcile` **fails closed** by default (`RESOLVER_PROVIDER_REJECTED`): someone
     deleted it on purpose. Declare `restoreScheduled: true` to restore it with its

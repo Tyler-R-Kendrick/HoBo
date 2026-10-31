@@ -1676,9 +1676,26 @@ async function secretsCall(
 	});
 }
 
-async function readSecret(
+/** DescribeSecret's answer, unparsed: the record and the body it was read from. */
+interface SecretDescription {
+	readonly record: JsonObject;
+	readonly body: string;
+}
+
+/**
+ * A secret as DescribeSecret answered it, with `DeletedDate` parsed: the
+ * canonical instant while the secret is scheduled for deletion, `undefined`
+ * while it is live. Nothing past this boundary reads `record.DeletedDate`.
+ */
+interface DescribedSecret {
+	readonly record: JsonObject;
+	readonly deletedDate: string | undefined;
+}
+
+/** DescribeSecret for this secret, or `undefined` when AWS has no such secret. */
+async function describeSecret(
 	context: AwsResolverContext,
-): Promise<JsonObject | undefined> {
+): Promise<SecretDescription | undefined> {
 	const response = await secretsCall(context, "DescribeSecret", {
 		SecretId: context.name,
 	});
@@ -1688,25 +1705,42 @@ async function readSecret(
 	) {
 		return undefined;
 	}
-	return jsonResult(
+	const record = jsonResult(
 		context,
 		response,
 		`secretsmanager describe ${context.name}`,
 	);
+	return { record, body: response.body };
 }
 
-/** The largest distance from the epoch a JavaScript date holds, in milliseconds. */
-const MAX_DATE_MS = 8.64e15;
+/** The secret, described and parsed; `undefined` when there is none. */
+async function readSecret(
+	context: AwsResolverContext,
+): Promise<DescribedSecret | undefined> {
+	const described = await describeSecret(context);
+	if (described === undefined) return undefined;
+	return {
+		record: described.record,
+		deletedDate: parseDeletedDate(context, described),
+	};
+}
+
+/** 0000-01-01T00:00:00.000Z and 9999-12-31T23:59:59.999Z: four-digit years. */
+const FIRST_INSTANT_MS = -62167219200000;
+const LAST_INSTANT_MS = 253402300799999;
 
 /**
- * RFC 3339 `date-time` (section 5.6) with at most nanosecond precision: the
- * form a provider that answers DeletedDate as text writes it in
- * ("2026-11-30T05:30:25.033060027Z"). The calendar fields are checked below.
+ * RFC 3339 `date-time` (section 5.6): `T` and `Z` in either case (section
+ * 5.6's NOTE), any number of fraction digits (`time-secfrac = "." 1*DIGIT`),
+ * and a seconds field of 00 to 60, since the grammar allows a leap second.
  */
 const RFC3339_DATE_TIME =
-	/^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:[Zz]|[+-](\d{2}):(\d{2}))$/u;
+	/^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:[Zz]|([+-])(\d{2}):(\d{2}))$/u;
 
-/** Days in a month of the proleptic Gregorian calendar RFC 3339 uses. */
+/**
+ * Days in a month of the proleptic Gregorian calendar RFC 3339 uses, and 0 for
+ * a month outside 01-12, so no day of it is in range.
+ */
 function daysInMonth(year: number, month: number): number {
 	const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 	return (
@@ -1714,49 +1748,134 @@ function daysInMonth(year: number, month: number): number {
 	);
 }
 
-/** Whether text is an RFC 3339 date-time whose every field is in range. */
-function isRfc3339DateTime(text: string): boolean {
+/**
+ * A fraction of a second, canonical: kept to the nanosecond (nine digits;
+ * digits past the ninth are dropped), at least three digits, and no trailing
+ * zero past the third. So `.5`, `.500` and `.5000` are one value, `.500`.
+ */
+function canonicalFraction(digits: string): string {
+	let fraction = digits.slice(0, 9).padEnd(3, "0");
+	while (fraction.length > 3 && fraction.endsWith("0")) {
+		fraction = fraction.slice(0, -1);
+	}
+	return fraction;
+}
+
+/**
+ * Epoch seconds, AWS's JSON-protocol timestamp, as the canonical instant. A
+ * binary number carries no more than milliseconds reliably, and AWS writes no
+ * more (`1523477145.729`), so it is rounded to the millisecond. `undefined`
+ * outside the years 0000 to 9999, or for a value that is not a finite number.
+ */
+function instantFromEpochSeconds(seconds: number): string | undefined {
+	const ms = Math.round(seconds * 1000);
+	if (!Number.isFinite(ms) || ms < FIRST_INSTANT_MS || ms > LAST_INSTANT_MS) {
+		return undefined;
+	}
+	return new Date(ms).toISOString();
+}
+
+/**
+ * An RFC 3339 date-time as the canonical instant, or `undefined` when it is
+ * not one: a field out of its range (month 01-12, day 01 to the month's last,
+ * hour 00-23, minute 00-59, second 00-60, offset hour 00-23 and minute 00-59),
+ * a leap second anywhere but the last second of a UTC day, or an instant
+ * outside the years 0000 to 9999 once its offset is applied.
+ *
+ * The date and time are moved to UTC by whole-second arithmetic. A leap second
+ * is computed as second 59 and written back as 60, because a JavaScript date
+ * has no second 60. The fraction is carried as text, never through a number.
+ */
+function instantFromRfc3339(text: string): string | undefined {
 	const match = RFC3339_DATE_TIME.exec(text);
-	if (match === null) return false;
-	// An absent offset is "Z", so it reads as 0; a field the pattern guarantees
-	// defaults to a value that fails its range check.
-	const [
-		year = 0,
-		month = 0,
-		day = 0,
-		hour = 24,
-		minute = 60,
-		second = 60,
-		offsetHour = 0,
-		offsetMinute = 0,
-	] = match.slice(1).map((field) => Number(field ?? "0"));
-	return (
-		month >= 1 &&
-		month <= 12 &&
+	if (match === null) return undefined;
+	// Groups 1-6 are the date and time, 7 the fraction, 8-10 the offset's sign,
+	// hour and minute. "Z" leaves 8-10 unset, which reads as +00:00; a group
+	// the pattern requires defaults to a value its range check refuses.
+	const field = (index: number, absent: number): number => {
+		const digits = match[index];
+		return digits === undefined ? absent : Number(digits);
+	};
+	const year = field(1, 0);
+	const month = field(2, 0);
+	const day = field(3, 0);
+	const hour = field(4, 24);
+	const minute = field(5, 60);
+	const second = field(6, 61);
+	const fraction = match[7] ?? "";
+	const sign = match[8];
+	const offsetHour = field(9, 0);
+	const offsetMinute = field(10, 0);
+	// The month needs no check of its own: daysInMonth is 0 outside 01-12.
+	const inRange =
 		day >= 1 &&
 		day <= daysInMonth(year, month) &&
 		hour <= 23 &&
 		minute <= 59 &&
-		// A leap second (60) has no JavaScript date, so it is refused rather
-		// than rolled into the next minute.
-		second <= 59 &&
+		second <= 60 &&
 		offsetHour <= 23 &&
-		offsetMinute <= 59
-	);
+		offsetMinute <= 59;
+	if (!inRange) return undefined;
+	const local = new Date(0);
+	local.setUTCFullYear(year, month - 1, day);
+	local.setUTCHours(hour, minute, Math.min(second, 59), 0);
+	const offsetMinutes =
+		(sign === "-" ? -1 : 1) * (offsetHour * 60 + offsetMinute);
+	const utcMs = local.getTime() - offsetMinutes * 60_000;
+	if (utcMs < FIRST_INSTANT_MS || utcMs > LAST_INSTANT_MS) return undefined;
+	const utc = new Date(utcMs);
+	const endsUtcDay = utc.getUTCHours() === 23 && utc.getUTCMinutes() === 59;
+	if (second === 60 && !endsUtcDay) return undefined;
+	const iso = utc.toISOString();
+	const seconds = second === 60 ? "60" : iso.slice(17, 19);
+	return `${iso.slice(0, 17)}${seconds}.${canonicalFraction(fraction)}Z`;
 }
 
 /**
- * DescribeSecret's `DeletedDate`, read at the boundary: `undefined` when AWS
- * omits it, which the API says it does exactly when the secret "is not
- * scheduled for deletion"; otherwise the date as an ISO 8601 instant.
+ * The JSON text a top-level member of `body` was written as, where the
+ * runtime gives a reviver the source text (ES2025 JSON.parse source text
+ * access); otherwise `undefined`. A value JSON.parse cannot hold, such as
+ * `1e400` (read as Infinity, written back as `null`), is quoted as it arrived.
+ */
+function memberSource(body: string, key: string): string | undefined {
+	// The body already parsed as JSON (jsonResult), so every value and holder
+	// the reviver sees is a JSON value.
+	const sources: { holder: JsonValue; source: string }[] = [];
+	const root: JsonValue = JSON.parse(
+		body,
+		function collect(
+			this: JsonValue,
+			name: string,
+			value: JsonValue,
+			context?: { readonly source?: string },
+		): JsonValue {
+			if (name === key && context?.source !== undefined) {
+				sources.push({ holder: this, source: context.source });
+			}
+			return value;
+		},
+	);
+	return sources.find((entry) => entry.holder === root)?.source;
+}
+
+/**
+ * DescribeSecret's `DeletedDate`, parsed where the answer is read.
  *
- * AWS's JSON protocol answers a timestamp as epoch seconds, fractional or not
- * (`1523477145.729`). A provider that answers text must answer an RFC 3339
- * date-time, which is reported as written; it is at most 35 characters of
- * digits, separators and a zone, so nothing in it needs redacting. Anything
- * else (a date out of range, other text, another type) is unreadable, and the
- * secret's state with it, so it is refused rather than guessed at: the value
- * is quoted only bounded and redacted, like any provider text.
+ * - **Absent, or `null`: not scheduled.** The API omits the field when the
+ *   secret "is not scheduled for deletion", and Smithy's JSON protocols read a
+ *   `null` member as one not sent.
+ * - **A number: epoch seconds**, AWS's JSON-protocol timestamp.
+ * - **A string: an RFC 3339 date-time**, the form a provider that answers text
+ *   writes ("2026-11-30T05:30:25.033060027Z").
+ *
+ * Either is reported as one canonical ISO 8601 instant, in UTC:
+ * `YYYY-MM-DDTHH:MM:SS.fffZ`, upper-case `T` and `Z`, a four-digit year, any
+ * offset (`-00:00` included) applied, and the fraction as
+ * {@link canonicalFraction} keeps it. A number is rounded to the millisecond;
+ * a leap second keeps second 60. Anything else is unreadable, and the
+ * secret's state with it, so it is refused rather than guessed at. The
+ * refusal quotes the value as it was written, bounded and redacted like any
+ * provider text.
  *
  * Nothing more is read into the date than the API says. DescribeSecret calls it
  * "The date the secret is scheduled for deletion"; DeleteSecret's
@@ -1765,37 +1884,24 @@ function isRfc3339DateTime(text: string): boolean {
  * does not say the two are equal. So the date is reported as `DeletedDate`,
  * never as the day the secret will be gone.
  */
-function deletedDateOf(
+function parseDeletedDate(
 	context: AwsResolverContext,
-	record: JsonObject,
+	described: SecretDescription,
 ): string | undefined {
-	const value = record.DeletedDate;
+	const value = described.record.DeletedDate;
 	if (value === undefined || value === null) return undefined;
-	if (isJsonNumber(value)) {
-		const ms = Math.round(value * 1000);
-		if (Number.isFinite(ms) && Math.abs(ms) <= MAX_DATE_MS) {
-			return new Date(ms).toISOString();
-		}
-	} else if (isJsonString(value) && isRfc3339DateTime(value)) {
-		return value;
-	}
+	const instant = isJsonNumber(value)
+		? instantFromEpochSeconds(value)
+		: isJsonString(value)
+			? instantFromRfc3339(value)
+			: undefined;
+	if (instant !== undefined) return instant;
+	const written =
+		memberSource(described.body, "DeletedDate") ?? JSON.stringify(value);
 	throw unparseable(
 		`secretsmanager describe ${context.name}`,
-		`AWS returned a DeletedDate that is neither epoch seconds within the range of a date nor an RFC 3339 date-time (${context.redact(JSON.stringify(value), 80)}), so whether the secret is scheduled for deletion cannot be read; it is refused rather than assumed`,
+		`AWS returned a DeletedDate (${context.redact(written, 80)}) that is neither epoch seconds nor an RFC 3339 date-time in the years 0000 to 9999, so whether the secret is scheduled for deletion cannot be read; it is refused rather than assumed`,
 	);
-}
-
-/**
- * Whether AWS has scheduled this secret for deletion: DescribeSecret answered
- * a readable `DeletedDate`. Through the recovery window the secret still holds
- * its name: CreateSecret, UpdateSecret and a second unforced DeleteSecret
- * answer InvalidRequestException ("The secret is scheduled for deletion").
- */
-function scheduledForDeletion(
-	context: AwsResolverContext,
-	record: JsonObject,
-): boolean {
-	return deletedDateOf(context, record) !== undefined;
 }
 
 /**
@@ -1868,13 +1974,14 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 	// preview or drift check leaves them out of its comparison (ADR-0175).
 	directives: SECRETS_MANAGER_DIRECTIVES,
 	async read(context) {
-		const existing = await readSecret(context);
-		if (existing === undefined) return undefined;
+		const secret = await readSecret(context);
+		if (secret === undefined) return undefined;
+		const existing = secret.record;
 		// A secret scheduled for deletion still exists and still holds its name,
 		// so it is reported, not hidden: as `delete` (the provider is deleting
 		// it), with the date and what apply will do. Reporting it absent would
 		// tell a preview that apply creates it, which CreateSecret refuses.
-		const deletedDate = deletedDateOf(context, existing);
+		const { deletedDate } = secret;
 		if (deletedDate !== undefined) {
 			return outcome(
 				"delete",
@@ -1894,10 +2001,10 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 		const description = optionalString(context.desired, "description");
 		const kmsKeyRef = optionalString(context.desired, "kmsKeyRef");
 		const diagnostics = [...secretDiagnostics(context)];
-		let existing = await readSecret(context);
+		const secret = await readSecret(context);
+		let existing = secret?.record;
 		let restored = false;
-		const deletedDate =
-			existing === undefined ? undefined : deletedDateOf(context, existing);
+		const deletedDate = secret?.deletedDate;
 
 		if (existing !== undefined && deletedDate !== undefined) {
 			// CreateSecret cannot take the name back while the deletion is pending.
@@ -1924,8 +2031,7 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 			// for a reason the operator never sees, and an `update` outcome would
 			// claim a restore that did not happen; both are refused here instead.
 			const after = await readSecret(context);
-			const stillScheduled =
-				after === undefined ? undefined : deletedDateOf(context, after);
+			const stillScheduled = after?.deletedDate;
 			if (after === undefined || stillScheduled !== undefined) {
 				throw new ResolverError(
 					"RESOLVER_PROVIDER_REJECTED",
@@ -1939,7 +2045,7 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 			diagnostics.push(
 				`restored the secret scheduled for deletion (DeletedDate ${deletedDate}), with its previous versions (restoreScheduled: true)`,
 			);
-			existing = after;
+			existing = after.record;
 			restored = true;
 		}
 
@@ -1987,7 +2093,7 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 				}),
 				label,
 			);
-			const refreshed = (await readSecret(context)) ?? existing;
+			const refreshed = (await readSecret(context))?.record ?? existing;
 			return outcome(
 				"update",
 				secretArn(refreshed, label),
@@ -2010,7 +2116,7 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 		// Already being deleted: a second unforced DeleteSecret is
 		// InvalidRequestException, and there is nothing more to ask for. A forced
 		// delete still goes ahead, since it ends the recovery window now.
-		if (scheduledForDeletion(context, existing) && !force) return;
+		if (existing.deletedDate !== undefined && !force) return;
 		const response = await secretsCall(context, "DeleteSecret", {
 			SecretId: context.name,
 			...(force ? { ForceDeleteWithoutRecovery: true } : undefined),
@@ -2024,7 +2130,7 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 			// the deletion this asked for is already under way.
 			if (code === "InvalidRequestException" && !force) {
 				const now = await readSecret(context);
-				if (now === undefined || scheduledForDeletion(context, now)) return;
+				if (now === undefined || now.deletedDate !== undefined) return;
 			}
 		}
 		jsonResult(context, response, `secretsmanager delete ${context.name}`);

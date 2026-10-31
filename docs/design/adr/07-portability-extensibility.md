@@ -939,7 +939,14 @@ The `aws.secrets-manager/v1` resolver never read `DeletedDate`, so it handled a 
 
    The date is named for the field it came from, because the API gives it no more meaning than that. DescribeSecret calls `DeletedDate` "The date the secret is scheduled for deletion". DeleteSecret's `DeletionDate` is "the date and time of the delete request plus the number of days in RecoveryWindowInDays", and the API does not say the two are the same instant. The resolver uses `DeletedDate` only to tell that the secret is scheduled, which the API does say: the field is omitted otherwise.
 
-   `DeletedDate` is parsed where DescribeSecret's answer is read. AWS's JSON protocol answers it as epoch seconds, fractional or not, and the resolver reports that as an ISO 8601 instant to the millisecond. A provider that answers text must answer an RFC 3339 date-time, which is reported as written. Anything else makes the secret's state unreadable: a date outside the range a date can hold, other text, another type. `read()`, `reconcile()` and `delete()` then refuse with `RESOLVER_OUTPUT_UNPARSEABLE`, and the refusal quotes the value only bounded and redacted, as it would any provider text.
+   `DeletedDate` is parsed where DescribeSecret's answer is read:
+   - **Absent, or `null`: not scheduled.** The API omits the field for a secret that is not scheduled, and Smithy's JSON protocols read a `null` member as one not sent.
+   - **A number: epoch seconds**, AWS's JSON-protocol timestamp, fractional or not. It is rounded to the millisecond, the most a binary number carries reliably and the most AWS writes.
+   - **A string: an RFC 3339 date-time**, the form a provider that answers text writes. That means `T` and `Z` in either case, any number of fraction digits, and a leap second, which is accepted only as the last second of a UTC day.
+
+   Either form is reported as one canonical ISO 8601 instant in UTC: `YYYY-MM-DDTHH:MM:SS.fffZ`, with upper-case `T` and `Z` and a four-digit year. Any offset is applied, so `-00:00` and `+02:00` become `Z`. The fraction is kept to the nanosecond, with at least three digits and no trailing zero past the third, and a leap second keeps second 60.
+
+   Anything else makes the secret's state unreadable. That includes a field out of range, an instant outside the years 0000 to 9999 (epoch seconds such as `8.64e12`, or an offset that crosses 0000 or 9999), other text, and another type. `read()`, `reconcile()` and an unforced `delete()` then refuse with `RESOLVER_OUTPUT_UNPARSEABLE`. The refusal quotes the value as the response wrote it (`1e400`, not the `null` it reads back as), bounded and redacted like any provider text.
 2. **The resolver-backed `IacProvider` shows it** (`packages/hobo/src/resolver-iac-provider.ts`).
    - Preview reads "exists as <id>, and the provider is deleting it." with the resolver's diagnostics, and `changes: 1`.
    - Drift is `true`, determined, with the same text. A resource on its way out is neither "would be created" nor "clean".

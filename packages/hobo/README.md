@@ -158,23 +158,27 @@ The project is created in the scope `teamId` names, or in the token's own scope
 when there is no `teamId`. Vercel answers "Project not found" for a project that
 lives only in another scope, so a missing `teamId`, or a wrong one the token can
 still deploy to, does not fail: it creates a second project of that name there
-and deploys to it. Set `teamId` (`createVercelDeployProvider({ token, teamId })`)
-for a project that lives in a team. `selectIacProvider`, and so `hobo up`, reads
-it from `VERCEL_TEAM_ID`, beside `VERCEL_TOKEN`, as given, else from
-`VERCEL_ORG_ID`, the Vercel CLI's name for it, when that is a team id. The CLI
-writes a personal account's id there too; a team's always starts with `team_`,
-so a `VERCEL_ORG_ID` that does not is taken as no team. Both entry points take a
-team id trimmed, and take an empty or blank one as none: with none, the deploy
-and any create are in the token's own scope. The resolver plane
-(`HOBO_DEPLOY_RESOLVERS=1`) reads it the same way, and its project lookups and
-creates carry the same `teamId`. A run whose credentials come from OpenSesame
-(`HOBO_CREDENTIALS=opensesame`) keeps them too: the relaunched `hobo` starts from
-`@hobo/adapter-opensesame`'s allowlisted environment, and `VERCEL_TEAM_ID` and
-`VERCEL_ORG_ID`, team ids and not credentials, are on that allowlist.
-The outputs say what happened: `projectCreated` is `"true"` when this deployment
-created the project and `"false"` otherwise, and `scope` is the `teamId`, or
-`"token-default"` when there is none: the scope Vercel gives a request with no
-`teamId`, which for a team's token need not be a personal account.
+and deploys to it. Set `teamId`
+(`createVercelDeployProvider({ token, teamId })`) for a project that lives in a
+team. `selectIacProvider`, and so `hobo up`, reads it from `VERCEL_TEAM_ID`,
+beside `VERCEL_TOKEN`, as given, else from `VERCEL_ORG_ID`, the Vercel CLI's
+name for it, when that is a team id. The CLI writes a personal account's id
+there too, and the Vercel CLI treats an `orgId` that starts with `team_` as a
+team and any other as the user (its `getOrgById`, in
+`packages/cli/src/util/projects/get-org-by-id.ts` of vercel/vercel); so does
+this, and a `VERCEL_ORG_ID` that does not start with `team_` is taken as no
+team. Both entry points take a team id trimmed, and take an empty or blank one
+as none: with none, the deploy and any create are in the token's own scope. The
+resolver plane (`HOBO_DEPLOY_RESOLVERS=1`) reads it the same way, and its
+project lookups and creates carry the same `teamId`. A run whose credentials
+come from OpenSesame (`HOBO_CREDENTIALS=opensesame`) keeps them too: the
+relaunched `hobo` starts from `@hobo/adapter-opensesame`'s allowlisted
+environment, and `VERCEL_TEAM_ID` and `VERCEL_ORG_ID`, team or account ids and
+not credentials, are on that allowlist. The outputs say what happened:
+`projectCreated` is `"true"` when this deployment created the project and
+`"false"` otherwise, and `scope` is the `teamId`, or `"token-default"` when
+there is none: the scope Vercel gives a request with no `teamId`, which for a
+team's token need not be a personal account.
 
 **Credentials from OpenSesame (`HOBO_CREDENTIALS=opensesame`, [ADR-0170](../../docs/design/adr/02-identity-security.md#adr-0170)).**
 The composed `hobo` then relaunches itself once, before composing anything, as

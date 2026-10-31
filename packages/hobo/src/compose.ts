@@ -463,9 +463,11 @@ function vercelTeamIdOf(
 }
 
 // The Vercel CLI writes the id of the team or of the personal account a
-// directory is linked to into `VERCEL_ORG_ID`. A team's id always starts with
-// `team_`; anything else is an account's, and an account is not a team, so it
-// is no `teamId` at all.
+// directory is linked to into `VERCEL_ORG_ID`, and the Vercel CLI treats an
+// `orgId` that starts with `team_` as a team and any other as the user (its
+// `getOrgById`, packages/cli/src/util/projects/get-org-by-id.ts in
+// vercel/vercel). So does this: anything else is an account's, and an account
+// is not a team, so it is no `teamId` at all.
 function vercelOrgTeamIdOf(orgId: string | undefined): string | undefined {
 	const id = normalizeVercelTeamId(orgId);
 	return id?.startsWith("team_") ? id : undefined;

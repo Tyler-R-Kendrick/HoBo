@@ -483,7 +483,24 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 	});
 
 	it("harness shows Pi/Flue dual surface, skills, eve, self-improve", async () => {
-		const r = await runHoboCodeCli(["harness"]);
+		// A monorepo of the test's own, so the skill roots it reports do not
+		// depend on what this checkout happens to contain: a sparse checkout
+		// without `.agents/skills` (or `.claude/skills`) has none present.
+		const repo = temp("hobo-code-harness-repo-");
+		writeFileSync(join(repo, "pnpm-workspace.yaml"), "packages: []\n");
+		mkdirSync(join(repo, ".agents", "skills", "fixture-skill"), {
+			recursive: true,
+		});
+		writeFileSync(
+			join(repo, ".agents", "skills", "fixture-skill", "SKILL.md"),
+			"---\nname: fixture-skill\n---\n",
+		);
+		const cwd = join(repo, "packages", "code");
+		mkdirSync(cwd, { recursive: true });
+		const r = await runHoboCodeCli(["harness"], {
+			cwd,
+			hoboHome: temp("hobo-code-harness-home-"),
+		});
 		expect(r.ok).toBe(true);
 		expect(r.code).toBe("HOBO_CODE_HARNESS");
 		expect(r.message).toMatch(/◈ harness/);
@@ -500,7 +517,8 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 					flue: { kind: string; try: string };
 					sharedCustomization: string;
 				};
-				skillRoots: { root: string }[];
+				skillRoots: { root: string; present: boolean; resolvedPath?: string }[];
+				repoRootHint: string;
 				eve: { defaultAgents: { subagents: { id: string }[] } };
 				selfImprove: { loop: string[] };
 				brain: { id: string; status: string }[];
@@ -513,8 +531,14 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 			/harness-customization/,
 		);
 		expect(data.harness.skillRoots.length).toBeGreaterThan(0);
-		// Monorepo walk-up: at least one skill root should resolve when repo has .agents/skills
-		expect(data.harness.skillRoots.some((s) => s.present)).toBe(true);
+		// Monorepo walk-up: from the package cwd, the fixture root's
+		// `.agents/skills` is found and is the only root present.
+		expect(data.harness.repoRootHint).toBe(repo);
+		expect(
+			data.harness.skillRoots
+				.filter((s) => s.present)
+				.map((s) => s.resolvedPath),
+		).toEqual([join(repo, ".agents", "skills")]);
 		expect(data.harness.eve.defaultAgents.subagents.map((s) => s.id)).toEqual(
 			expect.arrayContaining(["investigator", "implementer", "reviewer"]),
 		);

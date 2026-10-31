@@ -446,6 +446,17 @@ describe("mux --host, signalled before its panes hold the leases", () => {
 		expect(proxiesUnder(f.root)).toEqual([]);
 	}, 90_000);
 
+	it("while tmux is set up, in a session that was there before it, removes the windows it added and keeps the rest", async () => {
+		const f = await fixture();
+		expect(
+			tmux(["new-session", "-d", "-s", SESSION, "-n", "theirs", "sleep 600"]),
+		).toBe(0);
+		const ended = await muxSignalled(f, "tmux");
+		expect(ended.code, ended.output).toBe(143);
+		expect(windowsOf(SESSION)).toEqual(["theirs"]);
+		expect(proxiesUnder(f.root)).toEqual([]);
+	}, 90_000);
+
 	it("while tmux is set up, leaves a session that was there before it", async () => {
 		const f = await fixture();
 		expect(tmux(["new-session", "-d", "-s", SESSION, "sleep 600"])).toBe(0);

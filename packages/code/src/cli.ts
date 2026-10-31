@@ -3056,15 +3056,13 @@ export async function runHoboCodeCli(
 					: await applyMux(plan, muxRunner);
 			// A signal held until now ends what mux opened rather than leave it
 			// to the panes: no proxy is retained, so the cleanup stops them all,
-			// and in a session this run created, the windows it created go too,
-			// by tmux's id (never a name, which another client may have taken),
-			// their agent sockets gone with the proxies. The session goes with
-			// its last window.
+			// and the windows this run created go too, by tmux's id (never a
+			// name, which another client may have taken), their agent sockets
+			// gone with the proxies: in a session it joined, only those; one it
+			// created goes with its last window.
 			const signal = await interruption();
 			if (signal !== undefined) {
-				if (!applied.existed) {
-					await killWindows(muxRunner, applied.createdWindows);
-				}
+				await killWindows(muxRunner, applied.createdWindows);
 				return interrupted(signal);
 			}
 			const created = new Set(applied.created);

@@ -900,10 +900,10 @@ SIGINT, SIGTERM, SIGHUP and SIGQUIT from just before it opens the
 authorization: one that comes before the panes hold their sessions ends mux
 with `HOBO_CODE_MUX_INTERRUPTED`, and hobo-code with 128+n, once every proxy
 is stopped and the gateway has ended what it held with `mux-interrupted`.
-In a tmux session this run created, the windows it created go too, each by
-tmux's window id, never by a name, which another client may have taken
-meanwhile; the session goes with its last window. A session that was there
-before the run is left alone.
+The tmux windows this run created go too, each by tmux's window id, never by
+a name, which another client may have taken meanwhile: a session the run
+created goes with its last window, and one that was there before keeps its
+own windows.
 
 `hobo-code session serve --host <machine> --port <n>` forwards the resident
 session browser over SSH under such an authorization, and closes the

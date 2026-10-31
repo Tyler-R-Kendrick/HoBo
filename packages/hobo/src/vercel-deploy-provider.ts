@@ -14,6 +14,7 @@ import {
 	createVercelClient,
 	type VercelDeploymentFile,
 	type VercelFetch,
+	type VercelProjectResult,
 } from "./vercel-client.js";
 
 // @hobo/hobo — the REAL Vercel deploy provider (composition/app layer).
@@ -21,8 +22,11 @@ import {
 // This implements the SAME `IacProvider` port the @hobo/cloud Executor drives
 // (preview/apply/destroy/refresh over the kernel's shape-A `IacProgram`), but
 // instead of the in-memory Pulumi stand-in it forms a REAL Vercel Create
-// Deployment request. On `apply` it reads the committed, known-good Vercel file
-// tree (packages/hobo/fixtures/deploy/vercel/), posts it via `createVercelClient`,
+// Deployment request. On `apply` it first makes sure the project exists
+// (`ensureProject`: a lookup, and a create when Vercel answers 404, so the first
+// deploy from an account that has never seen the project does not fail), then
+// reads the committed, known-good Vercel file tree
+// (packages/hobo/fixtures/deploy/vercel/), posts it via `createVercelClient`,
 // and maps the returned deployment URL into the kernel's `IacOutputs` (`outputs.url`).
 //
 // HONEST SCOPE: the live Vercel call is credential-gated (activates only when a
@@ -72,7 +76,8 @@ export interface VercelDeployProviderOptions {
 	readonly token: string;
 	// The transport. Defaults to global `fetch`; injected in tests.
 	readonly fetch?: VercelFetch;
-	// The Vercel project/deployment name. Defaults to "hobo-hello-bindle".
+	// The Vercel project/deployment name. Defaults to "hobo-hello-bindle". The
+	// project is created on the first apply when the account has none by that name.
 	readonly projectName?: string;
 	// The team id, when the token is a team token.
 	readonly teamId?: string;
@@ -97,6 +102,17 @@ export function createVercelDeployProvider(
 		...(options.teamId !== undefined ? { teamId: options.teamId } : undefined),
 	});
 
+	// The project is made sure of once per provider. A failed attempt is not
+	// kept, so the next apply asks again.
+	let projectReady: Promise<VercelProjectResult> | undefined;
+	const ensureProject = (): Promise<VercelProjectResult> => {
+		projectReady ??= client.ensureProject(projectName).catch((error) => {
+			projectReady = undefined;
+			throw error;
+		});
+		return projectReady;
+	};
+
 	// One Vercel deployment realizes the whole bindle. The Executor drives the port
 	// once per resource, so memoize by deploymentId: the first resource's apply
 	// creates the deployment; the rest reuse its outputs. Keeps `hobo up` to a
@@ -117,6 +133,7 @@ export function createVercelDeployProvider(
 			if (cached !== undefined) {
 				return cached;
 			}
+			await ensureProject();
 			const files = readVercelFileTree(templateDir);
 			const result = await client.createDeployment({
 				name: projectName,

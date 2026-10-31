@@ -129,6 +129,13 @@ as a live deployment. IaC selection lives in `src/compose.ts`:
 | Live Cloudflare Workers | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` |
 | Live Vercel | `VERCEL_TOKEN` |
 
+The live Vercel provider (`src/vercel-deploy-provider.ts`) makes sure its project
+exists before the first deployment: `GET /v9/projects/{name}`, and on a 404
+`POST /v9/projects` with the name (a 409 there means it was made meanwhile, and
+is read again). So the first `hobo up` from an account that has never seen the
+project deploys instead of failing. A credential binding's scope for it needs
+`GET` and `POST` on `/v9/projects` as well as `POST` on `/v13/deployments`.
+
 **Credentials from OpenSesame (`HOBO_CREDENTIALS=opensesame`, [ADR-0170](../../docs/design/adr/02-identity-security.md#adr-0170)).**
 The composed `hobo` then relaunches itself once, before composing anything, as
 `opensesame dev --agent --schema <generated> run -- <this invocation>` (through

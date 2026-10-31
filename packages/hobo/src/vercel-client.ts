@@ -29,6 +29,8 @@
 // A single file in the deployment payload. `data` is the file content; when
 // `encoding` is "base64" the content is base64-encoded (Vercel's inline-files
 // contract). `file` is the POSIX path within the deployment.
+import { redactProviderText } from "@hobo/provider-vercel";
+
 import {
 	isJsonObject,
 	isJsonString,
@@ -107,7 +109,8 @@ export type VercelFetch = (
 
 // A refusal from the Vercel API: a non-2xx status. `code` and `apiMessage` are
 // Vercel's `error.code` and `error.message` when the body carried them; `message`
-// names the call, the status and the body.
+// names the call, the status and the body. `message` and `apiMessage` are
+// refusal text (`refusalText`): redacted, and cut at 500 characters.
 export class VercelApiError extends Error {
 	readonly status: number;
 	readonly code: string | undefined;
@@ -192,9 +195,26 @@ function normalizeUrl(raw: JsonValue | undefined): string {
 		: `https://${raw}`;
 }
 
+// The most of a refusal's text an error carries: `message` and `apiMessage` are
+// each cut at this many characters, and a `…` marks the cut.
+const REFUSAL_TEXT_LIMIT = 500;
+
+// A response body can echo the request, Authorization header included, and the
+// executor persists an error's message (`exec.Failed.reason`). So the client's
+// own token, and anything bearer- or credential-shaped, becomes `[redacted]`
+// (`redactProviderText` is the redaction @hobo/provider-vercel's resolvers
+// use), and the text is cut at REFUSAL_TEXT_LIMIT characters.
+function refusalText(text: string, token: string): string {
+	return redactProviderText(
+		text.replaceAll(token, "[redacted]"),
+		REFUSAL_TEXT_LIMIT,
+	);
+}
+
 async function failure(
 	what: string,
 	response: VercelFetchResponse,
+	token: string,
 ): Promise<VercelApiError> {
 	const detail = await response.text().catch(() => "");
 	const error = parseJsonObject(detail).error;
@@ -202,10 +222,13 @@ async function failure(
 		isJsonObject(error) && isJsonString(error.code) ? error.code : undefined;
 	const apiMessage =
 		isJsonObject(error) && isJsonString(error.message)
-			? error.message
+			? refusalText(error.message, token)
 			: undefined;
 	return new VercelApiError(
-		`vercel-client: ${what} failed (HTTP ${response.status})${detail ? `: ${detail}` : ""}`,
+		refusalText(
+			`vercel-client: ${what} failed (HTTP ${response.status})${detail ? `: ${detail}` : ""}`,
+			token,
+		),
 		response.status,
 		code,
 		apiMessage,
@@ -246,7 +269,7 @@ export function createVercelClient(options: VercelClientOptions): VercelClient {
 		async createProject(name: string): Promise<VercelProjectResult> {
 			const made = await post("/v9/projects", JSON.stringify({ name }));
 			if (made.status === 409) return { id: "", name, created: false };
-			if (!made.ok) throw await failure("create project", made);
+			if (!made.ok) throw await failure("create project", made, token);
 			const payload = await payloadOf(made);
 			return {
 				id: isJsonString(payload.id) ? payload.id : "",
@@ -273,7 +296,7 @@ export function createVercelClient(options: VercelClientOptions): VercelClient {
 			const response = await post("/v13/deployments", JSON.stringify(body));
 
 			if (!response.ok) {
-				throw await failure("create deployment", response);
+				throw await failure("create deployment", response, token);
 			}
 
 			const payload = await payloadOf(response);

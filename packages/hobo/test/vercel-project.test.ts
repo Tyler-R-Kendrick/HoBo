@@ -1,3 +1,5 @@
+import { inspect } from "node:util";
+
 import type { IacProgram } from "@hobo/cloud";
 import { at, first } from "@hobo/core/total-access";
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
@@ -282,6 +284,7 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 			status: 404,
 			code: "not_found",
 			apiMessage: "Project not found",
+			message: expect.stringMatching(/HTTP 404.*not_found/u),
 		});
 		expect(routes()).toEqual([DEPLOY, CREATE, DEPLOY]);
 	});
@@ -361,6 +364,84 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 		const provider = createVercelDeployProvider({ token: "tok", fetch });
 		await provider.preview(programFor("dep-1"));
 		expect(sent).toEqual([]);
+	});
+});
+
+describe("a refusal's text (scripted transport, no network)", () => {
+	const TOKEN = "tok_SECRET_0123456789abcdef";
+	const OTHER_KEY = "sk_live_0123456789abcdef";
+
+	async function refusedBy(
+		answer: (init: SentInit) => VercelFetchResponse,
+	): Promise<VercelApiError> {
+		const fetch: VercelFetch = async (_url, init) => answer(init);
+		const provider = createVercelDeployProvider({ token: TOKEN, fetch });
+		try {
+			await provider.apply(programFor("dep-1"));
+		} catch (error) {
+			if (error instanceof VercelApiError) return error;
+			throw error;
+		}
+		throw new Error("expected the deploy to be refused");
+	}
+
+	it("carries neither the token nor credential-shaped text, however it is printed", async () => {
+		// A body that echoes the request: the Authorization header, the bare
+		// token, and another credential in the message.
+		const error = await refusedBy((init) =>
+			reply(404, {
+				error: {
+					code: "not_found",
+					message: `No such route; you sent ${String(init.headers.Authorization)}, token ${TOKEN} and api_key=${OTHER_KEY}`,
+				},
+				echo: { headers: init.headers, token: TOKEN },
+			}),
+		);
+
+		const printed = [
+			String(error),
+			JSON.stringify(error),
+			inspect(error, { depth: 10, showHidden: true }),
+			error.stack ?? "",
+			error.message,
+			error.apiMessage ?? "",
+		];
+		for (const text of printed) {
+			expect(text).not.toContain(TOKEN);
+			expect(text).not.toContain(OTHER_KEY);
+		}
+		expect(error.message).toMatch(/create deployment failed \(HTTP 404\)/u);
+		expect(error.message).toContain("[redacted]");
+		expect(error.apiMessage).toBe(
+			"No such route; you sent [redacted] token [redacted] and [redacted]",
+		);
+		expect(error).toMatchObject({ status: 404, code: "not_found" });
+	});
+
+	it("is cut at 500 characters, message and apiMessage each", async () => {
+		const error = await refusedBy(() =>
+			reply(500, {
+				error: { code: "internal_server_error", message: "x".repeat(5000) },
+			}),
+		);
+
+		expect(error.message).toHaveLength(501);
+		expect(error.message.endsWith("…")).toBe(true);
+		expect(error.message).toMatch(
+			/^vercel-client: create deployment failed \(HTTP 500\)/u,
+		);
+		expect(error.apiMessage).toBe(`${"x".repeat(500)}…`);
+	});
+
+	it("keeps a short refusal whole", async () => {
+		const error = await refusedBy(() =>
+			reply(403, { error: { code: "forbidden", message: "Not authorized" } }),
+		);
+
+		expect(error.message).toBe(
+			'vercel-client: create deployment failed (HTTP 403): {"error":{"code":"forbidden","message":"Not authorized"}}',
+		);
+		expect(error.apiMessage).toBe("Not authorized");
 	});
 });
 

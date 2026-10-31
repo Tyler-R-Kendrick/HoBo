@@ -136,9 +136,12 @@ with `POST /v9/projects` (a 409 there means it was made meanwhile) and deploy
 once more. So the first `hobo up` from an account that has never seen the
 project deploys instead of failing, and a deploy to an existing project is one
 request. Any other refusal, or a second one, is a `VercelApiError` carrying
-Vercel's status, `error.code` and `error.message`. A credential binding's scope
-needs `POST` on `/v13/deployments`, and `POST` on `/v9/projects` for that first
-deploy; it needs no `GET` on the project.
+Vercel's status, `error.code` and `error.message`. A response body can echo the
+request, and the executor keeps an error's message, so the error's `message` and
+`apiMessage` have the token, and anything bearer- or credential-shaped, replaced
+by `[redacted]`, and each is cut at 500 characters (a `…` marks the cut). A
+credential binding's scope needs `POST` on `/v13/deployments`, and `POST` on
+`/v9/projects` for that first deploy; it needs no `GET` on the project.
 
 The project is created in the scope `teamId` names, or in the token's own scope
 when there is no `teamId`. Vercel answers "Project not found" for a project that

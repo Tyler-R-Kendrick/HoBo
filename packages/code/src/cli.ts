@@ -2699,18 +2699,6 @@ export async function runHoboCodeCli(
 				sessions: output.split("\n").filter((line) => line.length > 0),
 			});
 		}
-		// With agent seating off, mux, like the shell's own panes, starts no
-		// agent CLI: no tmux session, no workspace, no Station authorization.
-		if (!agentSeatingEnabled(env)) {
-			return ok(
-				"HOBO_CODE_MUX",
-				panel("mux", [
-					`agent seating is off (HOBO_CODE_SEAT_AGENTS=${env.HOBO_CODE_SEAT_AGENTS?.trim() ?? ""})`,
-					"no agent CLI and no tmux session were started",
-				]),
-				{ seating: false },
-			);
-		}
 		const probes = defaultProbes(env);
 		const agents = detectAgents(probes);
 		// Agents work in the declared devenv workspace, not wherever the shell
@@ -2821,6 +2809,20 @@ export async function runHoboCodeCli(
 				]),
 				["hobo-code machines", "hobo-code agent"],
 				{ machine: resolvedMachine, detected: agents.map((a) => a.id) },
+			);
+		}
+
+		// With agent seating off, mux, like the shell's own panes, starts no
+		// agent CLI: no tmux session, no workspace, no Station authorization. A
+		// dry run starts nothing anyway, and still shows the plan.
+		if (flags["dry-run"] !== true && !agentSeatingEnabled(env)) {
+			return ok(
+				"HOBO_CODE_MUX",
+				panel("mux", [
+					`agent seating is off (HOBO_CODE_SEAT_AGENTS=${env.HOBO_CODE_SEAT_AGENTS?.trim() ?? ""})`,
+					"no agent CLI and no tmux session were started",
+				]),
+				{ seating: false },
 			);
 		}
 

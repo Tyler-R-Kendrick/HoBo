@@ -354,7 +354,7 @@ one-shot argv so Cursor/Copilot/Gemini/Aider/Goose still run without a
 builtin SDK package. TTY seating still uses mux. `HOBO_CODE_SEAT_AGENTS=0`
 (or `false`, `no`, `off`) turns seating off: the shell then starts no tmux
 session and no agent CLI, and neither does `hobo-code mux`, which answers that
-seating is off. `hobo-code config` lists it.
+seating is off (its checks and a `--dry-run` plan still run). `hobo-code config` lists it.
 Programmatic turns use `createHarnessV1(spec)` or `createHarnessAgent(spec)`
 (AI SDK `HarnessAgent` + just-bash for host adapters; bridge adapters need
 an injected network sandbox).

@@ -41,7 +41,9 @@ import {
  * Real directories for the cases that hand the shell an environment of their
  * own. Building the initial state writes under its home (the evidence store
  * makes `durable/code/evidence`), so an environment with no `HOBO_HOME` must
- * still be pointed somewhere this file made and removes afterwards.
+ * still be pointed somewhere this file made and removes afterwards. The
+ * reduced-motion cases pass `env` with no home at all; before they took these
+ * directories they wrote `/tmp/.hobo/durable/code/evidence` on the machine.
  */
 let fixtureRoot = "";
 
@@ -208,15 +210,19 @@ describe("what the first frame starts with", () => {
 		// An accessibility setting: someone who set it in their shell profile
 		// should not also have to pass a flag.
 		expect(
-			createInitialShellState({ env: { HOBO_CODE_REDUCED_MOTION: "1" } })
-				.reducedMotion,
+			createInitialShellState({
+				...fixtureDirs(),
+				env: { HOBO_CODE_REDUCED_MOTION: "1" },
+			}).reducedMotion,
 		).toBe(true);
 	});
 
 	it("accepts the word true as well as the digit", () => {
 		expect(
-			createInitialShellState({ env: { HOBO_CODE_REDUCED_MOTION: "true" } })
-				.reducedMotion,
+			createInitialShellState({
+				...fixtureDirs(),
+				env: { HOBO_CODE_REDUCED_MOTION: "true" },
+			}).reducedMotion,
 		).toBe(true);
 	});
 
@@ -224,14 +230,20 @@ describe("what the first frame starts with", () => {
 		// `0`, `false`, and anything else mean off. Treating a non-empty string
 		// as truthy would enable it for someone who explicitly turned it off.
 		expect(
-			createInitialShellState({ env: { HOBO_CODE_REDUCED_MOTION: "0" } })
-				.reducedMotion,
+			createInitialShellState({
+				...fixtureDirs(),
+				env: { HOBO_CODE_REDUCED_MOTION: "0" },
+			}).reducedMotion,
 		).toBe(false);
 	});
 
 	it("takes the explicit option over the environment", () => {
 		expect(
-			createInitialShellState({ reducedMotion: true, env: {} }).reducedMotion,
+			createInitialShellState({
+				...fixtureDirs(),
+				reducedMotion: true,
+				env: {},
+			}).reducedMotion,
 		).toBe(true);
 	});
 });

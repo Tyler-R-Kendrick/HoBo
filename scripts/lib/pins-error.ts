@@ -29,13 +29,19 @@ export type PinsErrorCode =
 	| "ARCHIVE_UNSUPPORTED"
 	| "ARCHIVE_MEMBER_MISSING"
 	| "ARCHIVE_UNSAFE"
+	| "ARCHIVE_WRITE_FAILED"
 	| "USAGE";
 
 /** Every refusal is named; a bare Error would be untraceable. */
 export class PinsError extends Error {
 	readonly code: PinsErrorCode;
-	constructor(code: PinsErrorCode, message: string) {
-		super(`${code}: ${message}`);
+	/** `cause` keeps the error underneath, such as a file system error and its errno. */
+	constructor(
+		code: PinsErrorCode,
+		message: string,
+		options?: { readonly cause?: unknown },
+	) {
+		super(`${code}: ${message}`, options);
 		this.name = "PinsError";
 		this.code = code;
 	}

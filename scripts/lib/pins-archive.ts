@@ -19,7 +19,12 @@
  *   ARCHIVE_UNREADABLE, a corrupt or truncated gzip ARCHIVE_MALFORMED;
  * - the extracted file is written to a private partial file, made 0755
  *   through its own descriptor and renamed into place only when the archive's
- *   digest matched; any failure leaves nothing behind.
+ *   digest matched; any failure leaves nothing behind;
+ * - a failure to create, write, sync or rename that file (no space, an I/O
+ *   error, no permission, a write that makes no progress) is
+ *   ARCHIVE_WRITE_FAILED, naming the errno and keeping the error as its
+ *   `cause`: it says nothing about the archive, so it is never reported as
+ *   ARCHIVE_MALFORMED.
  *
  * Erasable TypeScript with node builtins only.
  */
@@ -154,11 +159,29 @@ export function writeAll(
 	while (offset < chunk.length) {
 		const written = write(fd, chunk, offset, chunk.length - offset);
 		if (written <= 0) {
-			throw new Error(
+			throw new PinsError(
+				"ARCHIVE_WRITE_FAILED",
 				`a write to the partial file wrote ${written} of ${chunk.length - offset} bytes`,
 			);
 		}
 		offset += written;
+	}
+}
+
+/** Run `act` on `path`: a file system error becomes ARCHIVE_WRITE_FAILED naming its errno, a PinsError passes through. */
+function writing<T>(what: string, path: string, act: () => T): T {
+	try {
+		return act();
+	} catch (error) {
+		if (error instanceof PinsError) throw error;
+		const errno =
+			error instanceof Error && "code" in error ? error.code : undefined;
+		const detail = error instanceof Error ? error.message : String(error);
+		throw new PinsError(
+			"ARCHIVE_WRITE_FAILED",
+			`${what} ${path} failed${errno === undefined ? "" : ` (${String(errno)})`}: ${detail}`,
+			{ cause: error },
+		);
 	}
 }
 
@@ -189,10 +212,10 @@ export async function extractMember(
 	let fd: number | undefined;
 	try {
 		// O_CREAT | O_EXCL: never an existing file, never through a link.
-		fd = openSync(partial, "wx", 0o600);
+		fd = writing("creating", partial, () => openSync(partial, "wx", 0o600));
 		const out = fd;
 		const read = await readMember(archive, member, (chunk) => {
-			writeAll(out, chunk);
+			writing(`writing ${member} to`, partial, () => writeAll(out, chunk));
 		});
 		if (read.archive !== sha256) {
 			throw new PinsError(
@@ -200,11 +223,13 @@ export async function extractMember(
 				`${archive} hashed to ${read.archive} while ${member} was read from it, but the pin says ${sha256}; nothing was kept`,
 			);
 		}
-		fsyncSync(fd);
-		fchmodSync(fd, 0o755);
-		closeSync(fd);
+		writing("syncing", partial, () => {
+			fsyncSync(out);
+			fchmodSync(out, 0o755);
+		});
 		fd = undefined;
-		renameSync(partial, dest);
+		writing("closing", partial, () => closeSync(out));
+		writing(`renaming ${partial} to`, dest, () => renameSync(partial, dest));
 	} catch (error) {
 		if (fd !== undefined) closeSync(fd);
 		rmSync(partial, { force: true });

@@ -906,7 +906,7 @@ Before this decision one sibling was pinned, by a gitlink, and obtained by a com
 - **The fetch.** `pins:fetch` downloads and verifies the archive exactly as decision 5 does a binary and keeps it at `<cache>/<sha256>/<archive name>`. Then it reads the one member out of it (`scripts/lib/pins-archive.ts` and `scripts/lib/pins-tar.ts`: node's gunzip and a ustar reader, no `tar` process).
   - **One read.** The archive is read once. Every compressed byte is hashed as it streams, and the member is kept only if those bytes hash to the pin, so the bytes unpacked are the bytes verified.
   - **Inflating stops at the end blocks.** Inflating stops at the archive's two end-of-archive blocks, and entries after them are not read, as `tar` does not read them. The file is still read to its end, to hash it.
-  - **How the member is written.** Its bytes go to the pin's `entry` through a private partial file (`O_CREAT|O_EXCL`, `0600`); they are fsynced, made `0755` through the descriptor and renamed into place.
+  - **How the member is written.** Its bytes go to the pin's `entry` through a private partial file (`O_CREAT|O_EXCL`, `0600`), every byte of every chunk (a short write is continued); they are fsynced, made `0755` through the descriptor and renamed into place.
   - **No name becomes a path.** Only the member's bytes are written, and only to `entry`. A name is compared byte for byte with `member`, in the one spelling that GNU tar both extracts as written and finds when asked for it by name (`tar -xzf A mirror`); an entry spelled any other way is refused, as the list below says.
 - **The refusals.** Each leaves nothing at `entry`. They exist so that the reader never names other bytes than `tar -xzf` leaves at the member, whether `tar` extracts the whole archive or only the member. Where only some entries of a kind are dangerous (links, GNU headers), the whole kind is refused, since mirror's archives use none. `scripts/test/pins-archive-tar.test.ts` extracts every crafted case with the system `tar` (GNU tar 1.35 here) and checks the reader's answer against it:
   - a member the archive does not hold;
@@ -924,7 +924,8 @@ Before this decision one sibling was pinned, by a gitlink, and obtained by a com
   - a header whose checksum is wrong, a single zero block followed by an entry, a truncated archive, or a corrupt gzip;
   - a member over 2 GiB;
   - archive bytes that do not hash to the pin;
-  - a file that cannot be read (`ARCHIVE_UNREADABLE`: absent, a directory, unreadable).
+  - a file that cannot be read (`ARCHIVE_UNREADABLE`: absent, a directory, unreadable);
+  - and, not a refusal of the archive, a failure to create, write, sync or rename the member's partial file (`ARCHIVE_WRITE_FAILED`: no space, an I/O error, no permission, or a write that makes no progress). Its message names the errno (`ENOSPC`, `EIO`, `EACCES`) and the error keeps the file system's own as its `cause`. It says nothing about the archive, so it is never reported as `ARCHIVE_MALFORMED`.
 - **The drift check.** `pins:status` reads the cached archive once: it is checked against the pin, and the entry against the member it holds.
   - An edited entry is `unpacked file stale`, and `pins:fetch` unpacks it again from the cached archive without a download.
   - An edited archive is a mismatch, and is downloaded again.

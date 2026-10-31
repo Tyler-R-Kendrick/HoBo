@@ -9,7 +9,7 @@
  * that renames it, a corrupt header, a truncated stream.
  */
 import assert from "node:assert/strict";
-import {
+import fs, {
 	closeSync,
 	existsSync,
 	openSync,
@@ -19,8 +19,9 @@ import {
 	writeFileSync,
 	writeSync,
 } from "node:fs";
+import { syncBuiltinESMExports } from "node:module";
 import { join } from "node:path";
-import { describe, it } from "node:test";
+import { describe, it, type TestContext } from "node:test";
 
 import { PinsError, parsePins } from "../lib/pins.ts";
 import { extractMember, memberDigest, writeAll } from "../lib/pins-archive.ts";
@@ -156,12 +157,79 @@ describe("writeAll", () => {
 		assert.deepEqual(asked, [16, 11, 6, 1]);
 	});
 
-	it("throws on a write that makes no progress instead of looping", () => {
+	it("throws ARCHIVE_WRITE_FAILED on a write that makes no progress instead of looping", () => {
 		assert.throws(
 			() => writeAll(-1, Buffer.from("x"), () => 0),
-			/wrote 0 of 1 bytes/u,
+			(error: Error) =>
+				refusal("ARCHIVE_WRITE_FAILED")(error) &&
+				/wrote 0 of 1 bytes/u.test(error.message),
 		);
 	});
+});
+
+describe("a failure writing the member", () => {
+	/** An error shaped like node's own file system errors: `code` and a message that starts with it. */
+	function injected(code: string, call: string): Error {
+		return Object.assign(new Error(`${code}: injected, ${call}`), { code });
+	}
+
+	/**
+	 * Make node:fs's `name` throw `code` for any descriptor but stdin, stdout
+	 * and stderr until the test ends; the reader's named import sees it too.
+	 */
+	function inject(
+		t: TestContext,
+		name: "writeSync" | "fsyncSync",
+		code: string,
+	): void {
+		if (name === "writeSync") {
+			const real = fs.writeSync;
+			t.mock.method(
+				fs,
+				"writeSync",
+				(fd: number, buffer: Uint8Array, offset?: number, length?: number) => {
+					if (fd <= 2) return real(fd, buffer, offset, length);
+					throw injected(code, name);
+				},
+			);
+		} else {
+			const real = fs.fsyncSync;
+			t.mock.method(fs, "fsyncSync", (fd: number) => {
+				if (fd <= 2) return real(fd);
+				throw injected(code, name);
+			});
+		}
+		syncBuiltinESMExports();
+		t.after(() => {
+			t.mock.restoreAll();
+			syncBuiltinESMExports();
+		});
+	}
+
+	for (const [name, code] of [
+		["writeSync", "ENOSPC"],
+		["fsyncSync", "EIO"],
+	] as const) {
+		it(`is ARCHIVE_WRITE_FAILED carrying ${code} when ${name} fails, never ARCHIVE_MALFORMED, and leaves nothing`, async (t) => {
+			const dir = scratch("write-failed");
+			const path = join(dir, "a.tar.gz");
+			writeFileSync(path, ARCHIVE);
+			const dest = join(dir, "out");
+			inject(t, name, code);
+			await assert.rejects(
+				extractMember(path, "mirror", dest, sha256Hex(ARCHIVE)),
+				(error: Error) => {
+					assert.ok(error instanceof PinsError, String(error));
+					assert.equal(error.code, "ARCHIVE_WRITE_FAILED");
+					assert.match(error.message, new RegExp(`\\(${code}\\)`, "u"));
+					assert.ok(error.cause instanceof Error && "code" in error.cause);
+					assert.equal(error.cause.code, code);
+					return true;
+				},
+			);
+			assert.deepEqual(readdirSync(dir), ["a.tar.gz"]);
+		});
+	}
 });
 
 describe("an asset pin of an archive", () => {

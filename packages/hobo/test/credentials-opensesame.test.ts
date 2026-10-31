@@ -331,6 +331,18 @@ describe("HOBO_CREDENTIALS=opensesame relaunch", () => {
 		RUN_TIMEOUT_MS,
 	);
 
+	it(
+		"gives the relaunched hobo VERCEL_TEAM_ID, so its deploy is in that team",
+		async () => {
+			const run = await relaunch("surrogate-delivered", "0", {
+				VERCEL_TEAM_ID: "team_acme",
+			});
+			expect(run.status).toBe(0);
+			expect(run.childEnv.VERCEL_TEAM_ID).toBe("team_acme");
+		},
+		RUN_TIMEOUT_MS,
+	);
+
 	it("relaunches only when HOBO_CREDENTIALS is opensesame", () => {
 		expect(wantsOpenSesameRelaunch({})).toBe(false);
 		expect(wantsOpenSesameRelaunch({ HOBO_CREDENTIALS: "env" })).toBe(false);

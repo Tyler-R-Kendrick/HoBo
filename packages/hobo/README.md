@@ -158,10 +158,10 @@ for a project that lives in a team. `selectIacProvider`, and so `hobo up`, reads
 it from `VERCEL_TEAM_ID`, beside `VERCEL_TOKEN`; unset, empty or blank, the
 deploy and any create are in the token's own scope. The resolver plane
 (`HOBO_DEPLOY_RESOLVERS=1`) reads it the same way, and its project lookups and
-creates carry the same `teamId`. One path does not read it: a run whose
-credentials come from OpenSesame (`HOBO_CREDENTIALS=opensesame`), whose
-relaunched `hobo` starts from an allowlisted environment that leaves
-`VERCEL_TEAM_ID` behind.
+creates carry the same `teamId`. A run whose credentials come from OpenSesame
+(`HOBO_CREDENTIALS=opensesame`) keeps it too: the relaunched `hobo` starts from
+`@hobo/adapter-opensesame`'s allowlisted environment, and `VERCEL_TEAM_ID`, a
+team id and not a credential, is on that allowlist.
 The outputs say what happened: `projectCreated` is `"true"` when this deployment
 created the project and `"false"` otherwise, and `scope` is the `teamId`, or
 `"personal"` when there is none.

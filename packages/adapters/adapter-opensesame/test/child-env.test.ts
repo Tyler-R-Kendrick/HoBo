@@ -117,6 +117,17 @@ describe("the environment a run starts from is an allowlist, not the caller's", 
 		).toBe("/opt/ci/node/bin/node");
 	});
 
+	it("passes VERCEL_TEAM_ID, which names the team a Vercel deploy is in: configuration, and not named like a credential", () => {
+		const { env } = launchWith({
+			PATH: "/usr/bin",
+			VERCEL_TEAM_ID: "team_acme",
+			VERCEL_ORG_ID: "team_acme",
+		});
+		expect(env.VERCEL_TEAM_ID).toBe("team_acme");
+		// Only that name: the allowlist is by name, not by family.
+		expect(env).not.toHaveProperty("VERCEL_ORG_ID");
+	});
+
 	it("keeps the Windows variables only on Windows", () => {
 		const win = {
 			SYSTEMROOT: "C:\\Windows",

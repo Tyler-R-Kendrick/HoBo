@@ -992,6 +992,52 @@ describe("checkTestWorkspaceDeps", () => {
 		);
 	});
 
+	it("knows a child process or a copy by a method, an alias, promisify, cpSync and fs.promises.cp", () => {
+		// A sibling's directory, which counts only in a file that runs or loads.
+		const lib = `${JOIN}const libDir = join(process.cwd(), "packages", "lib");\n`;
+		const ns = 'import * as cp from "node:child_process";\n';
+		const files = {
+			"a-method": `${ns}${lib}cp.exec(\`ls \${libDir}\`);\n`,
+			"b-alias": `${ns}${lib}const run = cp.exec;\nrun(\`ls \${libDir}\`);\n`,
+			"c-named": `import { exec as run } from "node:child_process";\n${lib}run(\`ls \${libDir}\`);\n`,
+			"d-dynamic": `${lib}const proc = await import("node:child_process");\nproc.exec(\`ls \${libDir}\`);\n`,
+			"e-destructured": `${ns}${lib}const { exec: run } = cp;\nrun(\`ls \${libDir}\`);\n`,
+			"f-promisify": `import { exec } from "node:child_process";\nimport { promisify } from "node:util";\n${lib}const execAsync = promisify(exec);\nawait execAsync(\`ls \${libDir}\`);\n`,
+			"g-promisify-file": `${ns}import * as util from "node:util";\n${lib}export const sh = util.promisify(cp.execFile);\n`,
+			"h-cp-sync": `import { cpSync } from "node:fs";\n${lib}cpSync(libDir, "/tmp/x", { recursive: true });\n`,
+			"i-fs-promises": `import * as fs from "node:fs";\n${lib}await fs.promises.cp(libDir, "/tmp/x", { recursive: true });\n`,
+			"j-fsp": `import { cp } from "node:fs/promises";\n${lib}await cp(libDir, "/tmp/x", { recursive: true });\n`,
+			// RegExp's exec runs nothing.
+			"k-regexp": `${lib}export const match = /lib/u.exec(libDir);\nconst re = /x/u;\nre.exec(libDir);\n`,
+			// A package name, or a scope and a computed name, at a string's start
+			// is a module name, not a path, though the file copies.
+			"l-names": `import { cpSync } from "node:fs";\ncpSync("/a", "/b", { recursive: true });\nexport const pkg = (app: string) => ({ name: \`@s/app-\${app}\`, dependencies: { "@s/lib": "workspace:*" } });\n`,
+		};
+		within(
+			grouped(
+				Object.fromEntries(
+					Object.entries(files).map(([name, text]) => [
+						`packages/app/test/${name}.test.ts`,
+						text,
+					]),
+				),
+			),
+			(dir) =>
+				assert.deepEqual(
+					unmodelledIn(dir),
+					Object.keys(files)
+						.filter((name) => name !== "k-regexp" && name !== "l-names")
+						.map((name) =>
+							reaching(
+								`packages/app/test/${name}.test.ts`,
+								"@s/lib",
+								"*/packages/lib",
+							),
+						),
+				),
+		);
+	});
+
 	it("checks a declared runtime reach: each need must be ordered for every test task that loads it", () => {
 		const run = [
 			'import { spawn } from "node:child_process";',

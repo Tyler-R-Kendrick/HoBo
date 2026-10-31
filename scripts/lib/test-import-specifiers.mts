@@ -61,38 +61,149 @@ interface LoaderNames {
 	readonly requires: Set<string>;
 	/** `vi`, and names vitest's `vi` is imported as. */
 	readonly vis: Set<string>;
+	/** Names bound to `node:child_process`: a namespace or default import, or a `require`/`import()` of it. */
+	readonly processes: Set<string>;
+	/**
+	 * Other names for a computed loader: `import { exec as run }`,
+	 * `const run = cp.exec`, `const { exec: run } = cp`,
+	 * `const execAsync = promisify(exec)`.
+	 */
+	readonly aliases: Set<string>;
 }
 
-/** The names that load a module, bound anywhere in the file. */
+const CHILD_PROCESS = new Set(["child_process", "node:child_process"]);
+
+/** The expression under parentheses, `await`, `as`, `satisfies` and `!`. */
+function unwrap(node: ts.Expression): ts.Expression {
+	let inner = node;
+	while (
+		ts.isParenthesizedExpression(inner) ||
+		ts.isAwaitExpression(inner) ||
+		ts.isAsExpression(inner) ||
+		ts.isSatisfiesExpression(inner) ||
+		ts.isNonNullExpression(inner)
+	)
+		inner = inner.expression;
+	return inner;
+}
+
+/** Whether `node` is `node:child_process`: a name bound to it, or a `require`/`import()` of it. */
+function isChildProcess(node: ts.Expression, names: LoaderNames): boolean {
+	const inner = unwrap(node);
+	if (ts.isIdentifier(inner)) return names.processes.has(inner.text);
+	if (!ts.isCallExpression(inner)) return false;
+	const callee = inner.expression;
+	return (
+		(callee.kind === ts.SyntaxKind.ImportKeyword ||
+			(ts.isIdentifier(callee) && names.requires.has(callee.text))) &&
+		CHILD_PROCESS.has(literal(inner.arguments[0]) ?? "")
+	);
+}
+
+/**
+ * Whether `node` is a computed loader (`COMPUTED_LOADERS`): by its own name,
+ * by an alias, as a method (`exec` only on `node:child_process`, since RegExp
+ * has one too), promisified, or bound.
+ */
+function isLoader(node: ts.Expression, names: LoaderNames): boolean {
+	const inner = unwrap(node);
+	if (ts.isIdentifier(inner))
+		return COMPUTED_LOADERS.has(inner.text) || names.aliases.has(inner.text);
+	if (ts.isPropertyAccessExpression(inner)) {
+		const method = inner.name.text;
+		return (
+			COMPUTED_LOADERS.has(method) &&
+			(method !== "exec" || isChildProcess(inner.expression, names))
+		);
+	}
+	return ts.isCallExpression(inner) && isPromisified(inner, names);
+}
+
+/** Whether the call makes a loader of one: `promisify(exec)`, `exec.bind(…)`. */
+function isPromisified(node: ts.CallExpression, names: LoaderNames): boolean {
+	const callee = node.expression;
+	const first = node.arguments[0];
+	if (ts.isPropertyAccessExpression(callee) && callee.name.text === "bind")
+		return isLoader(callee.expression, names);
+	return (
+		calleeName(callee) === "promisify" &&
+		first !== undefined &&
+		isLoader(first, names)
+	);
+}
+
+function boundCount(names: LoaderNames): number {
+	return (
+		names.requires.size +
+		names.vis.size +
+		names.processes.size +
+		names.aliases.size
+	);
+}
+
+/** The names that load a module or run a child process, bound anywhere in the file. */
 function loaderNames(file: ts.SourceFile): LoaderNames {
 	const names: LoaderNames = {
 		requires: new Set(["require"]),
 		vis: new Set(["vi"]),
+		processes: new Set(),
+		aliases: new Set(),
+	};
+	const bind = (name: string, value: ts.Expression) => {
+		if (isCreateRequire(value)) names.requires.add(name);
+		if (isChildProcess(value, names)) names.processes.add(name);
+		if (isLoader(value, names)) names.aliases.add(name);
 	};
 	const visit = (node: ts.Node): void => {
 		if (
 			ts.isVariableDeclaration(node) &&
 			ts.isIdentifier(node.name) &&
-			node.initializer !== undefined &&
-			isCreateRequire(node.initializer)
+			node.initializer !== undefined
 		)
-			names.requires.add(node.name.text);
+			bind(node.name.text, node.initializer);
 		else if (
 			ts.isBinaryExpression(node) &&
 			node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
-			ts.isIdentifier(node.left) &&
-			isCreateRequire(node.right)
+			ts.isIdentifier(node.left)
 		)
-			names.requires.add(node.left.text);
+			bind(node.left.text, node.right);
 		else if (
-			ts.isImportSpecifier(node) &&
-			(node.propertyName ?? node.name).text === "vi" &&
-			literal(node.parent.parent.parent.moduleSpecifier) === "vitest"
+			ts.isImportEqualsDeclaration(node) &&
+			ts.isExternalModuleReference(node.moduleReference) &&
+			CHILD_PROCESS.has(literal(node.moduleReference.expression) ?? "")
 		)
-			names.vis.add(node.name.text);
+			names.processes.add(node.name.text);
+		else if (
+			ts.isImportDeclaration(node) &&
+			CHILD_PROCESS.has(literal(node.moduleSpecifier) ?? "")
+		) {
+			const clause = node.importClause;
+			const bindings = clause?.namedBindings;
+			if (clause?.name !== undefined) names.processes.add(clause.name.text);
+			if (bindings !== undefined && ts.isNamespaceImport(bindings))
+				names.processes.add(bindings.name.text);
+		} else if (ts.isImportSpecifier(node)) {
+			const imported = (node.propertyName ?? node.name).text;
+			if (
+				imported === "vi" &&
+				literal(node.parent.parent.parent.moduleSpecifier) === "vitest"
+			)
+				names.vis.add(node.name.text);
+			if (COMPUTED_LOADERS.has(imported)) names.aliases.add(node.name.text);
+		} else if (ts.isBindingElement(node) && ts.isIdentifier(node.name)) {
+			// `const { exec: run } = cp`
+			const property = node.propertyName ?? node.name;
+			if (ts.isIdentifier(property) && COMPUTED_LOADERS.has(property.text))
+				names.aliases.add(node.name.text);
+		}
 		ts.forEachChild(node, visit);
 	};
-	visit(file);
+	// Again until nothing new is bound: a name may be bound to one bound later.
+	let before = -1;
+	while (before !== boundCount(names)) {
+		before = boundCount(names);
+		visit(file);
+	}
 	return names;
 }
 
@@ -174,7 +285,12 @@ export interface ModuleFacts {
 	/**
 	 * Whether it runs or loads something by a path it computes: a child process
 	 * (`spawn`, `exec`, `execFile`, `fork`, sync forms included), `import()` or
-	 * `require` of a non-literal, `createRequire`, `symlink`, or `new Worker`.
+	 * `require` of a non-literal, `createRequire`, `symlink`, a copy (`cp`,
+	 * `cpSync`, `fs.promises.cp`), or `new Worker`. A loader counts by its own
+	 * name, under another (`import { exec as run }`, `const run = cp.exec`,
+	 * `const { exec: run } = cp`), promisified or bound (`promisify(exec)`
+	 * counts where it is made), and `exec` as a method only on a name bound to
+	 * `node:child_process` (`cp.exec`), since RegExp has an `exec` too.
 	 */
 	readonly loadsComputed: boolean;
 }
@@ -190,6 +306,8 @@ const COMPUTED_LOADERS = new Set([
 	"createRequire",
 	"symlink",
 	"symlinkSync",
+	"cp",
+	"cpSync",
 ]);
 const PATH_BUILDERS = new Set(["join", "resolve"]);
 
@@ -246,11 +364,8 @@ export function readModule(source: string, fileName: string): ModuleFacts {
 			if (calledSpecifier(node, loaders) !== undefined)
 				add(node.arguments[0], false);
 			const name = calleeName(node.expression);
-			// `exec` as a method is RegExp's far more often than child_process's.
 			const loader =
-				name !== undefined &&
-				COMPUTED_LOADERS.has(name) &&
-				(name !== "exec" || ts.isIdentifier(node.expression));
+				isLoader(node.expression, loaders) || isPromisified(node, loaders);
 			const first = node.arguments[0];
 			const computedArgument =
 				first !== undefined && literal(first) === undefined;

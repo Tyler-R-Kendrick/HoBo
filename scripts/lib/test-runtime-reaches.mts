@@ -20,10 +20,13 @@
  *   `symlink`, `new Worker`): `join(root, "packages", "adapters",
  *   "adapter-hono")` linked into a generated app, or
  *   `new URL("../../hobo", import.meta.url)` linked into a temporary root. It
- *   ends at P where it names P in more than one segment (`packages/hobo`,
- *   `@hobo/hobo`, `runtimes/runtime-local`), right after `..`, or by P's name
- *   right after `node_modules`. One segment after a computed root
- *   (`join(evidence, "events")`) is a name, not a path to P.
+ *   ends at P where it names P's directory in more than one segment
+ *   (`packages/hobo`, `runtimes/runtime-local`) or right after `..`, or names
+ *   P by its name after `node_modules` (or a scoped name after any anchor).
+ *   One segment after a computed root (`join(evidence, "events")`) is a name,
+ *   not a path to P; so is a package name at a string's start
+ *   (`"@hobo/bindles"`, `` `@hobo/app-${name}` ``), unless it goes on into
+ *   `dist/`.
  *
  * A path that names a package by a computed segment reaches a package the
  * check cannot name, and counts the same way: a directory that holds workspace
@@ -133,7 +136,12 @@ export function runtimeReachReader(
 			group([name.slice(0, name.indexOf("/"))], true);
 	}
 	for (const [key, whole] of groups)
-		add({ name: undefined, parts: key.split("/"), byName: false, whole });
+		add({
+			name: undefined,
+			parts: key.split("/"),
+			byName: key.startsWith("@"),
+			whole,
+		});
 	return (facts, file) => {
 		const named = new Map<string, string>();
 		let computed: string | undefined;
@@ -158,16 +166,17 @@ export function runtimeReachReader(
 							if (
 								then === "dist" ||
 								((then === undefined || isComputed(then)) &&
+									(anchor !== undefined || !form.byName) &&
 									facts.loadsComputed)
 							)
 								computed ??= text;
 							continue;
 						}
 						// Where a path that stops here is a path to the package.
-						const ends =
-							form.parts.length > 1 ||
-							anchor === ".." ||
-							(anchor === "node_modules" && form.byName);
+						const ends = form.byName
+							? anchor === "node_modules" ||
+								(anchor !== undefined && form.parts.length > 1)
+							: form.parts.length > 1 || anchor === "..";
 						if (
 							next === "dist" ||
 							((next === undefined || isComputed(next)) &&

@@ -176,6 +176,29 @@ describe("run-mirror-lane.mts, stopped by a signal", () => {
 		});
 	}
 
+	it("the lane fails, stopping the package run, when its mirror exits while packages run", {
+		timeout: 60_000,
+	}, async () => {
+		const listener = await beacon();
+		open.push(listener);
+		const lane = runner({
+			MIRROR_BIN: fakeMirror(),
+			FAKE_BEACON: String(listener.port),
+			PATH: `${fakePnpmDir()}${delimiter}${process.env.PATH ?? ""}`,
+		});
+		const exit = once(lane.child, "exit");
+
+		const mirror = await reported(listener, "mirror");
+		const pnpm = await reported(listener, "pnpm");
+		const worker = await reported(listener, "worker");
+		mirror.tell("exit");
+		const [exitCode] = await exit;
+
+		assert.equal(exitCode, 1, lane.output());
+		assert.match(lane.output(), /fail {2}test:mirror — MIRROR_EXITED/u);
+		await Promise.all([pnpm.ended, worker.ended]);
+	});
+
 	it("a second SIGINT during the grace period kills everything at once and exits", async () => {
 		const listener = await beacon();
 		open.push(listener);

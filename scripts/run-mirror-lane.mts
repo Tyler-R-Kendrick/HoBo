@@ -47,6 +47,7 @@ import { LaneChildren } from "./lib/lane-children.ts";
 import {
 	MIRROR_LANE_SEED,
 	MIRROR_LANE_SERVICES,
+	type MirrorLaneError,
 	type RunningMirror,
 	refusePinsRootInCi,
 	resolveMirrorBin,
@@ -183,6 +184,12 @@ const reportDir = join(workDir, "reports");
 /** Set by the first stopping signal: the exit code, and that nothing more may start. */
 let signalled: number | undefined;
 let cleaning: Promise<void> | undefined;
+/**
+ * Set when the emulator exits while the lane still uses it: the package run is
+ * stopped and the lane fails with it, since whatever answered meanwhile need
+ * not have been the emulator the lane started (`RunningMirror.lost`).
+ */
+let lostError: MirrorLaneError | undefined;
 
 /** Stop every child (the emulator, a package run) and remove the lane's directories; once. */
 function cleanUp(): Promise<void> {
@@ -261,6 +268,12 @@ try {
 		...(tlsDir === undefined ? undefined : { tlsDir }),
 	});
 	const mirror = await starting;
+	void mirror.lost.then((error) => {
+		// The lane's own stop (a signal, the end of the run) is not a loss.
+		if (signalled !== undefined || cleaning !== undefined) return;
+		lostError = error;
+		void children.stopAll();
+	});
 	console.log(
 		`mirror-lane: mirror up on ${mirror.url} (port ${mirror.port}, pid ${mirror.pid}, seed ${MIRROR_LANE_SEED}; ${MIRROR_LANE_SERVICES.join(", ")})`,
 	);
@@ -278,12 +291,14 @@ try {
 	});
 	const results: { readonly name: string; readonly code: number }[] = [];
 	for (const name of options.packages) {
-		if (signalled !== undefined) break;
+		if (signalled !== undefined || lostError !== undefined) break;
 		console.log(`mirror-lane: ${name} test:mirror`);
 		results.push({ name, code: await runPackage(name, env) });
 	}
 	if (signalled !== undefined) throw new Error("stopped by a signal");
+	if (lostError !== undefined) throw lostError;
 	await printJournal(mirror);
+	if (lostError !== undefined) throw lostError;
 	printReports(reportDir);
 	for (const result of results) {
 		console.log(

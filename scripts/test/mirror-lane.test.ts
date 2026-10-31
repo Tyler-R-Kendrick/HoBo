@@ -36,7 +36,7 @@ import {
 } from "../lib/mirror-lane.ts";
 import { PinsError } from "../lib/pins.ts";
 import { cachedPath, currentTarget } from "../lib/pins-assets.ts";
-import { fakeMirror, TLS_FIXTURES } from "./support/mirror-fakes.ts";
+import { beacon, fakeMirror, TLS_FIXTURES } from "./support/mirror-fakes.ts";
 import {
 	REPO_ROOT,
 	scratch,
@@ -445,6 +445,57 @@ describe("startMirror", () => {
 			}
 		});
 	}
+
+	it("two lanes on one port: a mirror that announced before failing to bind (older than mirror.cloud#442) is reported lost, never kept", async () => {
+		// Lane 1's mirror holds the port: the same build on a controllable clock,
+		// which answers health exactly as lane 2's own child would.
+		const lane1 = createServer((_request, response) => {
+			response.writeHead(200, { "content-type": "application/json" });
+			response.end('{"status":"ok","uptime_ms":0,"version":"fake"}');
+		});
+		await new Promise<void>((resolve) =>
+			lane1.listen(0, "127.0.0.1", () => resolve()),
+		);
+		const listener = await beacon();
+		try {
+			// SAFETY: a server listening on a TCP port reports an AddressInfo, never a pipe name.
+			const { port } = lane1.address() as AddressInfo;
+			const starting = startMirror({
+				bin: fakeMirror(),
+				env: {
+					...process.env,
+					FAKE_MIRROR_MODE: "pre-442",
+					FAKE_BEACON: String(listener.port),
+				},
+				port,
+			});
+			const child = await listener.next("mirror");
+			// Its banner came first and health answered as it would: nothing at
+			// start-up tells the two apart.
+			const mirror = await starting;
+			// Now lane 2's child tries to bind, fails, and exits, as such a mirror does.
+			child.tell("bind");
+			const lost = await mirror.lost;
+
+			assert.ok(lost instanceof MirrorLaneError, String(lost));
+			assert.equal(lost.code, "MIRROR_EXITED");
+			assert.match(lost.message, /address already in use/u);
+			await mirror.stop();
+		} finally {
+			await listener.close();
+			await new Promise<void>((resolve) => lane1.close(() => resolve()));
+		}
+	});
+
+	it("a stopped mirror is not reported lost", async () => {
+		const mirror = await startMirror({ bin: fakeMirror(), env: process.env });
+		const lost = mirror.lost.then(() => "lost");
+		await mirror.stop();
+		assert.equal(
+			await Promise.race([lost, Promise.resolve("stopped")]),
+			"stopped",
+		);
+	});
 
 	it("gives up with MIRROR_UNHEALTHY and stops the process when health never answers ok", async () => {
 		const pidFile = join(scratch("mirror-lane"), "pid");

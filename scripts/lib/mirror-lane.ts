@@ -55,6 +55,7 @@ export type MirrorLaneErrorCode =
 	| "MIRROR_NOT_FETCHED"
 	| "MIRROR_START_FAILED"
 	| "MIRROR_UNHEALTHY"
+	| "MIRROR_EXITED"
 	| "MIRROR_JOURNAL_UNREADABLE";
 
 /** Every refusal of the lane is named, and its message starts with the name. */
@@ -247,6 +248,13 @@ export interface RunningMirror {
 	output(): string;
 	/** SIGTERM to its process group, SIGKILL after 5 s; resolves once the process is gone. */
 	stop(): Promise<void>;
+	/**
+	 * Settles, with `MIRROR_EXITED`, if the emulator exits while the lane is
+	 * still using it, i.e. not through `stop()`; never otherwise. Once it has
+	 * settled nothing the lane saw since the start can be trusted: it may have
+	 * been answered by whatever else held the port.
+	 */
+	readonly lost: Promise<MirrorLaneError>;
 }
 
 const OUTPUT_LIMIT = 64 * 1024;
@@ -494,11 +502,25 @@ async function startOnce(
 	const caFile =
 		options.tlsDir === undefined ? undefined : join(options.tlsDir, "ca.pem");
 	const gone = () => child.exitCode !== null || child.signalCode !== null;
+	let stopping = false;
 	const stop = async () => {
+		stopping = true;
 		await children.stop(child);
 		rmSync(cwd, { recursive: true, force: true });
 	};
 	const printed = () => output.trim().slice(-2_000);
+	// `close`, not `exit`: by then everything the child printed has been read.
+	const lost = new Promise<MirrorLaneError>((resolveLost) => {
+		child.once("close", (code: number | null, signal: string | null) => {
+			if (stopping) return;
+			resolveLost(
+				new MirrorLaneError(
+					"MIRROR_EXITED",
+					`${options.bin} (pid ${child.pid ?? "?"}) exited (${code ?? signal}) while the lane was using it. A mirror older than mirror.cloud#442 prints its banner before it binds, so if this one could not bind its port, another process on that port may have answered in its place; nothing the lane saw since the start can be trusted. It printed:\n${printed()}`,
+				),
+			);
+		});
+	});
 	const portTaken = () => /address already in use/u.test(output);
 	const timeoutMs = options.startTimeoutMs ?? 120_000;
 
@@ -546,6 +568,7 @@ async function startOnce(
 			args,
 			output: () => output,
 			stop,
+			lost,
 		};
 	}
 	if (health.kind === "another" || portTaken()) {

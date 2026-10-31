@@ -31,9 +31,23 @@ const [host, port] = bind.split(":");
 const mode = process.env.FAKE_MIRROR_MODE ?? "ok";
 if (process.env.FAKE_MIRROR_PIDFILE) writeFileSync(process.env.FAKE_MIRROR_PIDFILE, String(process.pid));
 // Tell a waiting test who we are; the socket closes when this process ends.
+// It also takes orders on that socket: "bind" (FAKE_MIRROR_MODE=pre-442 binds
+// only then, and exits if it cannot) and "exit".
+const orders = [];
+const onOrder = (order, run) => orders.push([order, run]);
 if (process.env.FAKE_BEACON) {
 	const beacon = require("node:net").connect(Number(process.env.FAKE_BEACON), "127.0.0.1", () => beacon.write(JSON.stringify({ role: "mirror", pid: process.pid }) + "\\n"));
+	let text = "";
+	beacon.on("data", (chunk) => {
+		text += chunk.toString("utf8");
+		for (let at = text.indexOf("\\n"); at !== -1; at = text.indexOf("\\n")) {
+			const order = text.slice(0, at);
+			text = text.slice(at + 1);
+			for (const [name, run] of orders) if (name === order) run();
+		}
+	});
 }
+onOrder("exit", () => process.exit(1));
 // --tls-self-signed <dir>: like mirror, write the CA into <dir> and serve
 // HTTPS; the certificates are the test-only ones in FAKE_MIRROR_TLS_FIXTURES.
 const tlsAt = args.indexOf("--tls-self-signed");
@@ -61,10 +75,19 @@ server.on("error", (error) => {
 	console.error("listen tcp " + bind + ": bind: " + (error.code === "EADDRINUSE" ? "address already in use" : error.message));
 	process.exit(1);
 });
-// Like mirror: the banner first, then (a moment later) the bind.
-if (mode !== "no-banner") console.error("mirror fake listening on " + scheme + "://" + bind);
-if (tlsDir !== undefined) console.error("tls ca: " + join(tlsDir, "ca.pem"));
-setTimeout(() => server.listen(Number(port), host), 50);
+const announce = () => {
+	if (mode !== "no-banner") console.error("mirror fake listening on " + scheme + "://" + bind);
+	if (tlsDir !== undefined) console.error("tls ca: " + join(tlsDir, "ca.pem"));
+};
+if (mode === "pre-442") {
+	// A mirror older than mirror.cloud#442: the banner before the bind, which
+	// here happens only when the test orders it.
+	announce();
+	onOrder("bind", () => server.listen(Number(port), host));
+} else {
+	// Like mirror since mirror.cloud#442: the banner only once the port is bound.
+	server.listen(Number(port), host, announce);
+}
 // FAKE_MIRROR_IGNORE_TERM=1: a mirror that does not stop on SIGTERM, so a stop waits out its grace.
 process.on("SIGTERM", () => { console.log("mirror fake: SIGTERM"); if (process.env.FAKE_MIRROR_IGNORE_TERM !== "1") process.exit(0); });
 `;
@@ -114,6 +137,8 @@ export interface Reported {
 	 * belong to another process.
 	 */
 	readonly hasEnded: () => boolean;
+	/** Send the process an order on its socket (the stand-in mirror takes "bind" and "exit"). */
+	readonly tell: (order: string) => void;
 }
 
 export interface Beacon {
@@ -146,7 +171,15 @@ export async function beacon(): Promise<Beacon> {
 				readonly role: string;
 				readonly pid: number;
 			};
-			const reported = { role, pid, ended, hasEnded: () => closed };
+			const reported = {
+				role,
+				pid,
+				ended,
+				hasEnded: () => closed,
+				tell: (order: string) => {
+					socket.write(`${order}\n`);
+				},
+			};
 			reports.set(role, reported);
 			waiting.get(role)?.(reported);
 		});

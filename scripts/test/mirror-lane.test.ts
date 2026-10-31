@@ -35,7 +35,7 @@ import {
 	summarizeJournal,
 } from "../lib/mirror-lane.ts";
 import { PinsError } from "../lib/pins.ts";
-import { cachedPath } from "../lib/pins-assets.ts";
+import { cachedPath, currentTarget } from "../lib/pins-assets.ts";
 import { fakeMirror, TLS_FIXTURES } from "./support/mirror-fakes.ts";
 import {
 	REPO_ROOT,
@@ -154,6 +154,17 @@ describe("resolveMirrorBin", () => {
 				error instanceof MirrorLaneError &&
 				error.code === "MIRROR_BIN_REQUIRED" &&
 				/go build -o <dir>\/mirror \.\/cmd\/mirror/u.test(error.message),
+		);
+	});
+
+	it("fails with MIRROR_BIN_REQUIRED, naming the file, when the pins root has no pins file", async () => {
+		const root = scratch("mirror-lane");
+		await assert.rejects(
+			resolveMirrorBin({ MIRROR_BIN: "" }, root),
+			(error: Error) =>
+				error instanceof MirrorLaneError &&
+				error.code === "MIRROR_BIN_REQUIRED" &&
+				error.message.includes(join(root, "tools/pins/siblings.json")),
 		);
 	});
 
@@ -512,10 +523,43 @@ describe("run-mirror-lane.mts", () => {
 	}
 
 	it("exits 1 with MIRROR_BIN_REQUIRED when there is no binary: the lane fails, it does not skip", () => {
-		const run = lane([], { MIRROR_BIN: "", CI: "" });
+		// An empty pins root and an empty cache, never the repository's own pins
+		// or the machine's cache: what the outcome depends on is set here.
+		const pinsRoot = scratch("mirror-lane");
+		const cache = scratch("mirror-lane");
+		const run = lane(["--pins-root", pinsRoot], {
+			MIRROR_BIN: "",
+			CI: "",
+			XDG_CACHE_HOME: cache,
+		});
 		assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
 		assert.match(run.stderr, /fail {2}test:mirror — MIRROR_BIN_REQUIRED/u);
+		assert.ok(
+			run.stderr.includes(join(pinsRoot, "tools/pins/siblings.json")),
+			run.stderr,
+		);
 		assert.doesNotMatch(run.stdout, /passed|ok \(/u);
+	});
+
+	it("reads the pin from --pins-root and the cache from XDG_CACHE_HOME", () => {
+		const pinsRoot = scratch("mirror-lane");
+		const cache = scratch("mirror-lane");
+		const sha256 = "a".repeat(64);
+		writeManifest(
+			pinsRoot,
+			`{"mirror":{"repo":"https://example.com/o/mirror","tag":"v9.9.9","files":{"${currentTarget()}":{"url":"https://example.com/mirror","sha256":"${sha256}","size":1,"entry":"mirror"}}},"opensesame-kit":null}`,
+		);
+		const run = lane(["--pins-root", pinsRoot], {
+			MIRROR_BIN: "",
+			CI: "",
+			XDG_CACHE_HOME: cache,
+		});
+		assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
+		assert.match(
+			run.stderr,
+			/MIRROR_NOT_FETCHED: the pinned mirror v9\.9\.9 is not in the cache/u,
+		);
+		assert.ok(run.stderr.includes(join(cache, "siblings")), run.stderr);
 	});
 
 	it("exits 2 on a package without a test:mirror script", () => {

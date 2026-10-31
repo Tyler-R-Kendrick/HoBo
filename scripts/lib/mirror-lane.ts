@@ -111,7 +111,8 @@ async function executable(path: string): Promise<boolean> {
 
 /**
  * The binary the lane runs, or a refusal that says what to do. `root` is the
- * repository whose `tools/pins/siblings.json` is read.
+ * directory whose `tools/pins/siblings.json` is read (the repository; a test
+ * names an empty one); a root without that file pins nothing.
  */
 export async function resolveMirrorBin(
 	env: NodeJS.ProcessEnv,
@@ -135,25 +136,32 @@ export async function resolveMirrorBin(
 			origin: `${variable} (a local build: unverified, not the pinned release)`,
 		};
 	}
-	const pins = parsePins(readFileSync(join(root, PINS_FILE), "utf8"));
+	const file = join(root, PINS_FILE);
+	if (!existsSync(file)) {
+		throw new MirrorLaneError(
+			"MIRROR_BIN_REQUIRED",
+			`no mirror release is pinned (${file} does not exist) and ${variable} is unset; ${BUILD_HELP}`,
+		);
+	}
+	const pins = parsePins(readFileSync(file, "utf8"));
 	const pin = pins.assets.mirror ?? null;
 	if (pin === null) {
 		throw new MirrorLaneError(
 			"MIRROR_BIN_REQUIRED",
-			`no mirror release is pinned (${PINS_FILE} assets.mirror is null) and ${variable} is unset; ${BUILD_HELP}`,
+			`no mirror release is pinned (${file} assets.mirror is null) and ${variable} is unset; ${BUILD_HELP}`,
 		);
 	}
-	const file = assetFor(pin, "mirror", target);
+	const asset = assetFor(pin, "mirror", target);
 	const cache = cacheDir(env);
-	const unsafe = await cacheProblem(cache, file.sha256);
+	const unsafe = await cacheProblem(cache, asset.sha256);
 	if (unsafe !== null) {
 		throw new MirrorLaneError(
 			"MIRROR_NOT_FETCHED",
 			`${unsafe.problem}; ${unsafe.fix}`,
 		);
 	}
-	const cached = await verifyCached(cache, file);
-	const path = cachedPath(cache, file);
+	const cached = await verifyCached(cache, asset);
+	const path = cachedPath(cache, asset);
 	if (cached.state !== "ok") {
 		throw new MirrorLaneError(
 			"MIRROR_NOT_FETCHED",
@@ -163,7 +171,7 @@ export async function resolveMirrorBin(
 	return {
 		path,
 		verified: true,
-		origin: `pin ${pin.tag} (${target} sha256 ${file.sha256.slice(0, 12)}, re-hashed from the cache)`,
+		origin: `pin ${pin.tag} (${target} sha256 ${asset.sha256.slice(0, 12)}, re-hashed from the cache)`,
 	};
 }
 

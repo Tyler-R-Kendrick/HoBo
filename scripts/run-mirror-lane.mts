@@ -2,7 +2,7 @@
 /**
  * `pnpm run test:mirror`: the env-gated mirror.cloud contract lane (ADR-0174).
  *
- *   node --import tsx scripts/run-mirror-lane.mts [--tls] [--package <name>]...
+ *   node --import tsx scripts/run-mirror-lane.mts [--tls] [--package <name>]... [--pins-root <dir>]
  *
  * Starts the mirror.cloud emulator (`mirror up vercel.api aws.dynamodb aws.s3
  * aws.secretsmanager aws.sns aws.sqs aws.ssm`, `--seed hobo-contract`,
@@ -17,7 +17,8 @@
  *
  * The binary is `MIRROR_BIN` (a local build, refused in CI unless
  * `HOBO_PINS_ALLOW_OVERRIDE=1`) or the `mirror` pin in tools/pins/siblings.json
- * from the cache (`pnpm run pins:fetch mirror`). With neither the lane exits 1
+ * (under `--pins-root`, default this repository) from the cache under
+ * `XDG_CACHE_HOME` (`pnpm run pins:fetch mirror`). With neither the lane exits 1
  * with `MIRROR_BIN_REQUIRED`: it fails, it never skips.
  *
  * What a green run proves: HoBo's clients against mirror's reading of the
@@ -30,7 +31,7 @@
  */
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
@@ -56,13 +57,15 @@ const LANE_PACKAGES = Object.freeze([
 ]);
 
 const USAGE =
-	"usage: run-mirror-lane.mts [--tls] [--package <name>]...   (packages: " +
+	"usage: run-mirror-lane.mts [--tls] [--package <name>]... [--pins-root <dir>]   (packages: " +
 	`${LANE_PACKAGES.join(", ")})`;
 
 /** What the command line asked for. */
 interface LaneOptions {
 	readonly tls: boolean;
 	readonly packages: readonly string[];
+	/** Where tools/pins/siblings.json is read; the packages always run from this repository. */
+	readonly pinsRoot: string;
 }
 
 function readArgs(): LaneOptions {
@@ -72,6 +75,7 @@ function readArgs(): LaneOptions {
 			options: {
 				tls: { type: "boolean" },
 				package: { type: "string", multiple: true },
+				"pins-root": { type: "string" },
 			},
 		});
 		const packages = values.package ?? [...LANE_PACKAGES];
@@ -79,7 +83,11 @@ function readArgs(): LaneOptions {
 		if (unknown.length > 0) {
 			throw new Error(`no test:mirror in ${unknown.join(", ")}`);
 		}
-		return { tls: values.tls === true, packages };
+		return {
+			tls: values.tls === true,
+			packages,
+			pinsRoot: resolve(values["pins-root"] ?? root),
+		};
 	} catch (error) {
 		console.error(
 			`mirror-lane: ${error instanceof Error ? error.message : String(error)}\n${USAGE}`,
@@ -196,7 +204,7 @@ process.once("exit", () => children.killAllNow());
 
 let status = 1;
 try {
-	const binary = await resolveMirrorBin(process.env, root);
+	const binary = await resolveMirrorBin(process.env, options.pinsRoot);
 	console.log(`mirror-lane: mirror ${binary.path}`);
 	console.log(`mirror-lane:   from ${binary.origin}`);
 	if (options.tls) tlsDir = mkdtempSync(join(tmpdir(), "hobo-mirror-tls-"));

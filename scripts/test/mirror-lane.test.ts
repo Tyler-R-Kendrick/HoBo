@@ -7,6 +7,11 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
+	type ChannelListener,
+	subscribe,
+	unsubscribe,
+} from "node:diagnostics_channel";
+import {
 	chmodSync,
 	existsSync,
 	mkdirSync,
@@ -20,7 +25,7 @@ import {
 	type ServerResponse,
 } from "node:http";
 import { get as httpsGet } from "node:https";
-import type { AddressInfo } from "node:net";
+import type { AddressInfo, Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, describe, it } from "node:test";
@@ -400,17 +405,54 @@ describe("startMirror", () => {
 		assert.equal(existsSync(mark), true);
 	});
 
-	it("keeps asking for health while a mirror built before mirror.cloud#442 binds after its banner", async () => {
-		// Its health is refused for 300 ms after the banner, then answers.
-		const mirror = await startMirror({
-			bin: fakeMirror(),
-			env: laneEnv({ FAKE_MIRROR_MODE: "banner-before-bind" }),
-		});
+	it("asks for health again while a mirror built before mirror.cloud#442 binds after its banner", {
+		timeout: 60_000,
+	}, async (t) => {
+		// The stand-in announces and binds only when told. It is told once the
+		// lane's first health connect is refused, and the lane's 25 ms wait
+		// before asking again runs on the mock clock, advanced only once the
+		// stand-in reports it is bound: events fix the order, however loaded
+		// the machine.
+		const listener = await beacon();
+		const port = await freePort();
+		let refusals = 0;
+		const watch: ChannelListener = (message) => {
+			// SAFETY: net.client.socket publishes { socket }, the client socket it just made.
+			const { socket } = message as { readonly socket: Socket };
+			socket.once("error", (error: Error) => {
+				const refusal =
+					"code" in error &&
+					error.code === "ECONNREFUSED" &&
+					error.message.endsWith(`:${port}`);
+				if (!refusal) return;
+				refusals += 1;
+				if (refusals === 1) {
+					void listener.next("mirror").then((child) => child.tell("bind"));
+				}
+			});
+		};
+		subscribe("net.client.socket", watch);
+		t.mock.timers.enable({ apis: ["setTimeout"] });
 		try {
-			const seen = await getJson(`${mirror.url}/argv`);
-			assert.equal(seen.clock, "controllable");
-		} finally {
+			const starting = startMirror({
+				bin: fakeMirror(),
+				env: laneEnv({
+					FAKE_MIRROR_MODE: "pre-442",
+					FAKE_BEACON: String(listener.port),
+				}),
+				port,
+			});
+			// A start that gives up after the refusal settles first, and fails here.
+			await Promise.race([listener.next("bound"), starting]);
+			t.mock.timers.tick(25);
+			const mirror = await starting;
+			t.mock.timers.reset();
 			await mirror.stop();
+			assert.equal(refusals, 1);
+		} finally {
+			t.mock.timers.reset();
+			unsubscribe("net.client.socket", watch);
+			await listener.close();
 		}
 	});
 

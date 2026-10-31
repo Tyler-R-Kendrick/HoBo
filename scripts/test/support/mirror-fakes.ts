@@ -2,7 +2,7 @@
  * Stand-ins for the processes the mirror lane runs, for
  * scripts/test/mirror-lane*.test.ts: a `mirror` that behaves as mirror.cloud
  * does at start-up (its bind, then its banner, as since mirror.cloud#442, or
- * the older order in the `pre-442` and `banner-before-bind` modes;
+ * the older order in the `pre-442` mode;
  * `--tls-self-signed`), and a
  * `pnpm` that starts a worker which ignores SIGTERM, the way a package run
  * starts vitest and its workers. Each can report its pid to a beacon, a
@@ -34,7 +34,8 @@ const mode = process.env.FAKE_MIRROR_MODE ?? "ok";
 if (process.env.FAKE_MIRROR_PIDFILE) writeFileSync(process.env.FAKE_MIRROR_PIDFILE, String(process.pid));
 // Tell a waiting test who we are; the socket closes when this process ends.
 // It also takes orders on that socket: "bind" (FAKE_MIRROR_MODE=pre-442 binds
-// only then, and exits if it cannot) and "exit".
+// only then, and exits if it cannot; once bound it reports again, as "bound")
+// and "exit".
 const orders = [];
 const onOrder = (order, run) => orders.push([order, run]);
 if (process.env.FAKE_BEACON) {
@@ -90,13 +91,9 @@ if (mode === "pre-442") {
 	// A mirror older than mirror.cloud#442: the banner before the bind, which
 	// here happens only when the test orders it.
 	announce();
-	onOrder("bind", () => server.listen(Number(port), host));
-} else if (mode === "banner-before-bind") {
-	// A mirror older than mirror.cloud#442 whose port is free: the banner, and
-	// the bind 300 ms later, so health asked right after the banner is refused
-	// until the bind (the lane retries 40 times, 25 ms apart).
-	announce();
-	setTimeout(() => server.listen(Number(port), host), 300);
+	onOrder("bind", () => server.listen(Number(port), host, () => {
+		const bound = require("node:net").connect(Number(process.env.FAKE_BEACON), "127.0.0.1", () => bound.end(JSON.stringify({ role: "bound", pid: process.pid }) + "\\n"));
+	}));
 } else {
 	// Like mirror since mirror.cloud#442: the banner only once the port is bound.
 	server.listen(Number(port), host, announce);

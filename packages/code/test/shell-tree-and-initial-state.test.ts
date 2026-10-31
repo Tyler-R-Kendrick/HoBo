@@ -82,12 +82,12 @@ const message = (text: string): ShellMessage => ({
 	at: 1,
 });
 
-// SAFETY: the fixture stands in for the gate the host builds.
-const approval = {
+/** Stands in for the gate the host builds; it already has the declared shape. */
+const approval: PendingApproval = {
 	runId: "run-7",
 	sandboxRoot: "/tmp/sandbox",
 	changes: [{ status: "M", path: "src/thing.ts" }],
-} as unknown as PendingApproval;
+};
 
 /**
  * The title the tree was built with. It lives on a nested node rather than the

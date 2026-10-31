@@ -208,6 +208,12 @@ export interface MirrorOptions {
 	 * its own.
 	 */
 	readonly children?: LaneChildren;
+	/**
+	 * A directory the caller owns and removes on every way out, signals
+	 * included: mirror's working directory is made inside it. Default: the
+	 * system temporary directory.
+	 */
+	readonly workDir?: string;
 }
 
 export interface RunningMirror {
@@ -420,7 +426,9 @@ async function startOnce(
 	];
 	// An empty directory of its own: mirror reads `.mirror/config.json` and
 	// keeps `.mirror/cassettes` relative to where it runs.
-	const cwd = mkdtempSync(join(tmpdir(), "hobo-mirror-cwd-"));
+	const cwd = mkdtempSync(
+		join(options.workDir ?? tmpdir(), "hobo-mirror-cwd-"),
+	);
 	const children = options.children ?? new LaneChildren();
 	let child: ChildProcess;
 	try {

@@ -10,7 +10,7 @@
  * port, sets `HOBO_MIRROR_URL` (and `HOBO_MIRROR_CA` with `--tls`), runs each
  * package's own `test:mirror` script one after another, always stops the
  * emulator and any package run (each in its own process group, tracked from
- * the moment it is spawned, so SIGINT or SIGTERM during start-up stops mirror
+ * the moment it is spawned, so SIGHUP, SIGINT, SIGQUIT or SIGTERM during start-up stops mirror
  * too), prints what its journal recorded and the pact verification
  * reports the tests left in `HOBO_MIRROR_REPORTS`, and exits 1 if any package
  * failed.
@@ -29,7 +29,13 @@
  * Exit: 0 every package passed, 1 a package failed or the emulator could not
  * run, 2 wrong usage.
  */
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
@@ -165,9 +171,15 @@ async function printJournal(mirror: RunningMirror): Promise<void> {
 const options = readArgs();
 /** The emulator's start, in flight or done: what cleanUp waits on and stops. */
 let starting: Promise<RunningMirror> | undefined;
-let tlsDir: string | undefined;
-let reportDir: string | undefined;
-/** Set by SIGINT or SIGTERM: the exit code, and that nothing more may start. */
+/**
+ * Everything the lane writes (mirror's working directory, its TLS directory,
+ * the reports) lives here, and the runner's `exit` handler removes it on every
+ * way out, an emergency exit on a second signal included.
+ */
+const workDir = mkdtempSync(join(tmpdir(), "hobo-mirror-lane-"));
+const tlsDir = options.tls ? join(workDir, "tls") : undefined;
+const reportDir = join(workDir, "reports");
+/** Set by the first stopping signal: the exit code, and that nothing more may start. */
 let signalled: number | undefined;
 let cleaning: Promise<void> | undefined;
 
@@ -180,38 +192,70 @@ function cleanUp(): Promise<void> {
 			(running) => running.stop(),
 			() => undefined,
 		);
-		if (tlsDir !== undefined) rmSync(tlsDir, { recursive: true, force: true });
-		tlsDir = undefined;
-		if (reportDir !== undefined) {
-			rmSync(reportDir, { recursive: true, force: true });
-		}
-		reportDir = undefined;
+		rmSync(workDir, { recursive: true, force: true });
 	})();
 	return cleaning;
 }
 
-for (const signal of ["SIGINT", "SIGTERM"] as const) {
-	process.once(signal, () => {
-		signalled = signal === "SIGINT" ? 130 : 143;
-		console.error(
-			`mirror-lane: ${signal}: stopping the emulator and any package run`,
-		);
+/**
+ * The signals that end the runner, with the exit code each gives (128 + its
+ * number). The children lead process groups of their own, so a terminal's
+ * SIGHUP (closed window, dropped ssh session) or a SIGQUIT reaches only the
+ * runner, which must stop them. A second signal while the first stop waits
+ * out its grace kills every group at once and exits.
+ */
+const STOPPING_SIGNALS = Object.freeze([
+	["SIGHUP", 129],
+	["SIGINT", 130],
+	["SIGQUIT", 131],
+	["SIGTERM", 143],
+] as const);
+
+/** Report to stderr, which a closed terminal may no longer take. */
+function say(line: string): void {
+	try {
+		console.error(line);
+	} catch {
+		// The terminal is gone: the stop still has to happen.
+	}
+}
+
+for (const [signal, code] of STOPPING_SIGNALS) {
+	process.on(signal, () => {
+		if (signalled !== undefined) {
+			say(`mirror-lane: ${signal} again: killing everything the lane started`);
+			children.killAllNow();
+			process.exit(signalled);
+		}
+		signalled = code;
+		say(`mirror-lane: ${signal}: stopping the emulator and any package run`);
 		void cleanUp().finally(() => process.exit(signalled));
 	});
 }
-// The last word, which cannot wait: no group the lane started outlives it.
-process.once("exit", () => children.killAllNow());
+// After a SIGHUP the terminal may be gone; a write that fails then is not the lane's failure.
+for (const stream of [process.stdout, process.stderr]) {
+	stream.on("error", () => {
+		if (signalled === undefined) process.exitCode = 1;
+	});
+}
+// The last word, which cannot wait: no group the lane started outlives it,
+// and nothing it wrote stays.
+process.once("exit", () => {
+	children.killAllNow();
+	rmSync(workDir, { recursive: true, force: true });
+});
 
 let status = 1;
 try {
 	const binary = await resolveMirrorBin(process.env, options.pinsRoot);
 	console.log(`mirror-lane: mirror ${binary.path}`);
 	console.log(`mirror-lane:   from ${binary.origin}`);
-	if (options.tls) tlsDir = mkdtempSync(join(tmpdir(), "hobo-mirror-tls-"));
+	if (tlsDir !== undefined) mkdirSync(tlsDir);
 	starting = startMirror({
 		bin: binary.path,
 		env: process.env,
 		children,
+		workDir,
 		...(tlsDir === undefined ? undefined : { tlsDir }),
 	});
 	const mirror = await starting;
@@ -221,7 +265,7 @@ try {
 	if (mirror.caFile !== undefined) {
 		console.log(`mirror-lane:   tls ca ${mirror.caFile}`);
 	}
-	reportDir = mkdtempSync(join(tmpdir(), "hobo-mirror-reports-"));
+	mkdirSync(reportDir);
 	const env = sanitizeNodeOptions({
 		...process.env,
 		HOBO_MIRROR_URL: mirror.url,

@@ -13,8 +13,10 @@
 import assert from "node:assert/strict";
 import { type ChildProcess, spawn } from "node:child_process";
 import { once } from "node:events";
+import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
-import { afterEach, describe, it } from "node:test";
+import { after, afterEach, describe, it } from "node:test";
 
 import {
 	type Beacon,
@@ -30,9 +32,10 @@ const open: Beacon[] = [];
 const started: Reported[] = [];
 
 afterEach(async () => {
-	// A red run must not leave its stand-ins running: they are ours, by pid.
+	// A red run must not leave its stand-ins running. Only a stand-in whose
+	// beacon socket is still open is signalled: that pid is still ours.
 	for (const reported of started.splice(0)) {
-		if (stillRunning(reported.pid)) process.kill(reported.pid, "SIGKILL");
+		if (!reported.hasEnded()) process.kill(reported.pid, "SIGKILL");
 	}
 	await Promise.all(open.splice(0).map((listener) => listener.close()));
 });
@@ -41,7 +44,23 @@ afterEach(async () => {
 interface Lane {
 	readonly child: ChildProcess;
 	readonly output: () => string;
+	/** Resolves once the runner has printed a line matching `pattern`. */
+	readonly printed: (pattern: RegExp) => Promise<void>;
 }
+
+/** The runner's TMPDIR: whatever it writes there must be gone when it has exited. */
+const TEMP = mkdtempSync(join(tmpdir(), "mirror-lane-signals-"));
+
+/** What the lane left in TEMP; tsx's own compile cache (`tsx-<uid>`) is the loader's, not the lane's. */
+function laneLeftovers(): readonly string[] {
+	return readdirSync(TEMP).filter((name) => !name.startsWith("tsx-"));
+}
+
+after(() => {
+	const left = laneLeftovers();
+	rmSync(TEMP, { recursive: true, force: true });
+	assert.deepEqual(left, [], "the runner left files in its TMPDIR");
+});
 
 function runner(env: NodeJS.ProcessEnv): Lane {
 	const child = spawn(
@@ -54,7 +73,7 @@ function runner(env: NodeJS.ProcessEnv): Lane {
 			"@hobo/provider-vercel",
 		],
 		{
-			env: { ...process.env, NODE_OPTIONS: "", CI: "", ...env },
+			env: { ...process.env, NODE_OPTIONS: "", CI: "", TMPDIR: TEMP, ...env },
 			stdio: ["ignore", "pipe", "pipe"],
 		},
 	);
@@ -65,7 +84,19 @@ function runner(env: NodeJS.ProcessEnv): Lane {
 	child.stderr?.on("data", (chunk: Buffer) => {
 		output += chunk.toString("utf8");
 	});
-	return { child, output: () => output };
+	const printed = (pattern: RegExp) =>
+		new Promise<void>((resolvePrinted) => {
+			const check = () => {
+				if (!pattern.test(output)) return;
+				child.stdout?.off("data", check);
+				child.stderr?.off("data", check);
+				resolvePrinted();
+			};
+			child.stdout?.on("data", check);
+			child.stderr?.on("data", check);
+			check();
+		});
+	return { child, output: () => output, printed };
 }
 
 async function reported(listener: Beacon, role: string): Promise<Reported> {
@@ -78,6 +109,10 @@ describe("run-mirror-lane.mts, stopped by a signal", () => {
 	for (const [signal, code] of [
 		["SIGTERM", 143],
 		["SIGINT", 130],
+		// A closed terminal or a dropped ssh session: the detached children
+		// never see it, so the runner must stop them.
+		["SIGHUP", 129],
+		["SIGQUIT", 131],
 	] as const) {
 		it(`${signal} while mirror is still starting stops mirror before the runner exits`, async () => {
 			const listener = await beacon();
@@ -106,34 +141,65 @@ describe("run-mirror-lane.mts, stopped by a signal", () => {
 		});
 	}
 
-	it("SIGTERM while a package runs stops the package run, its process group, and mirror", async () => {
+	for (const [signal, code] of [
+		["SIGTERM", 143],
+		["SIGHUP", 129],
+	] as const) {
+		it(`${signal} while a package runs stops the package run, its process group, and mirror`, async () => {
+			const listener = await beacon();
+			open.push(listener);
+			const lane = runner({
+				MIRROR_BIN: fakeMirror(),
+				FAKE_BEACON: String(listener.port),
+				// pnpm --filter ... run test:mirror is the stand-in, first on PATH.
+				PATH: `${fakePnpmDir()}${delimiter}${process.env.PATH ?? ""}`,
+			});
+			const exit = once(lane.child, "exit");
+
+			const mirror = await reported(listener, "mirror");
+			const pnpm = await reported(listener, "pnpm");
+			const worker = await reported(listener, "worker");
+			lane.child.kill(signal);
+			const [exitCode] = await exit;
+
+			assert.equal(exitCode, code, lane.output());
+			for (const child of [mirror, pnpm]) {
+				assert.equal(
+					stillRunning(child.pid),
+					false,
+					`${child.role} pid ${child.pid} outlived the runner:\n${lane.output()}`,
+				);
+			}
+			// The worker is pnpm's child and ignores SIGTERM: only the SIGKILL the
+			// runner sends to pnpm's process group ends it.
+			await Promise.all([mirror.ended, pnpm.ended, worker.ended]);
+		});
+	}
+
+	it("a second SIGINT during the grace period kills everything at once and exits", async () => {
 		const listener = await beacon();
 		open.push(listener);
 		const lane = runner({
 			MIRROR_BIN: fakeMirror(),
+			FAKE_MIRROR_MODE: "no-banner",
+			// Mirror ignores SIGTERM: the first stop waits out its 5 s grace.
+			FAKE_MIRROR_IGNORE_TERM: "1",
 			FAKE_BEACON: String(listener.port),
-			// pnpm --filter ... run test:mirror is the stand-in, first on PATH.
-			PATH: `${fakePnpmDir()}${delimiter}${process.env.PATH ?? ""}`,
 		});
 		const exit = once(lane.child, "exit");
 
 		const mirror = await reported(listener, "mirror");
-		const pnpm = await reported(listener, "pnpm");
-		const worker = await reported(listener, "worker");
-		lane.child.kill("SIGTERM");
-		const [code] = await exit;
+		const stopping = lane.printed(/SIGINT: stopping/u);
+		lane.child.kill("SIGINT");
+		await stopping;
+		lane.child.kill("SIGINT");
+		const [exitCode, killedBy] = await exit;
 
-		assert.equal(code, 143, lane.output());
-		for (const child of [mirror, pnpm]) {
-			assert.equal(
-				stillRunning(child.pid),
-				false,
-				`${child.role} pid ${child.pid} outlived the runner:\n${lane.output()}`,
-			);
-		}
-		// The worker is pnpm's child and ignores SIGTERM: only the SIGKILL the
-		// runner sends to pnpm's process group ends it.
-		await Promise.all([mirror.ended, pnpm.ended, worker.ended]);
-		assert.equal(stillRunning(worker.pid), false);
+		// The runner exited by its own hand (130), not by the second SIGINT's
+		// default action, and mirror's group was killed on the way out.
+		assert.deepEqual([exitCode, killedBy], [130, null], lane.output());
+		assert.match(lane.output(), /SIGINT again/u);
+		assert.deepEqual(laneLeftovers(), [], "the emergency exit left files");
+		await mirror.ended;
 	});
 });

@@ -65,7 +65,8 @@ server.on("error", (error) => {
 if (mode !== "no-banner") console.error("mirror fake listening on " + scheme + "://" + bind);
 if (tlsDir !== undefined) console.error("tls ca: " + join(tlsDir, "ca.pem"));
 setTimeout(() => server.listen(Number(port), host), 50);
-process.on("SIGTERM", () => { console.log("mirror fake: SIGTERM"); process.exit(0); });
+// FAKE_MIRROR_IGNORE_TERM=1: a mirror that does not stop on SIGTERM, so a stop waits out its grace.
+process.on("SIGTERM", () => { console.log("mirror fake: SIGTERM"); if (process.env.FAKE_MIRROR_IGNORE_TERM !== "1") process.exit(0); });
 `;
 
 /** An executable stand-in mirror in a fresh scratch directory. */
@@ -107,6 +108,12 @@ export interface Reported {
 	readonly pid: number;
 	/** Resolves when the process has ended (its end closes the socket). */
 	readonly ended: Promise<void>;
+	/**
+	 * Whether that socket has closed. While it is open the process is ours and
+	 * alive, so its pid may be signalled; once closed the pid may already
+	 * belong to another process.
+	 */
+	readonly hasEnded: () => boolean;
 }
 
 export interface Beacon {
@@ -123,8 +130,12 @@ export async function beacon(): Promise<Beacon> {
 	const sockets = new Set<Socket>();
 	const server = createServer((socket) => {
 		sockets.add(socket);
+		let closed = false;
 		const ended = new Promise<void>((resolveEnded) =>
-			socket.once("close", () => resolveEnded()),
+			socket.once("close", () => {
+				closed = true;
+				resolveEnded();
+			}),
 		);
 		let text = "";
 		socket.on("data", (chunk: Buffer) => {
@@ -135,7 +146,7 @@ export async function beacon(): Promise<Beacon> {
 				readonly role: string;
 				readonly pid: number;
 			};
-			const reported = { role, pid, ended };
+			const reported = { role, pid, ended, hasEnded: () => closed };
 			reports.set(role, reported);
 			waiting.get(role)?.(reported);
 		});

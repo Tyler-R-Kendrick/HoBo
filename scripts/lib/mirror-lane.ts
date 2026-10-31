@@ -17,11 +17,19 @@
  * Erasable TypeScript with node builtins only, like the pins it reads.
  */
 import { type ChildProcess, spawn } from "node:child_process";
-import { constants, existsSync, readFileSync, statSync } from "node:fs";
+import {
+	constants,
+	existsSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	statSync,
+} from "node:fs";
 import { access } from "node:fs/promises";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { type AddressInfo, createServer } from "node:net";
+import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 
 import { PINS_FILE, parsePins } from "./pins.ts";
@@ -229,6 +237,19 @@ function exited(child: ChildProcess): Promise<void> {
 		: new Promise((resolveExit) => child.once("exit", () => resolveExit()));
 }
 
+/**
+ * The environment mirror runs with: the caller's, without a `MIRROR_*`
+ * variable of its own (mirror reads its bind, seed, persistence, strictness
+ * and proxy mode from them), plus the two the lane sets.
+ */
+function mirrorEnv(ambient: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+	const env: NodeJS.ProcessEnv = {};
+	for (const [name, value] of Object.entries(ambient)) {
+		if (!name.startsWith("MIRROR_")) env[name] = value;
+	}
+	return { ...env, MIRROR_CLOCK: "controllable", MIRROR_VERCEL_FAULTS: "1" };
+}
+
 async function startOnce(
 	options: MirrorOptions,
 	port: number,
@@ -245,12 +266,12 @@ async function startOnce(
 			? []
 			: ["--tls-self-signed", options.tlsDir]),
 	];
+	// An empty directory of its own: mirror reads `.mirror/config.json` and
+	// keeps `.mirror/cassettes` relative to where it runs.
+	const cwd = mkdtempSync(join(tmpdir(), "hobo-mirror-cwd-"));
 	const child = spawn(options.bin, args, {
-		env: {
-			...options.env,
-			MIRROR_CLOCK: "controllable",
-			MIRROR_VERCEL_FAULTS: "1",
-		},
+		cwd,
+		env: mirrorEnv(options.env),
 		stdio: ["ignore", "pipe", "pipe"],
 	});
 	let output = "";
@@ -268,22 +289,29 @@ async function startOnce(
 	const caFile =
 		options.tlsDir === undefined ? undefined : join(options.tlsDir, "ca.pem");
 	const stop = async () => {
-		if (child.exitCode !== null || child.signalCode !== null) return;
-		child.kill("SIGTERM");
-		const killer = setTimeout(() => child.kill("SIGKILL"), 5_000);
-		await exited(child);
-		clearTimeout(killer);
+		if (child.exitCode === null && child.signalCode === null) {
+			child.kill("SIGTERM");
+			const killer = setTimeout(() => child.kill("SIGKILL"), 5_000);
+			await exited(child);
+			clearTimeout(killer);
+		}
+		rmSync(cwd, { recursive: true, force: true });
 	};
 	const deadline = Date.now() + (options.startTimeoutMs ?? 120_000);
 	for (;;) {
 		if (spawnError !== undefined) {
+			await stop();
 			throw new MirrorLaneError(
 				"MIRROR_START_FAILED",
 				`${options.bin} could not be started: ${spawnError.message}`,
 			);
 		}
 		if (child.exitCode !== null || child.signalCode !== null) {
-			if (/address already in use/u.test(output)) return "port-taken";
+			if (/address already in use/u.test(output)) {
+				await stop();
+				return "port-taken";
+			}
+			await stop();
 			throw new MirrorLaneError(
 				"MIRROR_START_FAILED",
 				`${options.bin} ${args.join(" ")} exited (${child.exitCode ?? child.signalCode}) before it answered /_mirror/health; it printed:\n${output.trim().slice(-2_000)}`,

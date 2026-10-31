@@ -6,13 +6,20 @@
  */
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	realpathSync,
+	writeFileSync,
+} from "node:fs";
 import {
 	createServer,
 	type IncomingMessage,
 	type ServerResponse,
 } from "node:http";
 import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, describe, it } from "node:test";
 
@@ -50,7 +57,8 @@ const server = createServer((request, response) => {
 	if (mode === "unhealthy") { response.writeHead(503); response.end("{}"); return; }
 	response.writeHead(200, { "content-type": "application/json" });
 	if (request.url === "/_mirror/health") { response.end('{"status":"ok","uptime_ms":0,"version":"fake"}'); return; }
-	response.end(JSON.stringify({ args, clock: process.env.MIRROR_CLOCK, faults: process.env.MIRROR_VERCEL_FAULTS }));
+	const mirrorEnv = Object.keys(process.env).filter((key) => key.startsWith("MIRROR_")).sort().map((key) => key + "=" + process.env[key]);
+	response.end(JSON.stringify({ args, clock: process.env.MIRROR_CLOCK, faults: process.env.MIRROR_VERCEL_FAULTS, mirrorEnv, cwd: process.cwd(), cwdEntries: require("node:fs").readdirSync("."), readsConfig: existsSync(".mirror/config.json") }));
 });
 setTimeout(() => server.listen(Number(port), host, () => console.log("mirror fake listening on http://" + bind)), 150);
 process.on("SIGTERM", () => { console.log("mirror fake: SIGTERM"); process.exit(0); });
@@ -68,6 +76,10 @@ function getJson(url: string): Promise<{
 	readonly args: readonly string[];
 	readonly clock: string;
 	readonly faults: string;
+	readonly mirrorEnv: readonly string[];
+	readonly cwd: string;
+	readonly cwdEntries: readonly string[];
+	readonly readsConfig: boolean;
 }> {
 	return fetch(url).then((response) => response.json());
 }
@@ -195,6 +207,56 @@ describe("startMirror", () => {
 		}
 		assert.equal(alive(mirror.pid), false);
 		assert.match(mirror.output(), /SIGTERM/u);
+	});
+
+	it("gives mirror no MIRROR_* variable but the two the lane sets", async () => {
+		const mirror = await startMirror({
+			bin: fakeMirror(),
+			env: {
+				...process.env,
+				MIRROR_STRICT: "1",
+				MIRROR_PERSIST: "/tmp/hobo-mirror-lane-not-this",
+				MIRROR_CLOCK: "real",
+				MIRROR_VERCEL_FAULTS: "0",
+				MIRROR_BIND: "0.0.0.0:4566",
+			},
+		});
+		try {
+			const seen = await getJson(`${mirror.url}/argv`);
+			assert.deepEqual(seen.mirrorEnv, [
+				"MIRROR_CLOCK=controllable",
+				"MIRROR_VERCEL_FAULTS=1",
+			]);
+		} finally {
+			await mirror.stop();
+		}
+	});
+
+	it("runs mirror in an empty directory of its own, so no .mirror/config.json is read, and removes it", async () => {
+		const outer = scratch("mirror-lane");
+		mkdirSync(join(outer, ".mirror"));
+		writeFileSync(
+			join(outer, ".mirror", "config.json"),
+			`{"bind":"0.0.0.0:4566","strict":true}`,
+		);
+		const before = process.cwd();
+		process.chdir(outer);
+		let seen: Awaited<ReturnType<typeof getJson>>;
+		try {
+			const mirror = await startMirror({ bin: fakeMirror(), env: process.env });
+			try {
+				seen = await getJson(`${mirror.url}/argv`);
+			} finally {
+				await mirror.stop();
+			}
+		} finally {
+			process.chdir(before);
+		}
+		assert.equal(seen.readsConfig, false);
+		assert.notEqual(seen.cwd, realpathSync(outer));
+		assert.equal(seen.cwd.startsWith(realpathSync(tmpdir())), true);
+		assert.deepEqual(seen.cwdEntries, []);
+		assert.equal(existsSync(seen.cwd), false);
 	});
 
 	it("passes --tls-self-signed and waits for the CA it writes", async () => {

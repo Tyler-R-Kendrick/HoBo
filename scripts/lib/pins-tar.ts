@@ -19,8 +19,11 @@
  * made with `tar --format=ustar`, so they never carry one.
  *
  * Names are compared as `tar` would write them out: repeated slashes
- * collapsed, any leading `./` and a trailing `/` removed, so `.//mirror` is
- * `mirror` and a second copy spelled that way is the member twice.
+ * collapsed, any leading `./` and a directory's trailing `/` removed, so
+ * `.//mirror` is `mirror` and a second copy spelled that way is the member
+ * twice. A regular file whose name ends in `/` is refused: `tar` extracts it
+ * as a directory (the old convention for type `\0`, which GNU tar applies to
+ * type `0` too).
  *
  * The scan ends at the two zero blocks that end the archive; what follows them
  * is not read, as `tar` does not read it. A single zero block followed by an
@@ -138,11 +141,14 @@ function parseHeader(block: Buffer, archive: string): TarHeader {
 	}
 	const name = field(block, 0, 100);
 	const prefix = field(block, 345, 155);
-	return {
-		name: normaliseName(prefix === "" ? name : `${prefix}/${name}`),
-		size,
-		type,
-	};
+	const raw = prefix === "" ? name : `${prefix}/${name}`;
+	if (type === "0" && raw.endsWith("/")) {
+		throw new PinsError(
+			"ARCHIVE_UNSAFE",
+			`${archive} has a regular file named ${JSON.stringify(raw)}, which tar extracts as a directory because the name ends in "/"; refusing to read it as a file`,
+		);
+	}
+	return { name: normaliseName(raw), size, type };
 }
 
 /**

@@ -109,6 +109,31 @@ const CASES: readonly Case[] = [
 		entries: [{ name: "mirror", magic: "ustar ", body: GOOD }],
 		reader: "ARCHIVE_UNSUPPORTED",
 	},
+	// A regular file whose name ends in "/": tar makes a directory of it.
+	{
+		what: "a lone regular file named mirror/",
+		entries: [{ name: "mirror/", body: EVIL }],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "a lone old-style (type NUL) file named mirror/",
+		entries: [{ name: "mirror/", type: "\0", body: EVIL }],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "a regular file named mirror/ through the prefix",
+		entries: [{ name: "", prefix: "mirror", body: EVIL }],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "a regular file named bin/, then bin/mirror",
+		entries: [
+			{ name: "bin/", body: EVIL },
+			{ name: "bin/mirror", body: GOOD },
+		],
+		member: "bin/mirror",
+		reader: "ARCHIVE_UNSAFE",
+	},
 ];
 
 function archiveOf(crafted: Case): string {

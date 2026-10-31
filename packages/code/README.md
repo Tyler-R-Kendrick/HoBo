@@ -51,20 +51,23 @@ Skip code rebuild with `HOBO_CODE_SKIP_STALE_REBUILD=1`. Force source with
 `HOBO_CODE_FROM_SOURCE=1`. If even src cannot load, run
 `pnpm exec turbo run build --filter=@hobo/code`.
 
-The launcher runs `dist/bin/hobo-code.js` (or `src/` via tsx) as a child, in a
-session of its own except on Windows, so neither a signal sent to `hobo-code`
-nor the terminal's hangup reaches that child directly. The launcher passes
-SIGINT, SIGTERM, SIGHUP and SIGQUIT on to the child's process group, the SIGHUP
-of a closing terminal included, so whatever the child started without
-detaching (a `/hobo` command, the `--pi` TUI, `tmux attach`, `ssh`) gets them
-too. It waits for the child to end, and exits with its status, or 128+n when it
-ends by signal n. Killed outright (SIGKILL), the launcher passes nothing on:
-the child sees its IPC channel to the launcher close and quits as on SIGHUP.
-On Windows the launcher passes nothing on: the child shares its console and
-gets Ctrl-C itself, and passing a signal on there is a forced kill
-(TerminateProcess) that would race the child's own handling and skip its exit
-listeners. The launcher only keeps the console's Ctrl-C and Ctrl-Break from
-ending it before its child, and waits.
+The launcher runs `dist/bin/hobo-code.js` (or `src/` via tsx) as a child.
+Except on Windows that child has a session and process group of its own, so
+neither a signal sent to `hobo-code` nor the terminal's hangup reaches it
+directly. There, the launcher passes SIGINT, SIGTERM, SIGHUP and SIGQUIT on to
+the child's process group, the SIGHUP of a closing terminal included, so
+whatever the child started without detaching (a `/hobo` command, the `--pi`
+TUI, `tmux attach`, `ssh`) gets them too. It waits for the child to end, and
+exits with its status, or 128+n when it ends by signal n. Killed outright
+(SIGKILL), the launcher passes nothing on: the child takes its IPC channel to
+the launcher closing as a hangup and raises SIGHUP on itself, at once if the
+launcher was gone before the child finished starting
+(`src/launcher-hangup.ts`). On Windows the launcher passes nothing on: the
+child shares its console and gets Ctrl-C itself, and passing a signal on there
+is a forced kill (TerminateProcess) that would race the child's own handling
+and skip its exit listeners. The launcher only keeps the console's Ctrl-C and
+Ctrl-Break from ending it before its child, and waits. A launcher killed
+outright on Windows leaves the child running.
 
 `nohup hobo-code …` does not keep hobo-code running after a hangup. The
 launcher listens for SIGHUP itself, which overrides the ignore `nohup` sets,
@@ -556,7 +559,8 @@ or `/hobo plan`. That composition keeps a throwaway event store in a
 `hobo-yard-*` directory under `TMPDIR`, removed when hobo-code exits and, since
 the entry point asks for it (`removeOwnedDirsOnSignals`, loaded beside
 `createComposedHoboCli`), on SIGTERM, SIGHUP, SIGINT or SIGQUIT as well,
-which the launcher passes on to the process that holds the store (above). The
+which the launcher passes on to the process that holds the store, except on
+Windows (above). The
 shell quits on each of the four: it leaves the alternate screen, shows the
 cursor and restores the terminal's settings, and hobo-code's status is the
 quit's (0).

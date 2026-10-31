@@ -96,17 +96,22 @@ function accountHome(passwd: PasswdHome): string | undefined {
 	}
 }
 
+/** The temp directories whose `.hobo` an environment with no HOME once fell back to. */
+function defaultTempDirs(): string[] {
+	return ["/tmp", tmpdir()];
+}
+
 /** The real HoBo homes a stray write lands in, for this process's environment. */
 export function watchedHomes(
 	env: NodeJS.ProcessEnv = process.env,
 	passwd: PasswdHome = passwdHome,
+	tempDirs: readonly string[] = defaultTempDirs(),
 ): string[] {
 	const account = accountHome(passwd);
 	const recorded = env[REAL_HOME_ENV]?.trim() ? env[REAL_HOME_ENV] : undefined;
 	const home = recorded ?? (env.HOME?.trim() ? env.HOME : account);
 	const candidates = [
-		"/tmp/.hobo",
-		join(tmpdir(), ".hobo"),
+		...tempDirs.map((dir) => join(dir, ".hobo")),
 		...(home ? [join(home, ".hobo")] : []),
 		...(account ? [join(account, ".hobo")] : []),
 	].map(canonical);
@@ -285,29 +290,49 @@ export function describeChanges(changes: {
 	].join("\n");
 }
 
-export default function setup(): () => void {
-	recordRealHome();
-	const homes = watchedHomes();
-	const before = snapshotHomes(homes);
-	const root = mkdtempSync(join(tmpdir(), "hobo-code-test-homes-"));
-	process.env[HOMES_ROOT_ENV] = root;
+/**
+ * Where the guard looks, for a run of the guard itself: its own tests probe it
+ * with an account home and a temp directory of the probe's, so another process
+ * writing the machine's real `~/.hobo` or `/tmp/.hobo` meanwhile cannot fail
+ * them. A real run uses the password database and `/tmp` and `os.tmpdir()`.
+ */
+export interface GuardPorts {
+	readonly passwd?: PasswdHome;
+	readonly tempDirs?: readonly string[];
+}
+
+/** The global setup: snapshot the watched homes, and fail the run if they changed. */
+export function realHomeGuard(ports: GuardPorts = {}): () => () => void {
 	return () => {
-		rmSync(root, { recursive: true, force: true });
-		const after = snapshotHomes(homes);
-		const changes = {
-			gained: gainedEntries(before, after),
-			changed: changedEntries(before, after),
-			removed: removedEntries(before, after),
+		recordRealHome();
+		const homes = watchedHomes(
+			process.env,
+			ports.passwd ?? passwdHome,
+			ports.tempDirs ?? defaultTempDirs(),
+		);
+		const before = snapshotHomes(homes);
+		const root = mkdtempSync(join(tmpdir(), "hobo-code-test-homes-"));
+		process.env[HOMES_ROOT_ENV] = root;
+		return () => {
+			rmSync(root, { recursive: true, force: true });
+			const after = snapshotHomes(homes);
+			const changes = {
+				gained: gainedEntries(before, after),
+				changed: changedEntries(before, after),
+				removed: removedEntries(before, after),
+			};
+			if (
+				changes.gained.length +
+					changes.changed.length +
+					changes.removed.length ===
+				0
+			)
+				return;
+			// Vitest logs a teardown error but keeps the exit status it already had.
+			process.exitCode = 1;
+			throw new Error(describeChanges(changes));
 		};
-		if (
-			changes.gained.length +
-				changes.changed.length +
-				changes.removed.length ===
-			0
-		)
-			return;
-		// Vitest logs a teardown error but keeps the exit status it already had.
-		process.exitCode = 1;
-		throw new Error(describeChanges(changes));
 	};
 }
+
+export default realHomeGuard();

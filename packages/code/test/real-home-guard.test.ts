@@ -32,6 +32,7 @@ import {
 	gainedEntries,
 	removedEntries,
 	snapshotHomes,
+	watchedHomes,
 } from "./real-home-guard.js";
 
 describe("the homes a test in this package sees", () => {
@@ -96,6 +97,20 @@ describe("comparing snapshots", () => {
 	});
 });
 
+describe("what the guard watches", () => {
+	it("is the temp directories and account home it is given, and HOME's", () => {
+		const account = join(scratch, "account");
+		const temp = join(scratch, "temp");
+		expect(
+			watchedHomes({ HOME: join(scratch, "home") }, () => account, [temp]),
+		).toEqual([
+			join(temp, ".hobo"),
+			join(scratch, "home", ".hobo"),
+			join(account, ".hobo"),
+		]);
+	});
+});
+
 const GUARD = fileURLToPath(new URL("./real-home-guard.ts", import.meta.url));
 const VITEST = join(
 	dirname(createRequire(import.meta.url).resolve("vitest/package.json")),
@@ -136,9 +151,16 @@ function runUnderGuard(
 		join(project, "probe.test.mjs"),
 		`import { mkdirSync, rmSync, writeFileSync } from "node:fs";\nimport { join } from "node:path";\nit("probes", () => {\n${probe}\n});\n`,
 	);
+	// The guard watches this probe's own homes only: its HOME stands in for the
+	// account's, its TMPDIR for /tmp, so a process writing the machine's real
+	// ~/.hobo or /tmp/.hobo meanwhile cannot fail the probe.
+	writeFileSync(
+		join(project, "guard.ts"),
+		`import { realHomeGuard } from ${JSON.stringify(GUARD)};\nexport default realHomeGuard({ passwd: () => ${JSON.stringify(home)}, tempDirs: [${JSON.stringify(temp)}] });\n`,
+	);
 	writeFileSync(
 		join(project, "vitest.config.mjs"),
-		`export default { test: { globals: true, include: ["probe.test.mjs"], globalSetup: [${JSON.stringify(GUARD)}], setupFiles: ${JSON.stringify(options.setupFiles ?? [])} } };\n`,
+		`export default { test: { globals: true, include: ["probe.test.mjs"], globalSetup: [${JSON.stringify(join(project, "guard.ts"))}], setupFiles: ${JSON.stringify(options.setupFiles ?? [])} } };\n`,
 	);
 	// Another vitest run of its own: none of this run's VITEST_* settings or homes.
 	const inherited = Object.fromEntries(

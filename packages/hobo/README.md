@@ -142,8 +142,12 @@ request. Any other refusal, or a second one, is a `VercelApiError` carrying
 Vercel's status, `error.code` and `error.message`. A response body can echo the
 request, and the executor keeps an error's message, so the error's `message` and
 `apiMessage` have the token, and anything bearer- or credential-shaped, replaced
-by `[redacted]`, and each is cut at 500 characters (a `…` marks the cut). Its
-`code` is kept only when it is a short identifier (letters, digits, `_`, `.` and
+by `[redacted]`, and each is cut at 500 characters (a `…` marks the cut). The
+token is found as sent, JSON-escaped (a JSON body is written back out before it
+is searched), URL-encoded whole or byte by byte, and in base64 (alone, as a
+Basic header's `:token`, or inside a longer value such as `Bearer token`). What
+is left: a token broken up by other text, a newline say, is not found. The
+error's `code` is kept only when it is a short identifier (letters, digits, `_`, `.` and
 `-`, at most 64 characters, and nothing the redaction would change), and is
 otherwise undefined. A credential binding's scope needs `POST` on
 `/v13/deployments`, and `POST` on `/v9/projects` for that first deploy; it needs

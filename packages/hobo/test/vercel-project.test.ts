@@ -547,9 +547,10 @@ describe("a refusal's text (scripted transport, no network)", () => {
 
 	async function refusedBy(
 		answer: (init: SentInit) => VercelFetchResponse,
+		token = TOKEN,
 	): Promise<VercelApiError> {
 		const fetch: VercelFetch = async (_url, init) => answer(init);
-		const provider = createVercelDeployProvider({ token: TOKEN, fetch });
+		const provider = createVercelDeployProvider({ token, fetch });
 		try {
 			await provider.apply(programFor("dep-1"));
 		} catch (error) {
@@ -591,6 +592,83 @@ describe("a refusal's text (scripted transport, no network)", () => {
 		);
 		expect(error).toMatchObject({ status: 404, code: "not_found" });
 	});
+
+	// The token as a body can carry it in another form: JSON's \u escape,
+	// URL-encoded (whole, or byte by byte), and inside base64 (alone, a Basic
+	// header's `:token`, or `Bearer token`).
+	const base64 = (text: string) => Buffer.from(text).toString("base64");
+	const escaped = TOKEN.replace("S", "\\u0053");
+	const percent = [...Buffer.from(TOKEN)]
+		.map((byte) => `%${byte.toString(16).toUpperCase().padStart(2, "0")}`)
+		.join("");
+	// A token encodeURIComponent changes; Vercel's are letters and digits.
+	const ODD_TOKEN = "tok+SECRET/0123456789=abcdef";
+
+	it.each([
+		["JSON-escaped", TOKEN, `you sent ${escaped}`, [escaped]],
+		["percent-encoded byte by byte", TOKEN, `you sent ${percent}`, [percent]],
+		[
+			"encodeURIComponent'd",
+			ODD_TOKEN,
+			`you sent ${encodeURIComponent(ODD_TOKEN)}`,
+			[encodeURIComponent(ODD_TOKEN)],
+		],
+		["base64", TOKEN, `you sent ${base64(TOKEN)}`, [base64(TOKEN)]],
+		[
+			"base64 of a Basic header's :token",
+			TOKEN,
+			`you sent Basic ${base64(`:${TOKEN}`)}`,
+			[base64(`:${TOKEN}`)],
+		],
+		[
+			"base64 of Bearer token",
+			TOKEN,
+			`you sent ${base64(`Bearer ${TOKEN}`)}`,
+			[base64(`Bearer ${TOKEN}`)],
+		],
+	])("carries no token sent back %s", async (_case, token, sent, forms) => {
+		const body = `{"error":{"code":"not_found","message":"${sent}"}}`;
+		const error = await refusedBy(() => plainReply(404, body), token);
+
+		expectNoToken(error, token, forms);
+	});
+
+	it("carries no token sent back JSON-escaped as the code", async () => {
+		const body = `{"error":{"code":"${escaped}","message":"x"}}`;
+		const error = await refusedBy(() => plainReply(404, body));
+
+		expect(error.code).toBeUndefined();
+		expectNoToken(error, TOKEN, [escaped]);
+	});
+
+	// Nowhere the error is printed or kept (the executor persists
+	// `executor.apply_failed: <message>` as exec.Failed.reason) holds the token,
+	// a form of it, or base64 that decodes to text holding it.
+	function expectNoToken(
+		error: VercelApiError,
+		token: string,
+		forms: readonly string[],
+	): void {
+		expect(error).toBeInstanceOf(VercelApiError);
+		const printed = [
+			error.message,
+			error.apiMessage ?? "",
+			error.code ?? "",
+			error.stack ?? "",
+			String(error),
+			inspect(error, { depth: 10, showHidden: true }),
+			JSON.stringify(error),
+			`executor.apply_failed: ${error.message}`,
+		];
+		for (const text of printed) {
+			for (const form of [token, ...forms]) expect(text).not.toContain(form);
+			for (const run of text.match(/[A-Za-z0-9+/]{16,}={0,2}/gu) ?? []) {
+				expect(Buffer.from(run, "base64").toString("latin1")).not.toContain(
+					token.slice(2, -2),
+				);
+			}
+		}
+	}
 
 	it("is cut at 500 characters, message and apiMessage each", async () => {
 		const error = await refusedBy(() =>

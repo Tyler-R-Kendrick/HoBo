@@ -38,6 +38,7 @@ import {
 	type JsonObject,
 	type JsonValue,
 	parseJsonObject,
+	parseJsonValue,
 } from "./json.js";
 
 interface VercelFetchInit {
@@ -207,16 +208,59 @@ function normalizeUrl(raw: JsonValue | undefined): string {
 // each cut at this many characters, and a `…` marks the cut.
 const REFUSAL_TEXT_LIMIT = 500;
 
+// The client's own token in the forms a response body can echo it: as sent;
+// URL-encoded, whole (`encodeURIComponent`) or byte by byte (`%XX`, either
+// case); and in base64, whole (the token alone, or a Basic header's `:token`)
+// and as the part of any base64 that depends on the token's bytes alone, at
+// each of the three alignments (which covers `Bearer token` too). Longest
+// first, so a whole form goes before a part of it; a derived piece shorter than
+// four characters is left out. A token broken by other text (a newline, say) is
+// not found.
+function tokenForms(token: string): readonly string[] {
+	const bytes = Buffer.from(token, "utf8");
+	const percent = [...bytes]
+		.map((byte) => `%${byte.toString(16).padStart(2, "0")}`)
+		.join("");
+	const derived = [
+		encodeURIComponent(token),
+		percent,
+		percent.toUpperCase(),
+		bytes.toString("base64"),
+		Buffer.from(`:${token}`, "utf8").toString("base64"),
+	];
+	for (const offset of [0, 1, 2]) {
+		const encoded = Buffer.concat([Buffer.alloc(offset), bytes]).toString(
+			"base64",
+		);
+		derived.push(
+			encoded.slice(
+				offset === 0 ? 0 : 4,
+				4 * Math.floor((offset + bytes.length) / 3),
+			),
+		);
+	}
+	const forms = new Set([token, ...derived.filter((form) => form.length >= 4)]);
+	return [...forms].sort((a, b) => b.length - a.length);
+}
+
 // A response body can echo the request, Authorization header included, and the
-// executor persists an error's message (`exec.Failed.reason`). So the client's
-// own token, and anything bearer- or credential-shaped, becomes `[redacted]`
-// (`redactProviderText` is the redaction @hobo/provider-vercel's resolvers
-// use), and the text is cut at REFUSAL_TEXT_LIMIT characters.
-function refusalText(text: string, token: string): string {
-	return redactProviderText(
-		text.replaceAll(token, "[redacted]"),
-		REFUSAL_TEXT_LIMIT,
-	);
+// executor persists an error's message (`exec.Failed.reason`). So every form of
+// the client's own token (`tokenForms`), and anything bearer- or
+// credential-shaped, becomes `[redacted]` (`redactProviderText` is the
+// redaction @hobo/provider-vercel's resolvers use), and the text is cut at
+// REFUSAL_TEXT_LIMIT characters.
+function refusalText(text: string, secrets: readonly string[]): string {
+	let out = text;
+	for (const secret of secrets) out = out.replaceAll(secret, "[redacted]");
+	return redactProviderText(out, REFUSAL_TEXT_LIMIT);
+}
+
+// A body as `message` shows it: a JSON body written back out by
+// `JSON.stringify`, which undoes its escapes (a `\u`-escaped token reads as the
+// token, and is then found), any other body as sent.
+function bodyText(detail: string): string {
+	const parsed = parseJsonValue(detail);
+	return parsed === null ? detail : JSON.stringify(parsed);
 }
 
 // Vercel's `error.code` is an identifier (`not_found`, `forbidden`). One that
@@ -225,8 +269,11 @@ function refusalText(text: string, token: string): string {
 // error; the body in `message` is refusal text either way.
 const REFUSAL_CODE = /^[A-Za-z0-9_.-]{1,64}$/u;
 
-function refusalCode(code: string, token: string): string | undefined {
-	return REFUSAL_CODE.test(code) && refusalText(code, token) === code
+function refusalCode(
+	code: string,
+	secrets: readonly string[],
+): string | undefined {
+	return REFUSAL_CODE.test(code) && refusalText(code, secrets) === code
 		? code
 		: undefined;
 }
@@ -234,22 +281,22 @@ function refusalCode(code: string, token: string): string | undefined {
 async function failure(
 	what: string,
 	response: VercelFetchResponse,
-	token: string,
+	secrets: readonly string[],
 ): Promise<VercelApiError> {
 	const detail = await response.text().catch(() => "");
 	const error = parseJsonObject(detail).error;
 	const code =
 		isJsonObject(error) && isJsonString(error.code)
-			? refusalCode(error.code, token)
+			? refusalCode(error.code, secrets)
 			: undefined;
 	const apiMessage =
 		isJsonObject(error) && isJsonString(error.message)
-			? refusalText(error.message, token)
+			? refusalText(error.message, secrets)
 			: undefined;
 	return new VercelApiError(
 		refusalText(
-			`vercel-client: ${what} failed (HTTP ${response.status})${detail ? `: ${detail}` : ""}`,
-			token,
+			`vercel-client: ${what} failed (HTTP ${response.status})${detail ? `: ${bodyText(detail)}` : ""}`,
+			secrets,
 		),
 		response.status,
 		code,
@@ -304,6 +351,7 @@ export function createVercelClient(options: VercelClientOptions): VercelClient {
 	if (!token) {
 		throw new TypeError("createVercelClient: token is required");
 	}
+	const secrets = tokenForms(token);
 	const fetchImpl = options.fetch ?? globalFetch;
 	const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
 	const query =
@@ -325,7 +373,7 @@ export function createVercelClient(options: VercelClientOptions): VercelClient {
 		async createProject(name: string): Promise<VercelProjectResult> {
 			const made = await post("/v9/projects", JSON.stringify({ name }));
 			if (!made.ok) {
-				const refusal = await failure("create project", made, token);
+				const refusal = await failure("create project", made, secrets);
 				if (refusal.status !== 409 || refusal.code !== "conflict")
 					throw refusal;
 				return {
@@ -363,7 +411,7 @@ export function createVercelClient(options: VercelClientOptions): VercelClient {
 			const response = await post("/v13/deployments", JSON.stringify(body));
 
 			if (!response.ok) {
-				throw await failure("create deployment", response, token);
+				throw await failure("create deployment", response, secrets);
 			}
 
 			const payload = await payloadOf(response);

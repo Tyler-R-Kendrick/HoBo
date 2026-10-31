@@ -17,6 +17,7 @@ import { spawn } from "node:child_process";
 import { constants as osConstants, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ENDING_SIGNALS } from "../../bin/ending-signals.mjs";
 import { formatHoboCodeResult, runHoboCodeCli } from "../cli.js";
 import { removeComposedDirsOnSignals } from "../composed-hobo.js";
 import type { DevMachine } from "../dev-machines.js";
@@ -50,9 +51,6 @@ removeComposedDirsOnSignals();
 // The launcher (bin/hobo-code.mjs) runs this process in a session of its own,
 // with an IPC channel: a launcher killed outright is a hangup here.
 hangUpWhenLauncherGoes();
-
-/** The signals that end hobo-code, all of which the launcher passes on. */
-const ENDING_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"] as const;
 
 const rawArgv = process.argv.slice(2);
 const json = rawArgv.includes("--json");

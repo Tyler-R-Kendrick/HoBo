@@ -13,7 +13,8 @@
  * on there. It listens only so that Ctrl-C and Ctrl-Break do not end it
  * before its child, and waits.
  */
-const ENDING = Object.freeze(["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"]);
+import { ENDING_SIGNALS } from "./ending-signals.mjs";
+
 const CONSOLE = Object.freeze(["SIGINT", "SIGBREAK"]);
 
 /**
@@ -23,7 +24,7 @@ const CONSOLE = Object.freeze(["SIGINT", "SIGBREAK"]);
 export function launcherSignals(platform) {
 	return platform === "win32"
 		? { listen: CONSOLE, forward: false }
-		: { listen: ENDING, forward: true };
+		: { listen: ENDING_SIGNALS, forward: true };
 }
 
 /**

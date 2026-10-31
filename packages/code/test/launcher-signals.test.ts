@@ -14,9 +14,19 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { ENDING_SIGNALS } from "../bin/ending-signals.mjs";
 import { forwardSignal, launcherSignals } from "../bin/launcher-signals.mjs";
 
 const bin = join(dirname(fileURLToPath(import.meta.url)), "..", "bin");
+
+describe("the signals that end hobo-code", () => {
+	it("are the four its declaration names, in its order", () => {
+		const declared: readonly ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"] =
+			ENDING_SIGNALS;
+		expect(declared).toEqual(["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"]);
+		expect(Object.isFrozen(ENDING_SIGNALS)).toBe(true);
+	});
+});
 
 describe("which signals hobo-code's launcher passes on", () => {
 	it("passes on the four that end hobo-code where its child has a session of its own", () => {

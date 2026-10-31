@@ -132,10 +132,12 @@ as a live deployment. IaC selection lives in `src/compose.ts`:
 The live Vercel provider (`src/vercel-deploy-provider.ts`) deploys first, with
 one `POST /v13/deployments`. Only when Vercel refuses that because the project
 does not exist (404 `not_found`, "Project not found") does it create the project
-with `POST /v9/projects` (a 409 there means it was made meanwhile) and deploy
-once more. So the first `hobo up` from an account that has never seen the
-project deploys instead of failing, and a deploy to an existing project is one
-request. Any other refusal, or a second one, is a `VercelApiError` carrying
+with `POST /v9/projects` and deploy once more. A 409 there whose `error.code` is
+`conflict` means it was made meanwhile, and a refusal of the deployment after it
+names that 409's reason; any other 409 is a refusal like any other. So the
+first `hobo up` from an account that has never seen the project deploys instead
+of failing, and a deploy to an existing project is one request. Any other
+refusal, or a second one, is a `VercelApiError` carrying
 Vercel's status, `error.code` and `error.message`. A response body can echo the
 request, and the executor keeps an error's message, so the error's `message` and
 `apiMessage` have the token, and anything bearer- or credential-shaped, replaced

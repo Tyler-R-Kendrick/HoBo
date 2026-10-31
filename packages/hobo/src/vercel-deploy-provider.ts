@@ -11,8 +11,10 @@ import type {
 } from "@hobo/cloud";
 
 import {
+	afterConflict,
 	createVercelClient,
 	isProjectNotFound,
+	VercelApiError,
 	type VercelDeploymentFile,
 	type VercelDeploymentResult,
 	type VercelFetch,
@@ -29,8 +31,10 @@ import {
 // Only when Vercel answers that the project does not exist (404 `not_found`,
 // "Project not found": the first deploy from a fresh account) does it create the
 // project and deploy once more; any other refusal, and a second one, propagates
-// as a `VercelApiError`. A deploy to an existing project makes no other call, so
-// a credential scoped to deployments alone keeps working.
+// as a `VercelApiError`. A create answered 409 `conflict` means someone made the
+// project meanwhile, and a refusal of the deployment after it names that 409's
+// reason; any other 409 propagates. A deploy to an existing project makes no
+// other call, so a credential scoped to deployments alone keeps working.
 //
 // The project is created in the scope `teamId` names, or in the token's own
 // scope when there is none. Vercel answers "Project not found" for a project
@@ -143,10 +147,20 @@ export function createVercelDeployProvider(
 				result = await client.createDeployment(request);
 			} catch (error) {
 				if (!(error instanceof Error) || !isProjectNotFound(error)) throw error;
-				// A 409 here means someone made it meanwhile: it exists either way.
-				projectCreated = (await client.createProject(projectName)).created;
-				// Once only: a refusal of this deployment propagates.
-				result = await client.createDeployment(request);
+				// A 409 `conflict` here means someone made it meanwhile: it exists
+				// either way.
+				const project = await client.createProject(projectName);
+				projectCreated = project.created;
+				// Once only: a refusal of this deployment propagates, naming the
+				// 409 that answered the create, when one did.
+				try {
+					result = await client.createDeployment(request);
+				} catch (retryError) {
+					if (project.created || !(retryError instanceof VercelApiError)) {
+						throw retryError;
+					}
+					throw afterConflict(retryError, project);
+				}
 			}
 			const outputs: IacOutputs = {
 				url: result.url,

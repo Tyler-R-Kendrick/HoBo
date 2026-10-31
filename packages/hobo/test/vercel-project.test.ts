@@ -316,6 +316,51 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 		expect(routes()).toEqual([DEPLOY]);
 	});
 
+	it("propagates a create answered 409 with another code, and deploys no more", async () => {
+		const { fetch, routes } = scripted({
+			[DEPLOY]: [PROJECT_NOT_FOUND],
+			[CREATE]: [
+				reply(409, {
+					error: {
+						code: "project_transfer_in_progress",
+						message: "The project is being transferred.",
+					},
+				}),
+			],
+		});
+		const provider = createVercelDeployProvider({ token: "tok", fetch });
+
+		const pending = provider.apply(programFor("dep-1"));
+
+		await expect(pending).rejects.toBeInstanceOf(VercelApiError);
+		await expect(pending).rejects.toMatchObject({
+			status: 409,
+			code: "project_transfer_in_progress",
+		});
+		expect(routes()).toEqual([DEPLOY, CREATE]);
+	});
+
+	it("names the 409's reason when the deployment after a 409 conflict is refused", async () => {
+		const { fetch, routes } = scripted({
+			[DEPLOY]: [PROJECT_NOT_FOUND, PROJECT_NOT_FOUND],
+			[CREATE]: [CONFLICT],
+		});
+		const provider = createVercelDeployProvider({ token: "tok", fetch });
+
+		const pending = provider.apply(programFor("dep-1"));
+
+		await expect(pending).rejects.toBeInstanceOf(VercelApiError);
+		await expect(pending).rejects.toMatchObject({
+			status: 404,
+			code: "not_found",
+			apiMessage: "Project not found",
+			message: expect.stringMatching(
+				/^vercel-client: create deployment failed \(HTTP 404\): .*not_found.* \(after create project was answered HTTP 409 conflict: A project with the same name already exists\.\)$/u,
+			),
+		});
+		expect(routes()).toEqual([DEPLOY, CREATE, DEPLOY]);
+	});
+
 	it("propagates a refused create as a VercelApiError, and deploys no more", async () => {
 		const { fetch, routes } = scripted({
 			[DEPLOY]: [PROJECT_NOT_FOUND],
@@ -459,7 +504,7 @@ describe("createVercelClient.createProject (scripted transport, no network)", ()
 		});
 	});
 
-	it("answers created: false when the name is taken (409)", async () => {
+	it("answers created: false, with the 409's reason, when the name is taken (409 conflict)", async () => {
 		const { fetch } = scripted({ [CREATE]: [CONFLICT] });
 		const client = createVercelClient({ token: "tok", fetch });
 
@@ -467,6 +512,33 @@ describe("createVercelClient.createProject (scripted transport, no network)", ()
 			id: "",
 			name: "raced",
 			created: false,
+			conflictMessage: "A project with the same name already exists.",
+		});
+	});
+
+	it.each([
+		[
+			"another code",
+			reply(409, {
+				error: {
+					code: "project_transfer_in_progress",
+					message: "The project is being transferred.",
+				},
+			}),
+			"project_transfer_in_progress",
+		],
+		["a body that is not JSON", plainReply(409, "Conflict"), undefined],
+	])("refuses a 409 with %s as a VercelApiError", async (_case, answer, code) => {
+		const { fetch } = scripted({ [CREATE]: [answer] });
+		const client = createVercelClient({ token: "tok", fetch });
+
+		const pending = client.createProject("held");
+
+		await expect(pending).rejects.toBeInstanceOf(VercelApiError);
+		await expect(pending).rejects.toMatchObject({
+			status: 409,
+			code,
+			message: expect.stringContaining("create project failed (HTTP 409)"),
 		});
 	});
 });

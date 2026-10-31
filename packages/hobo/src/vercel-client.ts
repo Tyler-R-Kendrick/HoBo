@@ -15,7 +15,8 @@
 // Create Deployment answers 404 `{"error":{"code":"not_found","message":"Project
 // not found"}}` when the project it names does not exist. For that case,
 // `createProject` calls Create a new project:
-//   POST https://api.vercel.com/v9/projects   body: { name }   (409 when the name is taken)
+//   POST https://api.vercel.com/v9/projects   body: { name }
+//   (409 `{"error":{"code":"conflict",...}}` when the name is taken)
 //   (docs: vercel.com/docs/rest-api/reference/endpoints/projects/create-a-new-project,
 //   whose current version is /v11). /v9 is the version @hobo/provider-vercel's
 //   project resolver speaks, and `/v9/projects` is the prefix a credential
@@ -73,6 +74,9 @@ export interface VercelProjectResult {
 	readonly name: string;
 	// True when this call created the project; false when it already existed.
 	readonly created: boolean;
+	// When `created` is false: Vercel's `error.message` on the 409 `conflict`,
+	// as refusal text (`refusalText`), if the body carried one.
+	readonly conflictMessage?: string;
 }
 
 export interface VercelDeploymentResult {
@@ -157,8 +161,10 @@ export interface VercelClient {
 	createDeployment(
 		input: CreateDeploymentInput,
 	): Promise<VercelDeploymentResult>;
-	// Create the project `name`. A 409 (the name is taken: someone made it
-	// meanwhile) answers `created: false` rather than failing.
+	// Create the project `name`. A 409 whose `error.code` is `conflict` (the
+	// name is taken: someone made it meanwhile) answers `created: false`, with
+	// its reason, rather than failing. Any other refusal, another 409 included,
+	// is a VercelApiError.
 	createProject(name: string): Promise<VercelProjectResult>;
 }
 
@@ -235,6 +241,28 @@ async function failure(
 	);
 }
 
+// The refusal of a deployment sent again after its project's create was
+// answered 409 `conflict`: the same refusal, its message also naming that 409
+// and its reason, and cut at REFUSAL_TEXT_LIMIT like any refusal's.
+export function afterConflict(
+	error: VercelApiError,
+	conflict: VercelProjectResult,
+): VercelApiError {
+	const reason =
+		conflict.conflictMessage === undefined
+			? ""
+			: `: ${conflict.conflictMessage}`;
+	return new VercelApiError(
+		redactProviderText(
+			`${error.message} (after create project was answered HTTP 409 conflict${reason})`,
+			REFUSAL_TEXT_LIMIT,
+		),
+		error.status,
+		error.code,
+		error.apiMessage,
+	);
+}
+
 // The JSON object a 2xx answer carries, or `{}` when it carries something else.
 async function payloadOf(response: VercelFetchResponse): Promise<JsonObject> {
 	const parsed = await response.json();
@@ -268,8 +296,19 @@ export function createVercelClient(options: VercelClientOptions): VercelClient {
 	return {
 		async createProject(name: string): Promise<VercelProjectResult> {
 			const made = await post("/v9/projects", JSON.stringify({ name }));
-			if (made.status === 409) return { id: "", name, created: false };
-			if (!made.ok) throw await failure("create project", made, token);
+			if (!made.ok) {
+				const refusal = await failure("create project", made, token);
+				if (refusal.status !== 409 || refusal.code !== "conflict")
+					throw refusal;
+				return {
+					id: "",
+					name,
+					created: false,
+					...(refusal.apiMessage !== undefined
+						? { conflictMessage: refusal.apiMessage }
+						: undefined),
+				};
+			}
 			const payload = await payloadOf(made);
 			return {
 				id: isJsonString(payload.id) ? payload.id : "",

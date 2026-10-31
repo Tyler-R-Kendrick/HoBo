@@ -669,6 +669,9 @@ function journalEntries(service: string, body: string): readonly JournalLine[] {
  * Each service is read separately with `?limit=10000`; a mirror older than
  * that parameter answers at most 100 entries, and a service whose answer is
  * exactly at a cap is reported as truncated rather than counted as complete.
+ * A read that gets no answer (refused, dropped, timed out), an answer that is
+ * not 200, and a body that is not a list of objects are each
+ * `MIRROR_JOURNAL_UNREADABLE`.
  */
 export async function summarizeJournal(
 	mirror: Pick<RunningMirror, "url" | "caFile">,
@@ -681,10 +684,18 @@ export async function summarizeJournal(
 	const tally = new Map<string, JournalCount>();
 	const truncated: string[] = [];
 	for (const service of services) {
-		const answer = await get(
-			`${mirror.url}/_mirror/journal?service=${encodeURIComponent(service)}&limit=${JOURNAL_LIMIT}`,
-			ca,
-		);
+		let answer: Awaited<ReturnType<typeof get>>;
+		try {
+			answer = await get(
+				`${mirror.url}/_mirror/journal?service=${encodeURIComponent(service)}&limit=${JOURNAL_LIMIT}`,
+				ca,
+			);
+		} catch (error) {
+			throw new MirrorLaneError(
+				"MIRROR_JOURNAL_UNREADABLE",
+				`GET /_mirror/journal?service=${service} could not be read: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 		if (answer.status !== 200) {
 			throw new MirrorLaneError(
 				"MIRROR_JOURNAL_UNREADABLE",

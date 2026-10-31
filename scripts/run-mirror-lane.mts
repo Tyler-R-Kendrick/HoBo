@@ -30,8 +30,8 @@
  * "live". It is not part of `agent:check`.
  *
  * Exit: 0 every package passed, 1 a package failed, the emulator could not
- * run or exited while in use, or the report could not be written (stdout
- * closed), 2 wrong usage.
+ * run or exited while in use, its journal could not be read, or the report
+ * could not be written (stdout closed), 2 wrong usage.
  */
 import {
 	mkdirSync,
@@ -168,26 +168,26 @@ function printReports(dir: string): void {
 	}
 }
 
+/**
+ * What the emulator recorded. A journal that cannot be read fails the lane
+ * (`MIRROR_JOURNAL_UNREADABLE`, thrown to the caller): a mirror that exits
+ * while it is read drops the read, and the read's error can arrive before the
+ * child's `close` settles `lost`, so only the read's own failure decides.
+ */
 async function printJournal(mirror: RunningMirror): Promise<void> {
-	try {
-		const summary = await summarizeJournal(mirror);
+	const summary = await summarizeJournal(mirror);
+	console.log(
+		"mirror-lane: journal (what the emulator recorded: service, operation, status, count)",
+	);
+	for (const line of summary.counts) {
 		console.log(
-			"mirror-lane: journal (what the emulator recorded: service, operation, status, count)",
+			`  ${line.service.padEnd(20)} ${line.operation.padEnd(28)} ${String(line.status).padEnd(4)} x${line.count}`,
 		);
-		for (const line of summary.counts) {
-			console.log(
-				`  ${line.service.padEnd(20)} ${line.operation.padEnd(28)} ${String(line.status).padEnd(4)} x${line.count}`,
-			);
-		}
-		if (summary.counts.length === 0) console.log("  (nothing was recorded)");
-		for (const service of summary.truncated) {
-			console.log(
-				`  ${service}: the journal answer hit its cap; older entries are not counted (a mirror older than ?limit= answers 100 at most)`,
-			);
-		}
-	} catch (error) {
-		console.error(
-			`mirror-lane: could not read the journal: ${error instanceof Error ? error.message : String(error)}`,
+	}
+	if (summary.counts.length === 0) console.log("  (nothing was recorded)");
+	for (const service of summary.truncated) {
+		console.log(
+			`  ${service}: the journal answer hit its cap; older entries are not counted (a mirror older than ?limit= answers 100 at most)`,
 		);
 	}
 }

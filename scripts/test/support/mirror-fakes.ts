@@ -66,8 +66,13 @@ const serve = (handler) => tlsDir === undefined
 	: createTlsServer({ key: readFileSync(join(fixtures, "loopback.key")), cert: readFileSync(join(fixtures, "loopback.pem")) }, handler);
 const server = serve((request, response) => {
 	if (mode === "unhealthy") { response.writeHead(503); response.end("{}"); return; }
+	// FAKE_MIRROR_MODE=exit-after-health: health answers, and the first other
+	// request (the lane's journal read) ends the process before it is answered.
+	if (mode === "exit-after-health" && request.url !== "/_mirror/health") process.exit(1);
 	response.writeHead(200, { "content-type": "application/json" });
 	if (request.url === "/_mirror/health") { response.end('{"status":"ok","uptime_ms":0,"version":"fake"}'); return; }
+	// An empty journal, as mirror encodes one (a Go nil slice).
+	if (request.url.startsWith("/_mirror/journal?")) { response.end("null"); return; }
 	const mirrorEnv = Object.keys(process.env).filter((key) => key.startsWith("MIRROR_")).sort().map((key) => key + "=" + process.env[key]);
 	response.end(JSON.stringify({ args, clock: process.env.MIRROR_CLOCK, faults: process.env.MIRROR_VERCEL_FAULTS, mirrorEnv, cwd: process.cwd(), cwdEntries: require("node:fs").readdirSync("."), readsConfig: existsSync(".mirror/config.json") }));
 });

@@ -26,6 +26,7 @@ import { join } from "node:path";
 import { after, describe, it } from "node:test";
 
 import {
+	freePort,
 	MIRROR_LANE_SEED,
 	MIRROR_LANE_SERVICES,
 	MirrorLaneError,
@@ -621,6 +622,32 @@ describe("summarizeJournal", () => {
 			);
 		});
 	}
+
+	it("refuses a journal read whose connection drops unanswered (the emulator gone mid-read) with the lane's own MIRROR_JOURNAL_UNREADABLE", async () => {
+		const url = await journalServer((_path, response) => {
+			response.socket?.destroy();
+		});
+		await assert.rejects(
+			summarizeJournal({ url }, ["aws.s3"]),
+			(error: Error) =>
+				error instanceof MirrorLaneError &&
+				error.code === "MIRROR_JOURNAL_UNREADABLE" &&
+				/GET \/_mirror\/journal\?service=aws\.s3 could not be read: socket hang up/u.test(
+					error.message,
+				),
+		);
+	});
+
+	it("refuses a journal nothing answers on (the emulator gone before the read) with the lane's own MIRROR_JOURNAL_UNREADABLE", async () => {
+		const port = await freePort();
+		await assert.rejects(
+			summarizeJournal({ url: `http://127.0.0.1:${port}` }, ["aws.s3"]),
+			(error: Error) =>
+				error instanceof MirrorLaneError &&
+				error.code === "MIRROR_JOURNAL_UNREADABLE" &&
+				/aws\.s3 could not be read: .*ECONNREFUSED/u.test(error.message),
+		);
+	});
 
 	it("reports a service whose answer is exactly 100 entries as truncated (an emulator without ?limit=)", async () => {
 		const url = await journalServer((_path, response) => {

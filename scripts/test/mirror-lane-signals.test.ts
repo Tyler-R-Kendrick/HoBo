@@ -199,6 +199,33 @@ describe("run-mirror-lane.mts, stopped early: by a signal, its mirror gone, its 
 		await Promise.all([pnpm.ended, worker.ended]);
 	});
 
+	it("the lane fails when its mirror exits while the journal is read, whichever of the read and the exit it hears of first", async () => {
+		const listener = await beacon();
+		open.push(listener);
+		const lane = runner({
+			MIRROR_BIN: fakeMirror(),
+			// Health answers; the journal read ends the process unanswered.
+			FAKE_MIRROR_MODE: "exit-after-health",
+			FAKE_BEACON: String(listener.port),
+			PATH: `${fakePnpmDir()}${delimiter}${process.env.PATH ?? ""}`,
+		});
+		const exit = once(lane.child, "exit");
+
+		const mirror = await reported(listener, "mirror");
+		const pnpm = await reported(listener, "pnpm");
+		const worker = await reported(listener, "worker");
+		pnpm.tell("pass");
+		const [exitCode] = await exit;
+
+		assert.equal(exitCode, 1, lane.output());
+		assert.match(
+			lane.output(),
+			/fail {2}test:mirror — MIRROR_JOURNAL_UNREADABLE: GET \/_mirror\/journal\?service=vercel\.api could not be read/u,
+		);
+		assert.doesNotMatch(lane.output(), /mirror-lane: ok/u);
+		await Promise.all([mirror.ended, worker.ended]);
+	});
+
 	it("fails when its stdout is closed before it finishes, as `| head -1` closes it", async () => {
 		const listener = await beacon();
 		open.push(listener);

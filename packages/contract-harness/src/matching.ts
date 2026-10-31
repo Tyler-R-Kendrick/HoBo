@@ -502,7 +502,7 @@ function byType(
 		for (const index of actual.keys()) {
 			const reason = compare(
 				rules,
-				child(node, index, example[index] ?? first),
+				child(node, index, index < example.length ? example[index] : first),
 			);
 			if (reason !== undefined) return reason;
 		}

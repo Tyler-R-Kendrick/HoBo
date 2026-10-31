@@ -306,6 +306,19 @@ describe("a regex, as Pact-JVM applies it", () => {
 	});
 });
 
+describe("a type rule on an array whose example holds a null", () => {
+	it("compares a null at an index the example has with that null, not with the first element", () => {
+		const example = { ...EXAMPLE, tags: ["a", null] };
+		const rule = { "$.tags": { matchers: [{ match: "type" }] } };
+		expect(
+			mismatchWith(example, rule, { ...example, tags: ["b", null] }),
+		).toBeUndefined();
+		expect(mismatchWith(example, rule, { ...example, tags: ["b", "c"] })).toBe(
+			"body field $.tags[1] is a string, not null like the example (type rule at $.tags)",
+		);
+	});
+});
+
 describe("a type rule on an array whose example has several elements", () => {
 	const example = { ...EXAMPLE, tags: [{ at: 1 }, { at: "one" }] };
 	const rule = { "$.tags": { matchers: [{ match: "type" }] } };

@@ -193,8 +193,12 @@ export interface OpenedGateway {
 	resolveSshIdentity(pane: BrokeredPane): Promise<ResolvedSshIdentity>;
 	/** Resident proxy, used by tmux after this launcher exits. */
 	handoffSshIdentity(pane: BrokeredPane): Promise<ResolvedSshIdentity>;
-	/** End every live authorization and persist its terminal audit facts. */
-	close(): Promise<void>;
+	/**
+	 * End every live authorization and persist its terminal audit facts. Each
+	 * `pam.SessionEnded` says `reason`; without one, the gateway's stop says
+	 * `gateway-stop`.
+	 */
+	close(reason?: string): Promise<void>;
 }
 
 /**
@@ -325,10 +329,15 @@ export async function openStationGateway(
 				stop: proxy.stop,
 			};
 		},
-		async close() {
+		async close(reason) {
 			if (closed) return;
 			closed = true;
 			await Promise.all([...localProxies].map((proxy) => proxy.close()));
+			if (reason !== undefined) {
+				for (const session of gateway.listSessions()) {
+					await gateway.endSession(session.sessionId, reason);
+				}
+			}
 			await gateway.stop();
 		},
 	};

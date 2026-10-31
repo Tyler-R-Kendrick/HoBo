@@ -896,7 +896,10 @@ opens the authorization (`src/signal-hold.ts`): a signal that comes while the
 authorization is being opened means ssh never starts, and one that comes
 while ssh is being started stops it once it has. Either way the authorization
 is closed before hobo-code ends, and they stay held until it is: a second
-signal while it is being closed is only recorded.
+signal while it is being closed is only recorded. If the verb fails once the
+authorization is open, a throw included, before it hands the authorization to
+the forward, it closes it itself, and the Station's `pam.SessionEnded` says
+`session-serve-failed`.
 
 ## Package layout
 

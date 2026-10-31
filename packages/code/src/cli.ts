@@ -1716,6 +1716,12 @@ export function applyDenseChrome(message: string): string {
 }
 
 /**
+ * The reason recorded on `pam.SessionEnded` when `session serve --host` ends
+ * without handing its Station authorization to the forward.
+ */
+const SESSION_SERVE_FAILED = "session-serve-failed";
+
+/**
  * Run the hobo-code CLI. Dispatch is the default verb when none is given.
  */
 export async function runHoboCodeCli(
@@ -3687,6 +3693,12 @@ export async function runHoboCodeCli(
 			);
 		}
 		if (args.length > 0) {
+			// The Station authorization `session serve --host` opens, while it is
+			// this verb's to close: the forward-sessions action hands it to the
+			// caller, which closes it when the forward ends. On any other way out
+			// of here (a failure, or a throw after it opened) it is closed below.
+			let authorization: OpenedGateway | undefined;
+			let handedOff = false;
 			try {
 				const requestedHost =
 					args[0] === "serve" && isJsonString(flags.host)
@@ -3774,6 +3786,7 @@ export async function runHoboCodeCli(
 							isolationClass: machine.isolationClass,
 						},
 					);
+					authorization = gateway;
 					let outcome: Awaited<ReturnType<typeof brokerPaneSession>>;
 					outcome = await brokerPaneSession(machine, "resident-browser", {
 						broker: gateway.broker,
@@ -3837,6 +3850,7 @@ export async function runHoboCodeCli(
 					...(remoteServe !== undefined ? { remoteServe } : undefined),
 				});
 				if (resident) {
+					handedOff = remoteServe !== undefined;
 					return ok(
 						"HOBO_CODE_RESIDENT_SESSION",
 						panel("✓ session", resident.message.split("\n")),
@@ -3851,6 +3865,12 @@ export async function runHoboCodeCli(
 					]),
 					["hobo-code session --help", "hobo-code session list"],
 				);
+			} finally {
+				// Closing twice is closing once: the paths that close it themselves
+				// have.
+				if (authorization !== undefined && !handedOff) {
+					await authorization.close(SESSION_SERVE_FAILED);
+				}
 			}
 		}
 		const sessionHome =

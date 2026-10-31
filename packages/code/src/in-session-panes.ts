@@ -213,6 +213,19 @@ export async function sendKeysRawToInSessionPane(
 	await sendKeysToPane(runner, target, data);
 }
 
+/**
+ * Whether the shell seats the agent CLIs it finds on PATH in tmux panes.
+ * HOBO_CODE_SEAT_AGENTS set to 0, false, no or off (any case, spaces aside)
+ * turns seating off, as 0, false and off turn off HOBO_CODE_SIDECARS;
+ * anything else, or nothing, leaves it on.
+ */
+export function agentSeatingEnabled(
+	env: NodeJS.ProcessEnv = process.env,
+): boolean {
+	const raw = env.HOBO_CODE_SEAT_AGENTS?.trim().toLowerCase();
+	return !(raw === "0" || raw === "false" || raw === "no" || raw === "off");
+}
+
 export async function ensureInSessionPanes(options: {
 	readonly cwd?: string;
 	readonly hoboHome?: string;
@@ -222,9 +235,10 @@ export async function ensureInSessionPanes(options: {
 }): Promise<InSessionPanes> {
 	// Off for a shell that must not start the agent CLIs it finds on PATH: a
 	// test run, or anyone who wants the shell without agent seats.
-	if ((options.env ?? process.env).HOBO_CODE_SEAT_AGENTS === "0") {
+	const env = options.env ?? process.env;
+	if (!agentSeatingEnabled(env)) {
 		return emptyInSessionPanes(
-			"agent seating is off (HOBO_CODE_SEAT_AGENTS=0)",
+			`agent seating is off (HOBO_CODE_SEAT_AGENTS=${env.HOBO_CODE_SEAT_AGENTS?.trim()})`,
 		);
 	}
 	const runner = options.runner ?? tmuxRunner();

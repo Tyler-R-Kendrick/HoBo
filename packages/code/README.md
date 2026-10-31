@@ -346,7 +346,8 @@ occupancy, not a minted key). Each agent is a JSON plugin under
 for runtimes the SDK does not ship yet. CLI plugins carry `runtime.prompt`
 one-shot argv so Cursor/Copilot/Gemini/Aider/Goose still run without a
 builtin SDK package. TTY seating still uses mux. `HOBO_CODE_SEAT_AGENTS=0`
-turns seating off: the shell then starts no tmux session and no agent CLI.
+(or `false`, `no`, `off`) turns seating off: the shell then starts no tmux
+session and no agent CLI. `hobo-code config` lists it.
 Programmatic turns use `createHarnessV1(spec)` or `createHarnessAgent(spec)`
 (AI SDK `HarnessAgent` + just-bash for host adapters; bridge adapters need
 an injected network sandbox).

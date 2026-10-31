@@ -2,6 +2,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { inspectConfigSurface } from "../src/config-surface.js";
 import {
 	classifyWindowName,
 	cycleInSessionWindow,
@@ -130,6 +131,47 @@ describe("in-session panes", () => {
 		expect(ran).toEqual([]);
 		expect(panes.windows).toEqual([]);
 		expect(panes.note).toMatch(/HOBO_CODE_SEAT_AGENTS=0/u);
+	});
+
+	it("reads HOBO_CODE_SEAT_AGENTS as its sibling switches do: 0, false, no or off is off", async () => {
+		const bin = mkdtempSync(join(tmpdir(), "hobo-panes-"));
+		writeFileSync(join(bin, "codex"), "");
+		const seat = async (value: string | undefined): Promise<string[]> => {
+			const ran: string[] = [];
+			const runner: MuxRunner = {
+				run: async (args) => {
+					ran.push(args[0] ?? "");
+					return { code: 1, stdout: "" };
+				},
+			};
+			await ensureInSessionPanes({
+				runner,
+				env: {
+					PATH: bin,
+					HOME: bin,
+					...(value === undefined ? {} : { HOBO_CODE_SEAT_AGENTS: value }),
+				},
+				cwd: bin,
+				hoboHome: join(bin, ".hobo"),
+			});
+			return ran;
+		};
+		for (const off of ["0", "false", "no", "off", "FALSE", " Off "]) {
+			expect(await seat(off), off).toEqual([]);
+		}
+		for (const on of [undefined, "1", "true", "yes", "on"]) {
+			expect(await seat(on), String(on)).toContain("-V");
+		}
+	});
+
+	it("is listed in hobo-code config", () => {
+		const knob = inspectConfigSurface(
+			{ HOBO_CODE_SEAT_AGENTS: "off" },
+			"/nonexistent-hobo-config-test",
+		).knobs.find((entry) => entry.name === "HOBO_CODE_SEAT_AGENTS");
+		expect(knob).toEqual(
+			expect.objectContaining({ kind: "env", secret: false, present: true }),
+		);
 	});
 
 	it("seats detected coding CLIs and skips the harness", async () => {

@@ -37,12 +37,24 @@ const SHELL_DRAWN = `${ESC}[?1049h`;
 const VERB_ENDED = "hobo recipes:";
 /** Terminal control sequences, left out of the screen a failure shows. */
 const CONTROL_SEQUENCES = new RegExp(`${ESC}\\[[0-9;?]*[a-zA-Z]`, "gu");
-/** A bound on a failure, never a wait to sit out: each case goes on at its event. */
-const VERB_DEADLINE_MS = 150_000;
 const SIGNAL_GRACE_MS = 30_000;
 /** How long hobo-code's child gets to end once hobo-code has. */
 const CHILD_GRACE_MS = 20_000;
+/** Vitest's bound on a whole case. */
 const RUN_TIMEOUT_MS = 300_000;
+/**
+ * What a case may still wait once it has ended hobo-code: for its status, for
+ * its child and the /hobo command (CHILD_GRACE_MS each), for the terminal's
+ * restore, and for script(1) to close.
+ */
+const ENDING_BOUND_MS = 3 * SIGNAL_GRACE_MS + 2 * CHILD_GRACE_MS;
+/**
+ * One deadline for everything before that, from the case's start: a bound on
+ * a failure, never a wait to sit out, as each case goes on at its event. It
+ * leaves the ending its bound and a margin inside vitest's, so a case that
+ * never gets to its event fails with the screen it saw, not vitest's timeout.
+ */
+const READY_BOUND_MS = RUN_TIMEOUT_MS - ENDING_BOUND_MS - 10_000;
 
 /** Why the pseudo-terminal cases cannot run here, or false when they can. */
 function noUtilLinuxScript(): string | false {
@@ -185,6 +197,8 @@ function stores(dir: string): string[] {
  * child that holds the store time to end while the terminal stays open.
  */
 async function endTheShell(ending: Ending, run: Run = {}): Promise<Ended> {
+	const readyBy = Date.now() + READY_BOUND_MS;
+	const beforeReadyBy = (): number => Math.max(0, readyBy - Date.now());
 	const root = mkdtempSync(join(tmpdir(), "hobo-code-signals-"));
 	roots.push(root);
 	const tmp = join(root, "tmp");
@@ -267,8 +281,11 @@ async function endTheShell(ending: Ending, run: Run = {}): Promise<Ended> {
 	let child: number | undefined;
 	let grandchild: number | undefined;
 	try {
-		await until(() => closed || screen.includes(SHELL_DRAWN), VERB_DEADLINE_MS);
-		if (!closed) {
+		const drawn = await until(
+			() => closed || screen.includes(SHELL_DRAWN),
+			beforeReadyBy(),
+		);
+		if (drawn && !closed) {
 			script.stdin.write("/hobo recipes");
 			await sleep(500);
 			script.stdin.write("\r");
@@ -281,7 +298,9 @@ async function endTheShell(ending: Ending, run: Run = {}): Promise<Ended> {
 				: stores(tmp).length > 0 &&
 					screen.replace(CONTROL_SEQUENCES, "").includes(VERB_ENDED);
 		const readyToEnd =
-			(await until(() => closed || ready(), VERB_DEADLINE_MS)) && !closed;
+			drawn &&
+			(await until(() => closed || ready(), beforeReadyBy())) &&
+			!closed;
 		const made = stores(tmp);
 		if (!readyToEnd) {
 			throw new Error(

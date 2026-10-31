@@ -10,7 +10,9 @@
  * - every reply teaches the equivalent one-shot command.
  */
 import { spawn } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { join } from "node:path";
+import { Writable } from "node:stream";
 import { emitFromAtoms } from "./atom-index.js";
 import {
 	formatHoboCodeResult,
@@ -24,7 +26,13 @@ import { materializeExample } from "./example-catalog.js";
 import { linkGeneratedAppRuntime } from "./generated-app-runtime.js";
 import type { PendingApproval, ShellHost } from "./interactive-shell.js";
 import { isJsonObject } from "./json.js";
+import {
+	forwardBanner,
+	forwardResidentSessions,
+	type SessionForward,
+} from "./session-forward.js";
 import { formatUsage, type ShellEngine } from "./shell-engine.js";
+import { endingSignalHold } from "./signal-hold.js";
 import {
 	formatLiveEndpoints,
 	matchWorkspaceAction,
@@ -145,6 +153,91 @@ async function runHoboCommand(
 	});
 }
 
+/** A forward-sessions action the CLI handed over, with the authorization it holds. */
+interface HandedForward extends SessionForward {
+	readonly closeAuthorization?: () => Promise<void>;
+}
+
+function handedForward(result: HoboCodeCliResult): HandedForward | undefined {
+	if (!result.ok || !result.data || !isJsonObject(result.data))
+		return undefined;
+	// SAFETY: runHoboCodeCli puts the forward-sessions action, with its closeAuthorization function, here.
+	const action = (result.data as { readonly terminalAction?: unknown })
+		.terminalAction as Partial<HandedForward> & { readonly kind?: string };
+	if (
+		action?.kind !== "forward-sessions" ||
+		action.machine === undefined ||
+		action.port === undefined ||
+		action.identityAgent === undefined
+	) {
+		return undefined;
+	}
+	return {
+		machine: action.machine,
+		port: action.port,
+		identityAgent: action.identityAgent,
+		...(action.authorizationSessionId !== undefined
+			? { authorizationSessionId: action.authorizationSessionId }
+			: undefined),
+		...(action.authorizationExpiresAt !== undefined
+			? { authorizationExpiresAt: action.authorizationExpiresAt }
+			: undefined),
+		...(action.auditTypes !== undefined
+			? { auditTypes: action.auditTypes }
+			: undefined),
+		...(action.closeAuthorization !== undefined
+			? { closeAuthorization: action.closeAuthorization }
+			: undefined),
+	};
+}
+
+/** A forward the shell runs behind its screen; `stop` ends it and closes its authorization. */
+interface ShellForward {
+	stop(): Promise<void>;
+}
+
+/**
+ * Run a forward the way the hobo-code bin does (`forwardResidentSessions`),
+ * behind the shell's screen: ssh gets no terminal, and the forward hears
+ * signals only from `stop`, the shell's own quit, while the shell keeps the
+ * process's. However the forward ends (ssh exits, the lease runs out, the
+ * forward fails to start, or `stop`), its authorization is closed.
+ */
+function startShellForward(
+	forward: HandedForward,
+	env: NodeJS.ProcessEnv,
+	ended: () => void,
+): ShellForward {
+	const own = new EventEmitter();
+	const signals = endingSignalHold({
+		on: (signal, listener) => {
+			own.on(signal, listener);
+		},
+		off: (signal, listener) => {
+			own.off(signal, listener);
+		},
+	});
+	const done = forwardResidentSessions(forward, signals, {
+		stdout: new Writable({ write: (_chunk, _encoding, next) => next() }),
+		startSsh: (args) => spawn("ssh", [...args], { stdio: "ignore", env }),
+	})
+		.catch(() => 1)
+		.finally(async () => {
+			try {
+				await forward.closeAuthorization?.();
+			} finally {
+				signals.release();
+				ended();
+			}
+		});
+	return {
+		async stop() {
+			own.emit("SIGTERM", "SIGTERM");
+			await done;
+		},
+	};
+}
+
 async function executeResidentTerminalAction(
 	result: HoboCodeCliResult,
 	env: NodeJS.ProcessEnv,
@@ -194,6 +287,8 @@ export function createDefaultShellHost(
 	const workspaceRoot = deps.cwd ?? process.cwd();
 	let lastProjectDir: string | undefined;
 	const devSessions = new Set<DevBrowserSession>();
+	const forwards = new Set<ShellForward>();
+	let disposed = false;
 	const cliDeps: DefaultShellHostOptions = {
 		...deps,
 		onDevSession: (session) => {
@@ -373,10 +468,28 @@ export function createDefaultShellHost(
 				json: false,
 				dense: deps.dense === true,
 			});
+			const forward = handedForward(result);
+			if (forward !== undefined) {
+				// Handed over after the shell began to close: nothing will stop
+				// a forward now, so none is started, and the authorization goes.
+				if (disposed) {
+					await forward.closeAuthorization?.();
+					return `${text}\nnot forwarded: the shell is closing; the Station authorization is closed`;
+				}
+				const running = startShellForward(
+					forward,
+					deps.env ?? process.env,
+					() => forwards.delete(running),
+				);
+				forwards.add(running);
+				return `${text}\n${forwardBanner(forward).trimEnd()}`;
+			}
 			await executeResidentTerminalAction(result, deps.env ?? process.env);
 			return text;
 		},
 		dispose: async () => {
+			disposed = true;
+			await Promise.all([...forwards].map((forward) => forward.stop()));
 			await Promise.all([...devSessions].map((session) => session.close()));
 			devSessions.clear();
 		},

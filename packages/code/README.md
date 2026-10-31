@@ -899,7 +899,10 @@ is closed before hobo-code ends, and they stay held until it is: a second
 signal while it is being closed is only recorded. If the verb fails once the
 authorization is open, a throw included, before it hands the authorization to
 the forward, it closes it itself, and the Station's `pam.SessionEnded` says
-`session-serve-failed`.
+`session-serve-failed`. The interactive shell's `/sessions serve --host
+<machine>` runs the same forward behind its screen (ssh gets no terminal),
+and closes the authorization when the forward ends, when it cannot start, and
+when the shell quits.
 
 ## Package layout
 

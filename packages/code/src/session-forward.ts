@@ -56,6 +56,11 @@ async function handleSignalsAlreadySent(): Promise<void> {
 	await nextTurn();
 }
 
+/** What the forward says where the browser is, before it starts ssh. */
+export function forwardBanner(forward: SessionForward): string {
+	return `browser: ${preferNamedEndpoint(`http://127.0.0.1:${forward.port}/`, "sessions")}\nremote: ${forward.machine.id} via Station-authorized SSH forwarding (${forward.authorizationSessionId ?? "authorized"}; expires ${forward.authorizationExpiresAt ?? "unknown"}; ${(forward.auditTypes ?? []).join(", ") || "audited"})\nssh authentication: Station authorization gates ${forward.identityAgent}; no key or token is copied\n`;
+}
+
 /**
  * Run the forward until ssh ends, the authorization's lease runs out (124),
  * or an ending signal comes (128+n); the result is hobo-code's status.
@@ -72,9 +77,7 @@ export async function forwardResidentSessions(
 	await handleSignalsAlreadySent();
 	if (signals.first !== undefined) return signalStatus(signals.first);
 	const { machine, port } = forward;
-	(io.stdout ?? process.stdout).write(
-		`browser: ${preferNamedEndpoint(`http://127.0.0.1:${port}/`, "sessions")}\nremote: ${machine.id} via Station-authorized SSH forwarding (${forward.authorizationSessionId ?? "authorized"}; expires ${forward.authorizationExpiresAt ?? "unknown"}; ${(forward.auditTypes ?? []).join(", ") || "audited"})\nssh authentication: Station authorization gates ${forward.identityAgent}; no key or token is copied\n`,
-	);
+	(io.stdout ?? process.stdout).write(forwardBanner(forward));
 	const leaseMs = authorizationLeaseDelay(forward.authorizationExpiresAt ?? "");
 	const args = remoteSessionServeSshArgs(machine, port, forward.identityAgent);
 	return new Promise<number>((resolve) => {

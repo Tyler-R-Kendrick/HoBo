@@ -925,10 +925,10 @@ HoBo's Plan 09 pyramid specifies unit, conformance, integration, E2E, determinis
 - `CreateSecret`, `UpdateSecret` and a second unforced `DeleteSecret` answer `InvalidRequestException` ("The secret is scheduled for deletion").
 - `RestoreSecret` "Cancels the scheduled deletion of a secret by removing the DeletedDate time stamp".
 
-The `aws.secrets-manager/v1` resolver had three problems with such a secret:
-- **It hid the secret.** `read()` reported it absent, so the resolver-backed `IacProvider` previewed "absent at the provider; apply would create it", a create the provider refuses, and drift said the resource did not exist.
-- **It restored the secret silently.** `reconcile()` brought back a secret someone had deleted on purpose.
-- **It could not delete twice.** A second delete failed.
+The `aws.secrets-manager/v1` resolver never read `DeletedDate`, so it handled a secret scheduled for deletion as a live one:
+- **`read()` reported it settled.** It answered `adopt` (or `noop` when the request named the secret's id) with the outputs of a live secret. So the resolver-backed `IacProvider` previewed "every declared parameter matches what the provider reports", with `changes: 0`, whenever the declared parameters matched. Drift certified the same secret clean (`drift: false`, determined). A secret on its way out read as converged.
+- **`reconcile()` answered success, or a refusal that named neither way forward.** With nothing to update it answered `adopt` or `noop` for a secret AWS was about to delete. With a `description` or `kmsKeyRef` to change it sent `UpdateSecret`, which AWS refuses with `InvalidRequestException`. Neither answer said that the secret was scheduled for deletion or how to restore it.
+- **A second delete failed.** `delete()` sent `DeleteSecret` again for a secret already scheduled, and AWS refused it with `InvalidRequestException`.
 
 ### Decision
 1. **`read()` reports a resource the provider is deleting.** The outcome carries:
@@ -954,10 +954,10 @@ The `aws.secrets-manager/v1` resolver had three problems with such a secret:
    In [ADR-0145](01-architecture-core.md#adr-0145)'s map a directive is a trait: it modifies how apply or delete acts on the resource, not what the resource is. It is the operator-owned, Yard-side kind, set on the product's slot options beside the provider's other options, and it is not a new attach point. HoBo has no general mechanism for marking such parameters (ADR-0145 leaves a typed `TraitDescriptor` for later). So each resolver lists its own, and `resolver-iac-provider` holds no product's parameter names.
 
 ### Consequences
-- **(+)** Preview never claims a create the provider would refuse, and drift never certifies a secret on its way out as clean.
-- **(+)** Nothing deleted on purpose comes back unless the plan says so.
+- **(+)** Preview and drift never report a secret on its way out as converged. They do not report it absent either, which would promise a create the provider refuses.
+- **(+)** Apply never reports success for a secret AWS is deleting, and nothing deleted on purpose comes back unless the plan says so.
+- **(+)** A plan may keep `restoreScheduled: true` after the restore. Its preview and drift are then those of any live secret, not UNDETERMINED.
 - **(−)** Redeploying a secret within its recovery window fails until the operator chooses one of the two ways forward. The refusal names both.
 - **(−)** `delete` now needs `secretsmanager:DescribeSecret` as well as `secretsmanager:DeleteSecret`.
-- **(+)** A plan may keep `restoreScheduled: true` after the restore. Its preview and drift are then those of any live secret, not UNDETERMINED.
 - **(−)** A resolver that reads a parameter as a directive must list it, or every plan that declares it previews UNDETERMINED. Listing a state parameter would hide its drift. That is why each resolver keeps its own list and registration checks its form.
 - **(−)** Only this resolver reports a resource being deleted today. The action is there for the others; until they use it, their preview of a resource in deletion is whatever their `read()` says.

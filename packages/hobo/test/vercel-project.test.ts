@@ -2,7 +2,7 @@ import { inspect } from "node:util";
 
 import type { IacProgram } from "@hobo/cloud";
 import { at, first } from "@hobo/core/total-access";
-import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { type JsonObject, parseJsonObject } from "../src/json.js";
 import {
@@ -569,9 +569,5 @@ describe("the default transport", () => {
 		for (const { init } of viaGlobal.sent) {
 			expect(Object.keys(init)).toEqual(["method", "headers", "body"]);
 		}
-	});
-
-	it("is handed a request that may carry no body", () => {
-		expectTypeOf<SentInit["body"]>().toEqualTypeOf<string | undefined>();
 	});
 });

@@ -35,12 +35,14 @@
  * - Imports are read from the syntax tree (lib/test-import-specifiers). A
  *   specifier computed at run time cannot be read.
  * - A path a loaded file assembles at run time that names another package's
- *   `dist/`, or ends at its directory in a file that spawns, links or loads by
- *   a computed path, or does either for a package it names by a computed
- *   segment (`join(root, "packages", name, "dist")`; lib/test-runtime-reaches),
- *   fails unless `scripts/test-deps-runtime-reaches.json` declares what the
- *   file needs.
- *   Every test task that loads a declared file must have those builds, and a
+ *   build output directory (its tsconfig `outDir`, else `dist/`), or ends at
+ *   its directory in a file that spawns, links, copies or loads by a computed
+ *   path, or does either for a package it names by a computed segment
+ *   (`join(root, "packages", name, "dist")`), fails unless
+ *   `scripts/test-deps-runtime-reaches.json` declares what the file needs.
+ *   lib/test-runtime-reaches says exactly which paths count, and which it
+ *   cannot see: a path assembled across files or behind a name, one with no
+ *   literal anchor, and what a child process loads. Every test task that loads a declared file must have those builds, and a
  *   declaration no test task reaches, that names no workspace package, or
  *   that names no build of a package other than the file's own (an empty
  *   `needs`), fails too, as does a file declared twice.

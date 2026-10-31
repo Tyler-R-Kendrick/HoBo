@@ -4,22 +4,22 @@
  * registry that declares what each one needs.
  *
  * A path the file assembles (lib/test-import-specifiers `ModuleFacts.paths`)
- * names package P where, from its start, a computed root (`*`), `..` or
+ * names package P where, from its start, a computed part (`*`), `..` or
  * `node_modules`, it continues with P's directory, P's package name, or a run
  * of P's directory's trailing segments: `packages/runtimes/runtime-local` is
- * named by `../../runtimes/runtime-local` and `*`/`runtime-local` alike. A
- * path that starts `./` or `../` is also read from the file's directory, as
- * `new URL(…, import.meta.url)` resolves it: from `packages/cli/test/`,
- * `../../core` is `packages/core`. The file reaches P at run time when the
- * path:
+ * named by `../../runtimes/runtime-local` and `*`/`runtime-local` alike. In an
+ * absolute path (`/…`, `C:\…`, `file:…`), whose root is unknown, P's whole
+ * directory names it wherever it is. A path that starts `./` or `../` is also
+ * read from the file's directory, as `new URL(…, import.meta.url)` resolves
+ * it: from `packages/cli/test/`, `../../core` is `packages/core`. The file
+ * reaches P at run time when the path:
  * - goes on into P's build output directory, the first segment of the
  *   `outDir` its build compiles with, else `dist/` (`join(dir, "packages",
  *   "hobo", "dist", "bin", "hobo.js")`, `"../../bindles/dist/index.js"`); or
  * - ends at P's directory or name, or goes on into a computed segment
  *   (`join(hoboDir, file)`), in a file that runs or loads something by a
- *   computed path (`spawn`, `import()` of a non-literal, `createRequire`,
- *   `symlink`, `new Worker`): `join(root, "packages", "adapters",
- *   "adapter-hono")` linked into a generated app, or
+ *   computed path (`ModuleFacts.loadsComputed`): `join(root, "packages",
+ *   "adapters", "adapter-hono")` linked into a generated app, or
  *   `new URL("../../hobo", import.meta.url)` linked into a temporary root. It
  *   ends at P where it names P's directory in more than one segment
  *   (`packages/hobo`, `runtimes/runtime-local`) or right after `..`, or names
@@ -40,8 +40,21 @@
  * not count.
  *
  * A path that goes on into anything else of P's (its source, `bin/`,
- * `package.json`, its `node_modules`) needs no build of P and is not a reach; nor is one that names P only in the middle of
- * another directory (`…/s0-04-protobuf-cue-codegen/packages/schema-tools`).
+ * `package.json`, its `node_modules`) needs no build of P and is not a reach;
+ * nor is one that names P only in the middle of another directory
+ * (`…/s0-04-protobuf-cue-codegen/packages/schema-tools`), nor a glob's
+ * literal `*`.
+ *
+ * What this cannot see, so passes: a path assembled across files or behind a
+ * name (`join(packagesDir, "hobo")` with `packagesDir` bound elsewhere is one
+ * segment after a computed root; a helper that returns a sibling's directory
+ * to a test that spawns from it, where the helper itself loads nothing); a
+ * path with no literal anchor (`join(here, "..", "..", name)`, a path from
+ * the environment); one built another way (`segs.join("/")`, `+=`,
+ * `path.format`); a loader reached only through another module; and what a
+ * child process loads. A tracked file handed to a child (`bin/hobo.mjs`, a
+ * sibling's `src/run.ts` under tsx) is tracked source, so it needs no build
+ * here, and its own imports are not read.
  *
  * The check cannot see what such a reach loads, so an undeclared one fails.
  * A declaration in `scripts/test-deps-runtime-reaches.json` says what the file

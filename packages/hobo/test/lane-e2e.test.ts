@@ -84,7 +84,7 @@ function recordingVercelFetch() {
 			url,
 			method: init.method,
 			headers: init.headers,
-			body: init.body,
+			body: init.body ?? "",
 		});
 		const response: VercelFetchResponse = {
 			ok: true,

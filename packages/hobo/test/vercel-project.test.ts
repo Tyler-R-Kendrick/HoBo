@@ -1,6 +1,6 @@
 import type { IacProgram } from "@hobo/cloud";
 import { at, first } from "@hobo/core/total-access";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 
 import { type JsonObject, parseJsonObject } from "../src/json.js";
 import {
@@ -70,7 +70,8 @@ const DEPLOYED = reply(200, {
 
 /**
  * A transport that answers each `METHOD /path` from a queue of scripted
- * answers, in order, and fails the test on a request nobody scripted.
+ * answers, in order. It fails the test on a request nobody scripted, and on a
+ * request that carries an empty body.
  */
 function scripted(
 	script: Readonly<Record<string, readonly VercelFetchResponse[]>>,
@@ -82,6 +83,7 @@ function scripted(
 	const fetch: VercelFetch = async (url, init) => {
 		sent.push({ url, init });
 		const route = `${init.method} ${new URL(url).pathname}`;
+		if (init.body === "") throw new Error(`empty body: ${route}`);
 		const next = left.get(route)?.shift();
 		if (next === undefined) throw new Error(`unscripted request: ${route}`);
 		return next;
@@ -115,7 +117,7 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 
 		expect(routes()).toEqual([DEPLOY]);
 		expect(outputs.url).toBe("https://hobo-hello-bindle-1.vercel.app");
-		const deploy = parseJsonObject(first(sent).init.body);
+		const deploy = parseJsonObject(first(sent).init.body ?? "");
 		expect(deploy.project).toBe("hobo-hello-bindle");
 	});
 
@@ -307,5 +309,38 @@ describe("createVercelClient.createProject (scripted transport, no network)", ()
 			name: "raced",
 			created: false,
 		});
+	});
+});
+
+describe("the default transport", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it("hands global fetch each request exactly as the client formed it", async () => {
+		const missingProject = () => ({
+			[DEPLOY]: [PROJECT_NOT_FOUND, DEPLOYED],
+			[CREATE]: [CREATED],
+		});
+		const injected = scripted(missingProject());
+		await createVercelDeployProvider({
+			token: "tok",
+			fetch: injected.fetch,
+		}).apply(programFor("dep-1"));
+
+		const viaGlobal = scripted(missingProject());
+		vi.stubGlobal("fetch", viaGlobal.fetch);
+		await createVercelDeployProvider({ token: "tok" }).apply(
+			programFor("dep-1"),
+		);
+
+		expect(viaGlobal.sent).toEqual(injected.sent);
+		for (const { init } of viaGlobal.sent) {
+			expect(Object.keys(init)).toEqual(["method", "headers", "body"]);
+		}
+	});
+
+	it("is handed a request that may carry no body", () => {
+		expectTypeOf<SentInit["body"]>().toEqualTypeOf<string | undefined>();
 	});
 });

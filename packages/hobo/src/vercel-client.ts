@@ -95,14 +95,13 @@ export interface VercelFetchResponse {
 	json(): Promise<JsonValue>;
 }
 
-// A request with nothing to send carries `body: ""`; the default transport sends
-// no body for a GET or HEAD, as `fetch` requires.
+// A request with nothing to send carries no `body`, as `fetch` requires of a GET.
 export type VercelFetch = (
 	url: string,
 	init: {
 		readonly method: string;
 		readonly headers: Record<string, string>;
-		readonly body: string;
+		readonly body?: string;
 	},
 ) => Promise<VercelFetchResponse>;
 
@@ -181,12 +180,7 @@ const globalFetch: VercelFetch = (url, init) => {
 			"vercel-client: no global fetch available; inject one via createVercelClient({ fetch })",
 		);
 	}
-	// `fetch` refuses a GET or HEAD that carries a body, even an empty one.
-	const bodiless = init.method === "GET" || init.method === "HEAD";
-	return fetchImpl(
-		url,
-		bodiless ? { method: init.method, headers: init.headers } : init,
-	);
+	return fetchImpl(url, init);
 };
 
 function normalizeUrl(raw: JsonValue | undefined): string {

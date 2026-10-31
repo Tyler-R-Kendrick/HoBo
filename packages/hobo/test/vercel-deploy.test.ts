@@ -45,7 +45,7 @@ function mockFetch(responseBody: JsonObject, status = 200) {
 			url,
 			method: init.method,
 			headers: init.headers,
-			body: init.body,
+			body: init.body ?? "",
 		});
 		const response: VercelFetchResponse = {
 			ok: status >= 200 && status < 300,

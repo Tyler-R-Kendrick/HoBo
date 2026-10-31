@@ -1896,8 +1896,14 @@ function parseDeletedDate(
 			? instantFromRfc3339(value)
 			: undefined;
 	if (instant !== undefined) return instant;
-	const written =
-		memberSource(described.body, "DeletedDate") ?? JSON.stringify(value);
+	// A number is quoted as the response wrote it, because JSON.parse cannot
+	// hold every number (1e400 reads back as Infinity and is written as null)
+	// and a number's text has no escapes. Anything else is quoted as the value
+	// it parsed to: its source text could spell a credential in \u escapes,
+	// which neither the exact-match nor the token scrub would see.
+	const written = isJsonNumber(value)
+		? (memberSource(described.body, "DeletedDate") ?? JSON.stringify(value))
+		: JSON.stringify(value);
 	throw unparseable(
 		`secretsmanager describe ${context.name}`,
 		`AWS returned a DeletedDate (${context.redact(written, 80)}) that is neither epoch seconds nor an RFC 3339 date-time in the years 0000 to 9999, so whether the secret is scheduled for deletion cannot be read; it is refused rather than assumed`,

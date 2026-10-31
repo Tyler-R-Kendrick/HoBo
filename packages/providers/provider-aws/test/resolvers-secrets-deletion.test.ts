@@ -58,6 +58,17 @@ const CREDENTIAL_REF = "secret://camp/aws-deploy";
 const NOW_MS = Date.parse("2026-03-04T05:06:07.000Z");
 const DAY_SECONDS = 24 * 60 * 60;
 const NAME = "hobo-stripe";
+const ACCESS_KEY_ID = "AKIAHOBOFAKEKEYID001";
+const SECRET_ACCESS_KEY = "n0tARealSecretAccessKey0000000000000000x";
+const SESSION_TOKEN = `FwoGZXIvYXdzEJr${"HoboFakeSessionToken0".repeat(8)}`;
+
+/** A string as JSON text with every letter and digit written as a \u escape. */
+function escapedJson(text: string): string {
+	return JSON.stringify(text).replace(
+		/[A-Za-z0-9]/gu,
+		(char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`,
+	);
+}
 
 interface FakeSecret {
 	description: string | undefined;
@@ -91,6 +102,8 @@ interface FakeOptions {
 	readonly restore?: "takes-no-effect" | "secret-vanishes";
 	/** DescribeSecret's DeletedDate as raw JSON text, for values JSON.stringify cannot write (1e400). */
 	readonly rawDeletedDate?: string;
+	/** A session token the resolved credential carries, so redaction has one to find. */
+	readonly sessionToken?: string;
 }
 
 /** One account's Secrets Manager, holding secrets through their recovery window. */
@@ -213,8 +226,11 @@ function harness(
 		region: REGION,
 		nowMs: NOW_MS,
 		resolveCredential: async () => ({
-			accessKeyId: "AKIAHOBOFAKEKEYID001",
-			secretAccessKey: "n0tARealSecretAccessKey0000000000000000x",
+			accessKeyId: ACCESS_KEY_ID,
+			secretAccessKey: SECRET_ACCESS_KEY,
+			...(options.sessionToken === undefined
+				? undefined
+				: { sessionToken: options.sessionToken }),
 		}),
 	});
 	const resolver = registry.get(AWS_SECRETS_MANAGER_PRODUCT_ID);
@@ -774,6 +790,32 @@ describe("DeletedDate as a provider answers it", () => {
 		);
 		expect(refusal?.message).toContain("AWS returned a DeletedDate (1e400)");
 		expect(refusal?.message).not.toContain("(null)");
+	});
+
+	// The refusal quotes a string as the value it parsed to, never as its JSON
+	// source: written in \u escapes, a credential would pass both scrubs.
+	it.each([
+		["an access key id", ACCESS_KEY_ID],
+		["a secret access key", SECRET_ACCESS_KEY],
+		["a session token", SESSION_TOKEN],
+	])("redacts %s written in \\u escapes", async (_what, credential) => {
+		const raw = escapedJson(credential);
+		const runner = harness(scheduledWith(0), {
+			rawDeletedDate: raw,
+			sessionToken: SESSION_TOKEN,
+		});
+
+		const refusal = await refusalOf(runner.read());
+
+		expect(refusal instanceof ResolverError ? refusal.code : "").toBe(
+			"RESOLVER_OUTPUT_UNPARSEABLE",
+		);
+		expect(refusal?.message).toContain(
+			'AWS returned a DeletedDate ("[redacted]")',
+		);
+		expect(refusal?.message).not.toContain(credential);
+		expect(refusal?.message).not.toContain(raw.slice(1, 30));
+		expect(refusal?.message).not.toContain(credential.slice(0, 12));
 	});
 
 	it("quotes an unreadable DeletedDate only bounded and redacted", async () => {

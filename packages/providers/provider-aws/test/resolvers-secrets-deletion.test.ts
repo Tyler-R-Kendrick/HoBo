@@ -102,6 +102,8 @@ interface FakeOptions {
 	readonly restore?: "takes-no-effect" | "secret-vanishes";
 	/** DescribeSecret's DeletedDate as raw JSON text, for values JSON.stringify cannot write (1e400). */
 	readonly rawDeletedDate?: string;
+	/** Raw JSON members DescribeSecret writes before a raw DeletedDate (a nested one, say). */
+	readonly rawMembers?: string;
 	/** A session token the resolved credential carries, so redaction has one to find. */
 	readonly sessionToken?: string;
 }
@@ -147,7 +149,7 @@ function fakeSecretsManager(
 					return {
 						status: 200,
 						headers: {},
-						body: `${body},"DeletedDate":${options.rawDeletedDate}}`,
+						body: `${body},${options.rawMembers === undefined ? "" : `${options.rawMembers},`}"DeletedDate":${options.rawDeletedDate}}`,
 					};
 				}
 				return reply(200, describe(name, secret));
@@ -779,7 +781,7 @@ describe("DeletedDate as a provider answers it", () => {
 	});
 
 	it("quotes a DeletedDate JSON cannot hold (1e400) as it was written, not as null", async () => {
-		const runner = harness(scheduledWith(0), { rawDeletedDate: "1e400" });
+		const runner = harness(liveSecret(), { rawDeletedDate: "1e400" });
 
 		const refusal = await refusalOf(runner.read());
 
@@ -798,7 +800,7 @@ describe("DeletedDate as a provider answers it", () => {
 		["a session token", SESSION_TOKEN],
 	])("redacts %s written in \\u escapes", async (_what, credential) => {
 		const raw = escapedJson(credential);
-		const runner = harness(scheduledWith(0), {
+		const runner = harness(liveSecret(), {
 			rawDeletedDate: raw,
 			sessionToken: SESSION_TOKEN,
 		});
@@ -814,6 +816,21 @@ describe("DeletedDate as a provider answers it", () => {
 		expect(refusal?.message).not.toContain(credential);
 		expect(refusal?.message).not.toContain(raw.slice(1, 30));
 		expect(refusal?.message).not.toContain(credential.slice(0, 12));
+	});
+
+	// The reviver sees a nested DeletedDate (inside Tags here) before the
+	// top-level one, so the quote must come from the member whose holder is the
+	// body itself. Numbers only: a string is never quoted by its source.
+	it("quotes the top-level DeletedDate's text, not a nested one written first", async () => {
+		const runner = harness(liveSecret(), {
+			rawMembers: '"Tags":[{"Key":"k","Value":"v","DeletedDate":2e400}]',
+			rawDeletedDate: "1e400",
+		});
+
+		const refusal = await refusalOf(runner.read());
+
+		expect(refusal?.message).toContain("AWS returned a DeletedDate (1e400)");
+		expect(refusal?.message).not.toContain("2e400");
 	});
 
 	it("quotes an unreadable DeletedDate only bounded and redacted", async () => {

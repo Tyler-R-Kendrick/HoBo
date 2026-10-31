@@ -1,43 +1,29 @@
 /**
- * What `bootstrap-siblings` does with an asset pin: report it, fetch it, move
- * it to another release.
+ * What `bootstrap-siblings` does with an asset pin: report it and fetch it.
+ * Moving it to another release is `pins-asset-bump.ts`.
  *
- * An asset is one file per target, pinned by sha256 and kept in the
- * content-addressed cache. A release lists its digests in `SHA256SUMS`; the
- * convention that makes a bump mechanical is `<pin name>-<target>` for each
- * file (`mirror-linux-x64`). A bump downloads every file it pins and checks
- * it against the published sum, so a pin is never written from a list alone.
+ * An asset is one executable per target, pinned by sha256 and kept in the
+ * content-addressed cache: a bare file, or one member of a release archive,
+ * where the archive is what the pin's digest covers (`pins-archive.ts`).
  *
  * Erasable TypeScript with node builtins only.
  */
-import { statSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename } from "node:path";
 
-import {
-	type AssetFile,
-	type AssetPin,
-	checkRepoUrl,
-	isReleaseTag,
-	type Pins,
-	PinsError,
-	parsePins,
-} from "./pins.ts";
+import { type AssetPin, PinsError } from "./pins.ts";
 import {
 	assetFor,
 	overrideEnv,
 	parseSums,
 	releaseBase,
-	serializePins,
 } from "./pins-assets.ts";
-import { cacheProblem, prepareCache } from "./pins-cache.ts";
+import { cacheProblem } from "./pins-cache.ts";
 import {
 	ensureCached,
 	type FetchOptions,
 	fetchText,
-	fetchVerified,
 	verifyCached,
 } from "./pins-fetch.ts";
-import { sameRepo } from "./pins-repo-url.ts";
 
 export interface AssetContext {
 	readonly cache: string;
@@ -53,11 +39,9 @@ export interface AssetReport {
 	readonly fixes: readonly string[];
 }
 
-const SUMS = "SHA256SUMS";
-/** The targets a release is expected to publish when its pin has none yet. */
-const DEFAULT_TARGETS = ["linux-x64", "linux-arm64"] as const;
+export const SUMS = "SHA256SUMS";
 
-function short(digest: string): string {
+export function short(digest: string): string {
 	return digest.slice(0, 7);
 }
 
@@ -129,16 +113,28 @@ export async function statusAsset(
 	}
 	const cached = await verifyCached(ctx.cache, file);
 	if (cached.state === "mismatch") {
-		const path = join(ctx.cache, file.sha256, file.entry);
 		problems.push(
-			`${path} hashes to ${cached.actual}, the pin says ${file.sha256}`,
+			`${cached.path} hashes to ${cached.actual}, the pin says ${file.sha256}`,
 		);
 		fixes.push(`${fetchHint(name)}   (replaces the corrupt file)`);
 	}
 	if (cached.state === "invalid") {
-		const path = join(ctx.cache, file.sha256, file.entry);
-		problems.push(`${path} is not a regular file (${cached.reason})`);
+		problems.push(`${cached.path} is not a regular file (${cached.reason})`);
 		fixes.push(`${fetchHint(name)}   (replaces it)`);
+	}
+	if (cached.state === "stale") {
+		problems.push(cached.reason);
+		fixes.push(
+			`${fetchHint(name)}   (unpacks it again from the verified archive)`,
+		);
+	}
+	if (cached.state === "unusable") {
+		problems.push(
+			`the pinned archive cannot supply the entry: ${cached.reason}`,
+		);
+		fixes.push(
+			`pnpm run pins:bump ${name} ${pin.tag} -- --member <path>   (pins the member the archive does hold; fetching again cannot help)`,
+		);
 	}
 	if (ctx.online) {
 		const published = await compareWithRelease(pin, ctx);
@@ -160,7 +156,11 @@ export async function statusAsset(
 				? `not cached; ${fetchHint(name)}`
 				: cached.state === "invalid"
 					? "cache invalid"
-					: "cache corrupt";
+					: cached.state === "stale"
+						? "unpacked file stale"
+						: cached.state === "unusable"
+							? "archive unusable"
+							: "cache corrupt";
 	const mark = problems.length === 0 ? "ok" : "FAIL";
 	const online =
 		ctx.online && problems.length === 0 ? "; matches SHA256SUMS" : "";
@@ -207,175 +207,15 @@ export async function fetchAsset(
 		return `${name}  skipped  (not published yet; set ${variable} to a local build)`;
 	}
 	const file = assetFor(pin, name, ctx.target);
-	const { path, downloaded } = await ensureCached(
+	const { path, downloaded, unpacked } = await ensureCached(
 		ctx.cache,
 		file,
 		ctx.fetchOptions,
 	);
-	return downloaded
-		? `${name}  fetched ${ctx.target} (${file.size} bytes, sha256 ${short(file.sha256)}) to ${path}`
+	if (downloaded) {
+		return `${name}  fetched ${ctx.target} (${file.size} bytes, sha256 ${short(file.sha256)}) to ${path}`;
+	}
+	return unpacked
+		? `${name}  unpacked again from the verified archive to ${path}`
 		: `${name}  already cached at ${path}`;
-}
-
-function oldEntries(pin: AssetPin | null): string[] {
-	return pin === null
-		? []
-		: [...new Set(Object.values(pin.files).map((file) => file.entry))];
-}
-
-export interface BumpOptions {
-	/** `--repo`: the repository that publishes the release. */
-	readonly repo: string | undefined;
-	/** `--drop`: targets the new release is allowed to stop publishing. */
-	readonly drop: readonly string[];
-	/** `--entry`: rename the file the verified bytes are kept and run under. */
-	readonly entry: string | undefined;
-	readonly allowLocal: boolean;
-}
-
-export interface Bumped {
-	readonly text: string;
-	/** What to print: the move, then what was kept and what was dropped. */
-	readonly lines: readonly string[];
-}
-
-interface TargetPlan {
-	readonly keep: string[];
-	readonly dropped: readonly string[];
-	readonly unpublished: string[];
-}
-
-/**
- * Refuse a bump that would lose a build without being told to: every target
- * the pin has must be published by the release, or named in `--drop`.
- */
-function planTargets(
-	name: string,
-	tag: string,
-	pin: AssetPin | null,
-	sums: ReadonlyMap<string, string>,
-	drop: readonly string[],
-): TargetPlan {
-	const listed = (target: string): boolean => sums.has(`${name}-${target}`);
-	const had = pin === null ? [] : Object.keys(pin.files);
-	for (const target of drop) {
-		if (listed(target)) {
-			throw new PinsError(
-				"USAGE",
-				`--drop ${target}: the release publishes it`,
-			);
-		}
-	}
-	const undeclared = had.filter(
-		(target) => !listed(target) && !drop.includes(target),
-	);
-	if (undeclared.length > 0) {
-		throw new PinsError(
-			"TARGET_DROPPED",
-			`${SUMS} of ${tag} does not list ${undeclared.map((target) => `${name}-${target}`).join(", ")}; the pin would lose ${undeclared.join(", ")}. Re-run with ${undeclared.map((target) => `--drop ${target}`).join(" ")} if that is meant`,
-		);
-	}
-	const wanted = pin === null ? [...DEFAULT_TARGETS] : had;
-	return {
-		keep: wanted.filter(listed),
-		dropped: drop,
-		unpublished: pin === null ? wanted.filter((target) => !listed(target)) : [],
-	};
-}
-
-/**
- * Point `name` at release `tag`: read its SHA256SUMS, download each file it
- * pins into the cache, check it against the published sum, measure it, and
- * return the manifest text with only that entry replaced.
- */
-export async function bumpAsset(
-	pins: Pins,
-	name: string,
-	tag: string,
-	options: BumpOptions,
-	ctx: AssetContext,
-): Promise<Bumped> {
-	// Nothing the operator typed reaches a URL, the cache or the network unchecked.
-	if (!isReleaseTag(tag)) {
-		throw new PinsError("USAGE", `${tag} is not a release tag`);
-	}
-	if (options.repo !== undefined) {
-		checkRepoUrl(options.repo, "--repo", options.allowLocal);
-	}
-	const pin = pins.assets[name] ?? null;
-	// `--repo` naming the pin's own repository (a trailing slash, `.git`) is
-	// not a move: keep the manifest's text and announce nothing.
-	const repo =
-		options.repo !== undefined &&
-		pin !== null &&
-		sameRepo(options.repo, pin.repo)
-			? pin.repo
-			: (options.repo ?? pin?.repo);
-	if (repo === undefined) {
-		throw new PinsError(
-			"USAGE",
-			`${name} has no repository yet: pass --repo <url of the repository that publishes the release>`,
-		);
-	}
-	const had = pin === null ? [] : Object.keys(pin.files);
-	for (const target of options.drop) {
-		if (!had.includes(target)) {
-			throw new PinsError(
-				"USAGE",
-				`--drop ${target}: the pin has no such target (it has ${had.join(", ") || "none"})`,
-			);
-		}
-	}
-	const base = releaseBase(repo, tag);
-	const sums = parseSums(await fetchText(`${base}${SUMS}`, ctx.fetchOptions));
-	const plan = planTargets(name, tag, pin, sums, options.drop);
-	if (plan.keep.length === 0) {
-		throw new PinsError(
-			"SUMS_MALFORMED",
-			`${SUMS} of ${tag} lists none of ${DEFAULT_TARGETS.map((target) => `${name}-${target}`).join(", ")}`,
-		);
-	}
-	await prepareCache(ctx.cache);
-	const files: Record<string, AssetFile> = {};
-	for (const target of plan.keep) {
-		const published = `${name}-${target}`;
-		const sha256 = sums.get(published) ?? "";
-		// The name a binary runs under is the pin's, not the release's: carry it over.
-		const entry = options.entry ?? pin?.files[target]?.entry ?? name;
-		await prepareCache(ctx.cache, sha256);
-		const dest = join(ctx.cache, sha256, entry);
-		await fetchVerified(`${base}${published}`, sha256, dest, ctx.fetchOptions);
-		files[target] = {
-			url: `${base}${published}`,
-			sha256,
-			size: statSync(dest).size,
-			entry,
-		};
-	}
-	const next: Pins = {
-		...pins,
-		assets: { ...pins.assets, [name]: { repo, tag, files } },
-	};
-	const text = serializePins(next);
-	parsePins(text, { allowLocal: options.allowLocal });
-	const move = `${name}  ${pin?.tag ?? "unpinned"} -> ${tag}  (each file downloaded and checked against ${SUMS})`;
-	const lost =
-		plan.unpublished.length > 0
-			? `not published: ${plan.unpublished.join(", ")}`
-			: `dropped: ${plan.dropped.length > 0 ? plan.dropped.join(", ") : "none"}`;
-	const renamed = [
-		...new Set(Object.values(files).map((file) => file.entry)),
-	].filter(
-		(now) => options.entry !== undefined && !oldEntries(pin).includes(now),
-	);
-	const lines = [move, `  kept: ${plan.keep.join(", ")}  ${lost}`];
-	if (pin?.repo !== repo) {
-		lines.push(`  repo: ${pin?.repo ?? "(none)"} -> ${repo}`);
-	}
-	if (renamed.length > 0) {
-		lines.push(
-			`  entry: ${oldEntries(pin).join(", ") || "(none)"} -> ${renamed.join(", ")}`,
-		);
-	}
-	return { text, lines };
 }

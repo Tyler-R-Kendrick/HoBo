@@ -61,6 +61,42 @@ export function cachedPath(cache: string, file: AssetFile): string {
 	return join(cache, file.sha256, file.entry);
 }
 
+/** The release file's own name: the last segment of its URL. */
+export function publishedName(file: AssetFile): string {
+	return new URL(file.url).pathname.split("/").pop() ?? "";
+}
+
+/**
+ * `<cache>/<sha256>/<archive name>`: an archive pin keeps the verified archive
+ * beside the member unpacked from it, so status can re-check the member
+ * against the archive offline.
+ */
+export function cachedArchivePath(cache: string, file: AssetFile): string {
+	return join(cache, file.sha256, publishedName(file));
+}
+
+const GO_ARCH: Readonly<Record<string, string>> = Object.freeze({
+	x64: "amd64",
+	arm64: "arm64",
+});
+
+/**
+ * `<name>_<tag>_<os>_<arch>.tar.gz`, the Go toolchain's names for this
+ * target: how a release that ships archives (mirror.cloud's) names each one.
+ * `undefined` for a target Go has no name for here.
+ */
+export function goArchiveName(
+	name: string,
+	tag: string,
+	target: string,
+): string | undefined {
+	const [os, arch = ""] = target.split("-");
+	const goArch = Object.hasOwn(GO_ARCH, arch) ? GO_ARCH[arch] : undefined;
+	return os === undefined || goArch === undefined
+		? undefined
+		: `${name}_${tag}_${os}_${goArch}.tar.gz`;
+}
+
 /** Where a release publishes its assets and `SHA256SUMS`. */
 export function releaseBase(repo: string, tag: string): string {
 	return `${repo.replace(/\/+$/u, "").replace(/\.git$/u, "")}/releases/download/${tag}/`;

@@ -7,9 +7,12 @@
  *   (no verb)                     initialise every git pin (the submodule at its gitlink)
  *   --status [--offline|--online] report every pin; exit 1 when one has drifted
  *   --fetch [name...]             initialise git pins; download and verify asset pins
- *   --bump <name> <ref> [--repo URL] [--drop TARGET]... [--entry NAME]
+ *   --bump <name> <ref> [--repo URL] [--drop TARGET]... [--entry NAME] [--member PATH]
  *                                 move one pin: a git pin's gitlink (staged), or an
- *                                 asset pin to a release tag (siblings.json rewritten)
+ *                                 asset pin to a release tag (siblings.json rewritten);
+ *                                 a release of <name>_<tag>_<os>_<arch>.tar.gz archives
+ *                                 is pinned by the archive, running its member PATH
+ *                                 (default <name>)
  *
  *   --reference <dir>             borrow objects from a local clone (no download for what it has)
  *   --root <dir>                  the repository to act on (default: the one holding this script)
@@ -27,7 +30,13 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { isFileName, type Pins, PinsError, parsePins } from "./lib/pins.ts";
+import {
+	isArchiveMember,
+	isFileName,
+	type Pins,
+	PinsError,
+	parsePins,
+} from "./lib/pins.ts";
 import { git } from "./lib/pins-git.ts";
 import { netTimeoutMs } from "./lib/pins-net.ts";
 import {
@@ -40,7 +49,7 @@ import {
 } from "./lib/pins-verbs.ts";
 
 const USAGE = `usage: bootstrap-siblings.mts [--root DIR] [--reference DIR]
-         [--status [--offline|--online] | --fetch [name...] | --bump NAME REF [--repo URL] [--drop TARGET]... [--entry NAME]]
+         [--status [--offline|--online] | --fetch [name...] | --bump NAME REF [--repo URL] [--drop TARGET]... [--entry NAME] [--member PATH]]
          [--force]`;
 
 const OPTIONS = {
@@ -49,6 +58,7 @@ const OPTIONS = {
 	repo: { type: "string" },
 	drop: { type: "string", multiple: true },
 	entry: { type: "string" },
+	member: { type: "string" },
 	force: { type: "boolean" },
 	status: { type: "boolean" },
 	offline: { type: "boolean" },
@@ -105,6 +115,10 @@ function parseRequest(args: readonly string[]): Request {
 		usage("--entry belongs to --bump");
 	if (values.entry !== undefined && !isFileName(values.entry))
 		usage(`--entry ${values.entry} is not a plain file name`);
+	if (values.member !== undefined && verb !== "bump")
+		usage("--member belongs to --bump");
+	if (values.member !== undefined && !isArchiveMember(values.member))
+		usage(`--member ${values.member} is not a relative path of plain segments`);
 	if (verb === "bump" && positionals.length !== 2)
 		usage("--bump takes a pin name and a ref");
 	if (verb !== "bump" && verb !== "fetch" && positionals.length > 0)
@@ -128,6 +142,7 @@ function parseRequest(args: readonly string[]): Request {
 		repo: values.repo,
 		drop: values.drop ?? [],
 		entry: values.entry,
+		member: values.member,
 		force: values.force === true,
 		names: positionals,
 		allowLocal: process.env.HOBO_PINS_ALLOW_LOCAL === "1",

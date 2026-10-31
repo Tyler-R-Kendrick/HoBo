@@ -271,6 +271,13 @@ function parseAssetFile(
 			`an archive pin's file must be a plain .tar.gz file name, got ${published}`,
 		);
 	}
+	// Both are kept in <cache>/<sha256>/, each under its own name.
+	if (entry === published) {
+		malformed(
+			`${where}.entry`,
+			`${entry} is the archive's own file name; the entry it is unpacked to must be named something else`,
+		);
+	}
 	return Object.freeze({ url, sha256, size, entry, archive });
 }
 

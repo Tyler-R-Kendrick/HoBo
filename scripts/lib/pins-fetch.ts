@@ -330,6 +330,6 @@ export async function ensureCached(
 	if (file.archive === undefined) return { path, downloaded, unpacked: false };
 	// Only now, with the archive verified, is anything unpacked from it.
 	await rm(path, { recursive: true, force: true });
-	await extractMember(downloadTo, file.archive.member, path);
+	await extractMember(downloadTo, file.archive.member, path, file.sha256);
 	return { path, downloaded, unpacked: true };
 }

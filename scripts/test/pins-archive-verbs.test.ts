@@ -144,6 +144,23 @@ describe("pins:fetch and pins:status of an archive pin", () => {
 		assert.match(run.stderr, /ARCHIVE_MEMBER_MISSING/);
 		assert.equal(existsSync(entry), false);
 	});
+
+	it("status reports a verified archive that lacks the member on its own line, and goes on", async () => {
+		const { root, archive } = await pinnedArchive(ARCHIVE, "bin/mirror");
+		await runBootstrapAsync(root, ["--fetch", "mirror"]);
+		assert.equal(existsSync(archive), true);
+		const status = await runBootstrapAsync(root, ["--status", "--offline"]);
+		assert.equal(status.status, 1, status.stdout + status.stderr);
+		assert.match(
+			status.stdout,
+			/mirror {2}v1\.0\.0 {2}FAIL {2}\(.*archive unusable/u,
+		);
+		assert.match(status.stdout, /holds no regular file named bin\/mirror/u);
+		assert.match(status.stdout, /kit {2}unpinned/u);
+		// The one ERR line is the summary, not an abort on the first asset.
+		assert.match(status.stderr, /^ERR 1 pin\(s\) out of date$/mu);
+		assert.doesNotMatch(status.stdout + status.stderr, /^ERR [A-Z_]+:/mu);
+	});
 });
 
 describe("pins:bump to a release that publishes archives", () => {
@@ -247,6 +264,57 @@ describe("pins:bump to a release that publishes archives", () => {
 		assert.match(
 			run.stderr,
 			/--member mirror: v2\.0\.0 publishes mirror-linux-\S+, an executable, not an archive/,
+		);
+		assert.deepEqual(
+			srv.hits.filter((hit) => !hit.endsWith("/SHA256SUMS")),
+			[],
+		);
+		assert.equal(
+			readFileSync(join(root, "tools/pins/siblings.json"), "utf8"),
+			before,
+		);
+	});
+
+	it("unpacks the member named like the pin's entry when --member is not given", async () => {
+		const holding = tarGz([{ name: "osk", body: BINARY }]);
+		const { srv, root } = await release({
+			[named("linux", "amd64")]: holding,
+			[named("linux", "arm64")]: holding,
+		});
+		writeManifest(
+			root,
+			`{"mirror":{"repo":"${srv.origin}/o/mirror","tag":"v1.0.0","files":{"linux-x64":{"url":"${srv.origin}/o/mirror/releases/download/v1.0.0/mirror-linux-x64","sha256":"${"a".repeat(64)}","size":3,"entry":"osk"},"linux-arm64":{"url":"${srv.origin}/o/mirror/releases/download/v1.0.0/mirror-linux-arm64","sha256":"${"b".repeat(64)}","size":3,"entry":"osk"}}},"kit":null}`,
+		);
+		ok(await runBootstrapAsync(root, ["--bump", "mirror", TAG]));
+		const pin = JSON.parse(
+			readFileSync(join(root, "tools/pins/siblings.json"), "utf8"),
+		).assets.mirror;
+		assert.deepEqual(pin.files["linux-x64"].archive, {
+			format: "tar.gz",
+			member: "osk",
+		});
+		assert.equal(pin.files["linux-x64"].entry, "osk");
+	});
+
+	it("refuses --entry named like the archive, before any download", async () => {
+		const { srv, root } = await release({
+			[named("linux", "amd64")]: ARCHIVE,
+			[named("linux", "arm64")]: ARCHIVE,
+		});
+		const before = readFileSync(join(root, "tools/pins/siblings.json"), "utf8");
+		const run = await runBootstrapAsync(root, [
+			"--bump",
+			"mirror",
+			TAG,
+			"--repo",
+			`${srv.origin}/o/mirror`,
+			"--entry",
+			named("linux", "amd64"),
+		]);
+		assert.equal(run.status, 2, run.stdout + run.stderr);
+		assert.match(
+			run.stderr,
+			/the name of the archive it would be unpacked from/u,
 		);
 		assert.deepEqual(
 			srv.hits.filter((hit) => !hit.endsWith("/SHA256SUMS")),

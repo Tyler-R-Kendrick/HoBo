@@ -13,6 +13,10 @@ export interface TarEntry {
 	readonly linkname?: string;
 	/** Corrupt the header checksum. */
 	readonly badChecksum?: boolean;
+	/** The size the header claims, when it is not the body's length (no data follows then). */
+	readonly claimedSize?: number;
+	/** The magic at offset 257, when it is not POSIX ustar's (`""` writes a v7 header). */
+	readonly magic?: string;
 }
 
 function put(block: Buffer, text: string, at: number, length: number): void {
@@ -42,8 +46,9 @@ function header(entry: TarEntry, size: number): Buffer {
 	put(block, "        ", 148, 8);
 	put(block, type, 156, 1);
 	put(block, entry.linkname ?? "", 157, 100);
-	put(block, "ustar\0", 257, 6);
-	put(block, "00", 263, 2);
+	const magic = entry.magic ?? "ustar\0";
+	put(block, magic, 257, 6);
+	if (magic === "ustar\0") put(block, "00", 263, 2);
 	let sum = 0;
 	for (const byte of block) sum += byte;
 	if (entry.badChecksum === true) sum += 1;
@@ -51,23 +56,33 @@ function header(entry: TarEntry, size: number): Buffer {
 	return block;
 }
 
-/** The archive bytes: entries in order, two zero blocks, gzip with no name or time. */
-export function tarGz(entries: readonly TarEntry[]): Buffer {
+/** The uncompressed ustar stream of `entries`: each header, then its data, padded. */
+export function tarStream(entries: readonly TarEntry[]): Buffer {
 	const parts: Buffer[] = [];
 	for (const entry of entries) {
 		const body =
 			entry.body === undefined ? Buffer.alloc(0) : Buffer.from(entry.body);
-		const size =
-			entry.type === undefined || entry.type === "0" || entry.type === "x"
-				? body.length
-				: 0;
-		parts.push(header(entry, size));
-		if (size > 0) {
+		parts.push(header(entry, entry.claimedSize ?? body.length));
+		if (entry.claimedSize === undefined && body.length > 0) {
 			parts.push(body);
-			parts.push(Buffer.alloc((512 - (size % 512)) % 512));
+			parts.push(Buffer.alloc((512 - (body.length % 512)) % 512));
 		}
 	}
+	return Buffer.concat(parts);
+}
+
+/**
+ * The archive bytes: entries in order (an entry with a body carries that data,
+ * whatever its type), two zero blocks, then `after` (entries past the end, which
+ * `tar` never reads), gzip with no name or time.
+ */
+export function tarGz(
+	entries: readonly TarEntry[],
+	after: readonly TarEntry[] = [],
+): Buffer {
+	const parts: Buffer[] = [tarStream(entries)];
 	parts.push(Buffer.alloc(1024));
+	if (after.length > 0) parts.push(tarStream(after));
 	return gzipSync(Buffer.concat(parts));
 }
 

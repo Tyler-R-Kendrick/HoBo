@@ -46,26 +46,34 @@ describe("extractMember", () => {
 	it("writes only the named member, with its bytes and mode 0755; ./name matches too", async () => {
 		const { dir, path } = archiveFile(ARCHIVE);
 		const dest = join(dir, "mirror-entry");
-		await extractMember(path, "mirror", dest);
+		await extractMember(path, "mirror", dest, sha256Hex(ARCHIVE));
 		assert.deepEqual(readFileSync(dest), BINARY);
 		assert.equal(statSync(dest).mode & 0o777, 0o755);
 		assert.deepEqual(readdirSync(dir).sort(), ["a.tar.gz", "mirror-entry"]);
 
-		const dotted = archiveFile(tarGz([{ name: "./mirror", body: BINARY }]));
-		await extractMember(dotted.path, "mirror", join(dotted.dir, "out"));
+		const dottedBytes = tarGz([{ name: "./mirror", body: BINARY }]);
+		const dotted = archiveFile(dottedBytes);
+		await extractMember(
+			dotted.path,
+			"mirror",
+			join(dotted.dir, "out"),
+			sha256Hex(dottedBytes),
+		);
 		assert.deepEqual(readFileSync(join(dotted.dir, "out")), BINARY);
-		assert.equal(await memberDigest(path, "mirror"), sha256Hex(BINARY));
+		assert.deepEqual(await memberDigest(path, "mirror"), {
+			archive: sha256Hex(ARCHIVE),
+			member: sha256Hex(BINARY),
+		});
 	});
 
 	it("never makes a path of a name in the archive", async () => {
-		const { dir, path } = archiveFile(
-			tarGz([
-				{ name: "../../escaped", body: "x" },
-				{ name: "/etc/escaped", body: "x" },
-				{ name: "mirror", body: BINARY },
-			]),
-		);
-		await extractMember(path, "mirror", join(dir, "out"));
+		const bytes = tarGz([
+			{ name: "../../escaped", body: "x" },
+			{ name: "/etc/escaped", body: "x" },
+			{ name: "mirror", body: BINARY },
+		]);
+		const { dir, path } = archiveFile(bytes);
+		await extractMember(path, "mirror", join(dir, "out"), sha256Hex(bytes));
 		assert.deepEqual(readdirSync(dir).sort(), ["a.tar.gz", "out"]);
 		assert.equal(existsSync(join(dir, "..", "..", "escaped")), false);
 	});
@@ -122,7 +130,10 @@ describe("extractMember", () => {
 		it(`refuses ${what} (${code}) and leaves nothing at the destination`, async () => {
 			const { dir, path } = archiveFile(bytes);
 			const dest = join(dir, "out");
-			await assert.rejects(extractMember(path, "mirror", dest), refusal(code));
+			await assert.rejects(
+				extractMember(path, "mirror", dest, sha256Hex(bytes)),
+				refusal(code),
+			);
 			assert.equal(existsSync(dest), false);
 			assert.deepEqual(readdirSync(dir), ["a.tar.gz"]);
 		});
@@ -166,6 +177,16 @@ describe("an asset pin of an archive", () => {
 			);
 		});
 	}
+
+	it("refuses an entry named like the archive it is unpacked from", () => {
+		const text = manifest(
+			file(',"archive":{"format":"tar.gz","member":"mirror"}').replace(
+				'"entry":"mirror"',
+				'"entry":"mirror_v1.0.0_linux_amd64.tar.gz"',
+			),
+		);
+		assert.throws(() => parsePins(text), refusal("PINS_MALFORMED"));
+	});
 
 	it("refuses an archive whose URL does not end in .tar.gz", () => {
 		const text = manifest(

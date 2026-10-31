@@ -191,14 +191,25 @@ export async function bumpAsset(
 			);
 		}
 	}
+	// The name a binary runs under is the pin's, not the release's: carry it over.
+	const entryFor = (target: string): string =>
+		options.entry ?? pin?.files[target]?.entry ?? name;
+	for (const [target, release] of found) {
+		// The archive and the entry share the cache directory, under their own names.
+		if (release?.archive === true && entryFor(target) === release.file) {
+			throw new PinsError(
+				"USAGE",
+				`${options.entry === undefined ? "the pin's entry" : `--entry ${options.entry}`} is ${release.file}, the name of the archive it would be unpacked from; name the entry something else`,
+			);
+		}
+	}
 	await prepareCache(ctx.cache);
 	const files: Record<string, AssetFile> = {};
 	for (const target of plan.keep) {
 		const release = found.get(target);
 		const published = release?.file ?? `${name}-${target}`;
 		const sha256 = sums.get(published) ?? "";
-		// The name a binary runs under is the pin's, not the release's: carry it over.
-		const entry = options.entry ?? pin?.files[target]?.entry ?? name;
+		const entry = entryFor(target);
 		await prepareCache(ctx.cache, sha256);
 		const dest = join(
 			ctx.cache,
@@ -213,10 +224,11 @@ export async function bumpAsset(
 			entry,
 		};
 		if (release?.archive === true) {
+			// `--member`, else the member the pin already names, else the pin's entry.
 			const member =
-				options.member ?? pin?.files[target]?.archive?.member ?? name;
+				options.member ?? pin?.files[target]?.archive?.member ?? entry;
 			// Unpacking it is the check that the archive holds what the pin will run.
-			await extractMember(dest, member, join(ctx.cache, sha256, entry));
+			await extractMember(dest, member, join(ctx.cache, sha256, entry), sha256);
 			files[target] = { ...file, archive: { format: "tar.gz", member } };
 		} else {
 			files[target] = file;

@@ -128,6 +128,14 @@ export async function statusAsset(
 			`${fetchHint(name)}   (unpacks it again from the verified archive)`,
 		);
 	}
+	if (cached.state === "unusable") {
+		problems.push(
+			`the pinned archive cannot supply the entry: ${cached.reason}`,
+		);
+		fixes.push(
+			`pnpm run pins:bump ${name} ${pin.tag} -- --member <path>   (pins the member the archive does hold; fetching again cannot help)`,
+		);
+	}
 	if (ctx.online) {
 		const published = await compareWithRelease(pin, ctx);
 		problems.push(...published);
@@ -150,7 +158,9 @@ export async function statusAsset(
 					? "cache invalid"
 					: cached.state === "stale"
 						? "unpacked file stale"
-						: "cache corrupt";
+						: cached.state === "unusable"
+							? "archive unusable"
+							: "cache corrupt";
 	const mark = problems.length === 0 ? "ok" : "FAIL";
 	const online =
 		ctx.online && problems.length === 0 ? "; matches SHA256SUMS" : "";

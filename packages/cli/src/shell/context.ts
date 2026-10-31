@@ -1,6 +1,6 @@
 import { access, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
-import { resolveHoboHome } from "@hobo/core/hobo-home";
+import { HoboHomeUnavailable, resolveHoboHome } from "@hobo/core/hobo-home";
 
 import type { CliContext } from "../types/envelope.js";
 import { NoBindleError } from "./errors.js";
@@ -153,10 +153,21 @@ async function ceilingDirectories(
 async function userHoboHomes(
 	env: NodeJS.ProcessEnv,
 ): Promise<ReadonlySet<string>> {
-	return new Set([
-		await canonical(resolveHoboHome(env)),
-		await canonical(resolveHoboHome({ HOME: env.HOME })),
-	]);
+	const homes = new Set<string>();
+	for (const home of [
+		() => resolveHoboHome(env),
+		() => resolveHoboHome({ HOME: env.HOME }),
+	]) {
+		try {
+			homes.add(await canonical(home()));
+		} catch (error) {
+			// No HOME and no account home (a uid with no passwd entry): there is
+			// no user home to exclude, so discovery runs as it did before it
+			// excluded one, rather than failing a verb that never needed a home.
+			if (!(error instanceof HoboHomeUnavailable)) throw error;
+		}
+	}
+	return homes;
 }
 
 /**

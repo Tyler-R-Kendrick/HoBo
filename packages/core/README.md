@@ -93,7 +93,11 @@ state directory (auth sessions, evidence, chats, stations, downloaded tools):
 given environment, else under `os.homedir()`. It never falls back to a temp
 directory: `/tmp` is world-writable, so another local user could create
 `/tmp/.hobo` first and receive what HoBo writes there. It is a Node-only
-subpath (it reads `os.homedir()`) and touches no file.
+subpath (it reads `os.homedir()`) and touches no file. When the environment sets
+neither variable and the account has no home (a uid with no passwd entry, where
+`os.homedir()` throws), it throws `HoboHomeUnavailable`
+(`code: "HOBO_HOME_UNAVAILABLE"`), whose message says to set `HOBO_HOME` or
+`HOME`; CLI project discovery catches it and skips its home exclusion.
 
 ## Position in the event architecture
 

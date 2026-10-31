@@ -1,6 +1,10 @@
 import { access, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
-import { HoboHomeUnavailable, resolveHoboHome } from "@hobo/core/hobo-home";
+import {
+	HOBO_HOME_ENTRIES,
+	HoboHomeUnavailable,
+	resolveHoboHome,
+} from "@hobo/core/hobo-home";
 
 import type { CliContext } from "../types/envelope.js";
 import { NoBindleError } from "./errors.js";
@@ -36,28 +40,6 @@ const markers = [
  * never examined. Empty and relative entries are ignored.
  */
 export const CEILING_DIRECTORIES_ENV = "HOBO_CEILING_DIRECTORIES";
-
-/**
- * The top-level entries of a user-level HoBo home (`resolveHoboHome`): state
- * under `durable/` and `runtime/`, station journals, keys, downloaded tools,
- * sandboxes, worktrees, worlds, yards, OCI layouts and the profile. A project's
- * `.hobo/` holds none of them, so a `.hobo` holding only these is a HoBo home
- * that happens to sit there (a stray `/tmp/.hobo`, or `~/.hobo` while
- * `HOBO_HOME` points elsewhere), not a project.
- */
-const USER_LEVEL_STATE: ReadonlySet<string> = new Set([
-	"durable",
-	"runtime",
-	"stations",
-	"keys",
-	"tools",
-	"sandboxes",
-	"worktrees",
-	"worlds",
-	"yards",
-	"oci",
-	"profile.json",
-]);
 
 export interface ContextFactoryRequest {
 	readonly cwd: string;
@@ -172,9 +154,9 @@ async function userHoboHomes(
 
 /**
  * Whether the `.hobo` at `dir` is a project's state rather than a user-level
- * HoBo home. Not when it is the user's own home; not when everything in it is
- * user-level state. An empty `.hobo`, or one that is not a directory, still
- * marks a project, as it always has.
+ * HoBo home. Not when it is the user's own home; not when everything in it
+ * (dotfiles aside) is user-level state (`HOBO_HOME_ENTRIES`). An empty
+ * `.hobo`, or one that is not a directory, still marks a project.
  */
 async function isProjectState(
 	dir: string,
@@ -187,8 +169,10 @@ async function isProjectState(
 	} catch {
 		return true;
 	}
+	// Dotfiles (`.DS_Store`, an editor's swap file) say nothing about whose it is.
+	const named = entries.filter((entry) => !entry.startsWith("."));
 	return !(
-		entries.length > 0 && entries.every((entry) => USER_LEVEL_STATE.has(entry))
+		named.length > 0 && named.every((entry) => HOBO_HOME_ENTRIES.has(entry))
 	);
 }
 

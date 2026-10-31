@@ -24,6 +24,40 @@ import { join } from "node:path";
 /** The directory name under the user's home that holds HoBo's state. */
 export const HOBO_HOME_DIRNAME = ".hobo";
 
+/**
+ * The top-level entries of a user-level HoBo home, and nothing a project's own
+ * `.hobo/` holds (`session.json`, `generated/`, `build/`, `sources/`, `data/`,
+ * `recordings/`, …). A `.hobo` directory holding only these (dotfiles such as
+ * `.DS_Store` aside) is a HoBo home that happens to sit there, not a project:
+ * CLI discovery skips it. `test/hobo-home-entries.test.ts` scans every
+ * package's sources and fails on a name joined directly under a HoBo home that
+ * is missing here, so a new entry is added here when it is added there.
+ */
+export const HOBO_HOME_ENTRIES: ReadonlySet<string> = new Set([
+	"auth-md",
+	"broker-runtime.json",
+	"claims",
+	"connections",
+	"durable",
+	"evidence",
+	"hobo.broker.json",
+	"identity-migrations",
+	"installed-runtimes.json",
+	"keys",
+	"oci",
+	"profile.json",
+	"runtime",
+	"sandboxes",
+	"stations",
+	"tools",
+	"trust-roots",
+	"workspaces",
+	"worktrees",
+	"worlds",
+	"yard.json",
+	"yards",
+]);
+
 /** The variables the rule reads. `process.env` fits, and so does `{}`. */
 export type HoboHomeEnv = Readonly<Record<string, string | undefined>>;
 

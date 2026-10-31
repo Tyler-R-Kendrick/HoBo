@@ -95,6 +95,44 @@ describe("a .hobo that is user-level state is not a project", () => {
 		).toBe(null);
 	});
 
+	it.each([
+		"workspaces",
+		"connections",
+		"claims",
+		"auth-md",
+		"evidence",
+		"trust-roots",
+		"identity-migrations",
+		"yard.json",
+		"installed-runtimes.json",
+		"hobo.broker.json",
+		"broker-runtime.json",
+	])("skips a stray .hobo holding durable/ and %s", async (entry) => {
+		const top = root("shared/.hobo/durable/code", "shared/scratch-1");
+		const at = path.join(top, "shared", ".hobo", entry);
+		if (entry.endsWith(".json")) writeFileSync(at, "{}");
+		else mkdirSync(at);
+		const env = {
+			HOME: path.join(top, "nobody"),
+			[CEILING_DIRECTORIES_ENV]: path.dirname(top),
+		};
+		expect(
+			await projectDirFrom(path.join(top, "shared", "scratch-1"), env),
+		).toBe(null);
+	});
+
+	it("ignores dotfiles beside user-level state", async () => {
+		const top = root("shared/.hobo/durable", "shared/scratch-1");
+		writeFileSync(path.join(top, "shared", ".hobo", ".DS_Store"), "");
+		const env = {
+			HOME: path.join(top, "nobody"),
+			[CEILING_DIRECTORIES_ENV]: path.dirname(top),
+		};
+		expect(
+			await projectDirFrom(path.join(top, "shared", "scratch-1"), env),
+		).toBe(null);
+	});
+
 	it("still takes a .hobo holding project state", async () => {
 		const top = root("app/.hobo", "app/src/deep");
 		writeFileSync(path.join(top, "app", ".hobo", "session.json"), "{}");

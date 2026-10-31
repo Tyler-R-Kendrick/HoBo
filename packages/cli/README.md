@@ -99,8 +99,13 @@ A `.hobo/` counts only when it is a project's state (`session.json`,
 `generated/`, `build/`, `sources/`, …). It does not count when it is the
 user's own HoBo home — the one `HOBO_HOME` resolves to, or the default
 `$HOME/.hobo` while `HOBO_HOME` points elsewhere — or when everything in it is
-user-level state (`durable/`, `runtime/`, `stations/`, `keys/`, `tools/`,
-`sandboxes/`, `worktrees/`, `worlds/`, `yards/`, `oci/`, `profile.json`). Before
+user-level state: dotfiles aside, only names in `HOBO_HOME_ENTRIES`
+(`@hobo/core/hobo-home`: `durable/`, `runtime/`, `stations/`, `keys/`, `tools/`,
+`sandboxes/`, `worktrees/`, `workspaces/`, `worlds/`, `yards/`, `oci/`,
+`connections/`, `claims/`, `auth-md/`, `evidence/`, `trust-roots/`,
+`identity-migrations/`, `profile.json`, `yard.json`, `installed-runtimes.json`,
+`hobo.broker.json`, `broker-runtime.json`). `test/hobo-home-entries.test.ts`
+fails when a package joins a name under a HoBo home that the list lacks. Before
 this rule, every directory under `$HOME` resolved to `$HOME`, and a stray
 `/tmp/.hobo` made `/tmp` the project of every temp dir.
 

@@ -1038,6 +1038,68 @@ describe("checkTestWorkspaceDeps", () => {
 		);
 	});
 
+	it("reads an absolute path, a concatenation and a spread of segments", () => {
+		const run = (path: string) =>
+			`${SPAWN}${JOIN}const root = process.cwd();\nconst name = "lib";\nspawn(process.execPath, [${path}]);\n`;
+		const files = {
+			"a-absolute": run('"/repo/packages/lib/dist/bin.js"'),
+			"b-concat": run('root + "/packages/" + "lib" + "/dist/bin.js"'),
+			"c-concat-computed": run('"packages/" + name + "/dist/x.js"'),
+			"d-spread": `${SPAWN}${JOIN}const segs = ["packages", "lib", "dist", "bin.js"];\nspawn(process.execPath, [join(process.cwd(), ...segs)]);\n`,
+			"e-spread-computed": `${SPAWN}${JOIN}export const run = (rest: string[]) => spawn(process.execPath, [join(process.cwd(), "packages", ...rest)]);\n`,
+			"f-file-url": run(
+				'new URL("file:///repo/packages/lib/dist/x.js").pathname',
+			),
+			// Anywhere in an absolute path only a package's whole directory names
+			// it: a stub tree under a temporary root is not lib.
+			"g-stub": run('"/tmp/stub/lib/dist/bin.js"'),
+		};
+		const computed = "a package it names by a computed segment";
+		within(
+			grouped(
+				Object.fromEntries(
+					Object.entries(files).map(([name, text]) => [
+						`packages/app/test/${name}.test.ts`,
+						text,
+					]),
+				),
+			),
+			(dir) =>
+				assert.deepEqual(unmodelledIn(dir), [
+					reaching(
+						"packages/app/test/a-absolute.test.ts",
+						"@s/lib",
+						"/repo/packages/lib/dist/bin.js",
+					),
+					reaching(
+						"packages/app/test/b-concat.test.ts",
+						"@s/lib",
+						"*/packages/lib/dist/bin.js",
+					),
+					reaching(
+						"packages/app/test/c-concat-computed.test.ts",
+						computed,
+						"packages/*/dist/x.js",
+					),
+					reaching(
+						"packages/app/test/d-spread.test.ts",
+						"@s/lib",
+						"*/packages/lib/dist/bin.js",
+					),
+					reaching(
+						"packages/app/test/e-spread-computed.test.ts",
+						computed,
+						"*/packages/*",
+					),
+					reaching(
+						"packages/app/test/f-file-url.test.ts",
+						"@s/lib",
+						"file:///repo/packages/lib/dist/x.js",
+					),
+				]),
+		);
+	});
+
 	it("checks a declared runtime reach: each need must be ordered for every test task that loads it", () => {
 		const run = [
 			'import { spawn } from "node:child_process";',

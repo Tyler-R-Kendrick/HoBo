@@ -76,7 +76,11 @@ interface Form {
 	readonly parts: readonly string[];
 	/** It is the package's name, not its directory. */
 	readonly byName: boolean;
-	/** A group that may start a path: a whole directory, or a scope. */
+	/**
+	 * A whole directory (a package's, or one that holds packages) or a scope:
+	 * a group that may start a path, and a form that names on its own anywhere
+	 * in an absolute path.
+	 */
 	readonly whole: boolean;
 }
 
@@ -92,14 +96,23 @@ export const shownPath = (text: string) => text.replaceAll(COMPUTED, "*");
 const segments = (path: string) =>
 	path.split(/[\\/]/u).filter((part) => part !== "" && part !== ".");
 
+/** One way to read a path: its segments, and whether it is absolute (its root unknown). */
+interface Reading {
+	readonly parts: readonly string[];
+	readonly absolute: boolean;
+}
+
+/** `/…`, `\\…`, `C:\\…`, `C:/…` or `file:…`. */
+const ABSOLUTE = /^(?:[\\/]|[A-Za-z]:[\\/]|file:)/u;
+
 /** The segments of `text`, and, where it starts `./` or `../`, of it read from `file`'s directory. */
-function readings(text: string, file: string): string[][] {
-	const own = segments(text);
+function readings(text: string, file: string): Reading[] {
+	const own = { parts: segments(text), absolute: ABSOLUTE.test(text) };
 	if (!/^\.\.?(?:[\\/]|$)/u.test(text)) return [own];
 	const resolved = posix.join(posix.dirname(file), text.replaceAll("\\", "/"));
 	return resolved === ".." || resolved.startsWith("../")
 		? [own]
-		: [own, segments(resolved)];
+		: [own, { parts: segments(resolved), absolute: false }];
 }
 
 /** Reads what a file reaches at run time, against these workspace packages. */
@@ -123,7 +136,7 @@ export function runtimeReachReader(
 	};
 	for (const { name, dir } of packages) {
 		const parts = dir.split("/");
-		add({ name, parts, byName: false, whole: false });
+		add({ name, parts, byName: false, whole: parts.length > 1 });
 		add({ name, parts: name.split("/"), byName: true, whole: false });
 		parts.slice(1).forEach((_, k) => {
 			add({ name, parts: parts.slice(k + 1), byName: false, whole: false });
@@ -146,16 +159,16 @@ export function runtimeReachReader(
 		const named = new Map<string, string>();
 		let computed: string | undefined;
 		for (const text of facts.paths)
-			for (const parts of readings(text, file))
+			for (const { parts, absolute } of readings(text, file))
 				parts.forEach((part, i) => {
-					const anchor = parts[i - 1];
-					if (
-						anchor !== undefined &&
-						!isComputed(anchor) &&
-						!ANCHORS.has(anchor)
-					)
-						return;
+					const before = parts[i - 1];
+					const anchored =
+						before === undefined || isComputed(before) || ANCHORS.has(before);
+					// What precedes the form, as the rules below read it; in an absolute
+					// path a whole directory starts a path wherever it is.
+					const anchor = anchored ? before : undefined;
 					for (const form of forms.get(part) ?? []) {
+						if (!anchored && !(absolute && form.whole)) continue;
 						if (!form.parts.every((item, j) => parts[i + j] === item)) continue;
 						const next = parts[i + form.parts.length];
 						if (form.name === undefined) {

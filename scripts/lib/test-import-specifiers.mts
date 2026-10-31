@@ -278,8 +278,11 @@ export interface ModuleFacts {
 	readonly imports: ImportSpecifier[];
 	/**
 	 * The path text it assembles: each string or template literal that is not an
-	 * import specifier, and each `join(…)`/`resolve(…)` call's arguments joined
-	 * with `/`; a substitution or a non-literal argument reads `COMPUTED`.
+	 * import specifier; each `join(…)`/`resolve(…)` call's arguments joined with
+	 * `/`, a spread of an array literal, or of a name bound to one, read as its
+	 * elements; and each `+` chain with a string in it, concatenated. A
+	 * substitution, a non-literal argument or operand, or any other spread
+	 * reads `COMPUTED`.
 	 */
 	readonly paths: string[];
 	/**
@@ -328,6 +331,45 @@ function templateText(node: ts.Node): string | undefined {
 	return undefined;
 }
 
+const isPlus = (node: ts.Node): node is ts.BinaryExpression =>
+	ts.isBinaryExpression(node) &&
+	node.operatorToken.kind === ts.SyntaxKind.PlusToken;
+
+/** The operands of a `+` chain, through parentheses: `a + ("b" + c)` is `a`, `"b"`, `c`. */
+function operands(node: ts.Expression): ts.Expression[] {
+	let inner = node;
+	while (ts.isParenthesizedExpression(inner)) inner = inner.expression;
+	return isPlus(inner)
+		? [...operands(inner.left), ...operands(inner.right)]
+		: [inner];
+}
+
+/** Whether a `+` sits inside another, through parentheses. */
+function insidePlus(node: ts.Node): boolean {
+	let parent = node.parent;
+	while (ts.isParenthesizedExpression(parent)) parent = parent.parent;
+	return isPlus(parent);
+}
+
+/** The arrays a file binds to a name: `const segs = ["packages", "hobo"]`. */
+function arrayBindings(
+	file: ts.SourceFile,
+): Map<string, ts.ArrayLiteralExpression> {
+	const arrays = new Map<string, ts.ArrayLiteralExpression>();
+	const visit = (node: ts.Node): void => {
+		if (
+			ts.isVariableDeclaration(node) &&
+			ts.isIdentifier(node.name) &&
+			node.initializer !== undefined &&
+			ts.isArrayLiteralExpression(node.initializer)
+		)
+			arrays.set(node.name.text, node.initializer);
+		ts.forEachChild(node, visit);
+	};
+	visit(file);
+	return arrays;
+}
+
 /** What `source` names: its imports, the path text it assembles, and whether it loads by a computed path. */
 export function readModule(source: string, fileName: string): ModuleFacts {
 	const file = ts.createSourceFile(
@@ -338,6 +380,24 @@ export function readModule(source: string, fileName: string): ModuleFacts {
 		scriptKind(fileName),
 	);
 	const loaders = loaderNames(file);
+	const arrays = arrayBindings(file);
+	// A path builder's arguments, a spread of an array the file writes or binds
+	// read as its elements (`join(root, ...segs)`), any other spread as computed.
+	const segments = (args: readonly ts.Expression[]) =>
+		args.flatMap((argument): (string | undefined)[] => {
+			if (!ts.isSpreadElement(argument)) return [templateText(argument)];
+			const spread = argument.expression;
+			const array = ts.isArrayLiteralExpression(spread)
+				? spread
+				: ts.isIdentifier(spread)
+					? arrays.get(spread.text)
+					: undefined;
+			return array === undefined
+				? [undefined]
+				: array.elements.map((element) =>
+						ts.isSpreadElement(element) ? undefined : templateText(element),
+					);
+		});
 	const imports: ImportSpecifier[] = [];
 	const paths: string[] = [];
 	const specifiers = new Set<ts.Node>();
@@ -377,23 +437,23 @@ export function readModule(source: string, fileName: string): ModuleFacts {
 							loaders.requires.has(node.expression.text))))
 			)
 				loadsComputed = true;
-			if (
-				name !== undefined &&
-				PATH_BUILDERS.has(name) &&
-				node.arguments.length > 1 &&
-				node.arguments.some((argument) => templateText(argument) !== undefined)
-			)
-				paths.push(
-					node.arguments
-						.map((argument) => templateText(argument) ?? COMPUTED)
-						.join("/"),
-				);
+			const parts =
+				name !== undefined && PATH_BUILDERS.has(name)
+					? segments(node.arguments)
+					: [];
+			if (parts.length > 1 && parts.some((part) => part !== undefined))
+				paths.push(parts.map((part) => part ?? COMPUTED).join("/"));
 		} else if (
 			ts.isNewExpression(node) &&
 			calleeName(node.expression) === "Worker"
 		)
 			loadsComputed = true;
-		else if (!specifiers.has(node)) {
+		else if (isPlus(node) && !insidePlus(node)) {
+			// A concatenation, `root + "/packages/" + name`, as one path.
+			const parts = operands(node).map(templateText);
+			if (parts.some((part) => part !== undefined))
+				paths.push(parts.map((part) => part ?? COMPUTED).join(""));
+		} else if (!specifiers.has(node)) {
 			const text = templateText(node);
 			if (text !== undefined) paths.push(text);
 		}

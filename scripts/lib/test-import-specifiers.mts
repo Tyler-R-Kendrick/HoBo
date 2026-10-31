@@ -274,18 +274,33 @@ export const COMPUTED = "\u0000";
 
 /**
  * Stands for a computed part that is visibly a temporary directory: a call to
- * `tmpdir()`, `mkdtemp(…)` or `mkdtempSync(…)`, a path built on one
- * (`join(tmpdir(), "x")`, `realpathSync(…)` of one), a literal under `/tmp/`,
- * or a name every binding of which in the file is one. A parameter, a loop
- * variable or a destructured name is not visibly one. It is computed too.
+ * `tmpdir()`; `mkdtemp(prefix)` or `mkdtempSync(prefix)` where `prefix` is
+ * itself one (`join(tmpdir(), "x-")`, `"/tmp/x-"`), since with any other
+ * prefix the directory is made wherever the prefix names; a path built on one
+ * (`join(tmpdir(), "x")`, `realpathSync(…)` of one) that has no `..`; a
+ * literal under `/tmp/` with no `..`; or a name every binding of which in the
+ * file is one. A parameter, a loop variable or a destructured name is not
+ * visibly one. It is computed too.
  */
 export const TEMPORARY = `${COMPUTED}\u0001`;
 
 const TEMPORARY_LITERAL = /^\/tmp(?:\/|$)/u;
 
-/** Whether an assembled path is rooted at a temporary directory (`TEMPORARY`, or a literal `/tmp/…`). */
-export function isTemporaryPath(text: string): boolean {
+/** Whether path text has a `..` segment. */
+const climbs = (text: string) => text.split(/[\\/]/u).includes("..");
+
+/** Whether an assembled path starts at a temporary directory (`TEMPORARY`, or a literal `/tmp/…`). */
+export function isTemporaryRooted(text: string): boolean {
 	return text.startsWith(TEMPORARY) || TEMPORARY_LITERAL.test(text);
+}
+
+/**
+ * Whether an assembled path stays under the temporary directory it starts at:
+ * temporary-rooted, with no `..`. One that climbs (`${tmp}/../../packages`,
+ * `/tmp/../repo`) may leave it, so it is read as a real path.
+ */
+export function isTemporaryPath(text: string): boolean {
+	return isTemporaryRooted(text) && !climbs(text);
 }
 
 /** What a file names, read from one parse. */
@@ -354,7 +369,7 @@ function templateText(
 	return undefined;
 }
 
-const TEMPORARY_MAKERS = new Set(["tmpdir", "mkdtemp", "mkdtempSync"]);
+const TEMPORARY_MAKERS = new Set(["mkdtemp", "mkdtempSync"]);
 /** Calls whose result is rooted where their first argument is. */
 const ROOT_KEEPING = new Set([
 	"join",
@@ -369,24 +384,37 @@ function isTemporary(node: ts.Expression, names: ReadonlySet<string>): boolean {
 	const inner = unwrap(node);
 	if (ts.isIdentifier(inner)) return names.has(inner.text);
 	const text = literal(inner);
-	if (text !== undefined) return TEMPORARY_LITERAL.test(text);
+	if (text !== undefined) return isTemporaryPath(text);
 	if (ts.isTemplateExpression(inner)) {
 		const first = inner.templateSpans[0];
+		const rest = inner.templateSpans.map((span) => span.literal.text);
+		if ([inner.head.text, ...rest].some(climbs)) return false;
 		return inner.head.text === "" && first !== undefined
 			? isTemporary(first.expression, names)
 			: TEMPORARY_LITERAL.test(inner.head.text);
 	}
-	if (isPlus(inner)) return isTemporary(operands(inner)[0]!, names);
+	if (isPlus(inner)) {
+		const [head, ...rest] = operands(inner);
+		return (
+			!rest.some((operand) => climbs(literal(operand) ?? "")) &&
+			isTemporary(head!, names)
+		);
+	}
 	if (!ts.isCallExpression(inner)) return false;
 	const name = calleeName(inner.expression);
 	if (name === undefined) return false;
-	if (TEMPORARY_MAKERS.has(name)) return true;
-	const first = inner.arguments[0];
-	return (
-		ROOT_KEEPING.has(name) &&
+	if (name === "tmpdir") return true;
+	const [first, ...rest] = inner.arguments;
+	// mkdtemp makes its directory under its prefix, which must be temporary too.
+	const under =
 		first !== undefined &&
 		!ts.isSpreadElement(first) &&
-		isTemporary(first, names)
+		isTemporary(first, names);
+	if (TEMPORARY_MAKERS.has(name)) return under;
+	return (
+		ROOT_KEEPING.has(name) &&
+		under &&
+		!rest.some((argument) => climbs(literal(argument) ?? ""))
 	);
 }
 

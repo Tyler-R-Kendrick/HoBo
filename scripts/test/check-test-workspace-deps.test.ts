@@ -1342,6 +1342,122 @@ describe("checkTestWorkspaceDeps", () => {
 		});
 	});
 
+	it("reads a path that climbs out of its temporary root, or a temporary directory made outside one, as a real reach", () => {
+		// The review's fixtures: each hides a real reach of hobo behind a stub.
+		const head =
+			'import { spawn } from "node:child_process";\nimport { mkdtempSync, symlinkSync } from "node:fs";\nimport { tmpdir } from "node:os";\nimport { join } from "node:path";\nimport { fileURLToPath } from "node:url";\nconst repoRoot = fileURLToPath(new URL("../../..", import.meta.url));\n';
+		const stubOnly = [
+			{
+				from: "packages/app/test/a.test.ts",
+				stubOnly: true,
+				reason: "writes stub trees",
+			},
+		];
+		const needsLib = [
+			{
+				from: "packages/app/test/a.test.ts",
+				needs: ["@s/lib#build"],
+				why: "x",
+			},
+		];
+		const problems = (body: string, reaches: readonly object[] | undefined) =>
+			within(
+				{
+					...base,
+					"packages/hobo/package.json": manifest("@s/hobo"),
+					"packages/app/package.json": manifest("@s/app", {
+						devDependencies: { "@s/lib": "workspace:*" },
+					}),
+					"packages/app/test/a.test.ts": `${head}${body}`,
+					// An empty registry declares nothing, as no registry does.
+					[REGISTRY]: JSON.stringify({ reaches: reaches ?? [] }),
+				},
+				(dir) => {
+					const report = scanTestWorkspaceDeps(dir);
+					return [
+						...report.violations.map((item) => `violation ${item.imports}`),
+						...[...report.unmodelled, ...report.stale].map(
+							(item) => item.reason,
+						),
+					];
+				},
+			);
+		const spawnOf = (path: string) => `spawn(process.execPath, [${path}]);\n`;
+		const tmp = 'const tmp = mkdtempSync(join(tmpdir(), "x-"));\n';
+		const S1 = spawnOf('"/tmp/../repo/packages/hobo/dist/bin.js"');
+		const S2 = spawnOf(
+			'join(tmpdir(), "..", "home", "user", "HoBo", "packages", "hobo", "dist", "bin.js")',
+		);
+		const S4 = `const tmp = mkdtempSync(join(repoRoot, "x-"));\n${spawnOf('join(tmp, "..", "packages", "hobo", "dist", "bin.js")')}`;
+		const hidden: [string, string, readonly object[] | undefined][] = [
+			["S1 a /tmp/ literal that climbs out", S1, stubOnly],
+			["S1n the same, an entry for lib only", S1, needsLib],
+			["S0 the same, no entry", S1, undefined],
+			["S2 tmpdir() then .. into the repository", S2, stubOnly],
+			["S2b the same, an entry for lib only", S2, needsLib],
+			[
+				"S3 a link in a temporary directory to hobo's dist/",
+				`${tmp}symlinkSync(join(repoRoot, "packages", "hobo", "dist"), join(tmp, "hobo"));\n${spawnOf('join(tmp, "hobo", "bin.js")')}`,
+				stubOnly,
+			],
+			[
+				"S3b the same, to a literal ../../hobo/dist",
+				`${tmp}symlinkSync("../../hobo/dist", join(tmp, "hobo"));\n${spawnOf('join(tmp, "hobo", "bin.js")')}`,
+				stubOnly,
+			],
+			["S4 mkdtempSync under the repository, then ..", S4, stubOnly],
+			["S4n the same, an entry for lib only", S4, needsLib],
+			[
+				"S4b mkdtempSync inside hobo's dist/",
+				`const tmp = mkdtempSync(join(repoRoot, "packages", "hobo", "dist", "t-"));\n${spawnOf('join(tmp, "..", "bin.js")')}`,
+				stubOnly,
+			],
+			[
+				"S4c mkdtempSync under process.cwd(), then ..",
+				`const tmp = mkdtempSync(join(process.cwd(), "x-"));\n${spawnOf('join(tmp, "..", "packages", "hobo", "dist", "bin.js")')}`,
+				stubOnly,
+			],
+			[
+				"S4t a template that climbs out of a temporary directory",
+				`${tmp}${spawnOf("`${tmp}/../../packages/hobo/dist/bin.js`")}`,
+				stubOnly,
+			],
+			[
+				"S5 a name rebound from a temporary directory into the repository",
+				`let dir = mkdtempSync(join(tmpdir(), "x-"));\ndir = join(dir, "..", "..", "packages", "hobo");\n${spawnOf('join(dir, "dist", "bin.js")')}`,
+				stubOnly,
+			],
+			[
+				"S6 any .. in a temporary path, even one that resolves under it",
+				`${tmp}${spawnOf('join(tmp, "x", "..", "packages", "hobo", "dist", "bin.js")')}`,
+				stubOnly,
+			],
+			[
+				"CTRL a real reach",
+				spawnOf('join(repoRoot, "packages", "hobo", "dist", "bin.js")'),
+				stubOnly,
+			],
+		];
+		for (const [label, body, reaches] of hidden)
+			assert.ok(
+				problems(body, reaches).some((problem) => problem.includes("@s/hobo")),
+				`${label}: the reach of @s/hobo is not seen`,
+			);
+		// What stays under a temporary root is still a stub.
+		const stubs: [string, string][] = [
+			[
+				"CTRL a true stub tree",
+				`${tmp}${spawnOf('join(tmp, "packages", "hobo", "dist", "bin.js")')}`,
+			],
+			[
+				"S1b a /tmp/ literal that stays under /tmp",
+				spawnOf('"/tmp/packages/hobo/dist/bin.js"'),
+			],
+		];
+		for (const [label, body] of stubs)
+			assert.deepEqual(problems(body, stubOnly), [], label);
+	});
+
 	it("accepts a stubOnly entry for a file whose only reaches are stub trees under a temporary root", () => {
 		const fs =
 			'import { mkdtempSync, writeFileSync } from "node:fs";\nimport { mkdtemp } from "node:fs/promises";\nimport { tmpdir } from "node:os";\n';

@@ -57,9 +57,13 @@
  * here, and its own imports are not read.
  *
  * A reach whose path is rooted at a temporary directory the file visibly makes
- * (lib/test-import-specifiers `TEMPORARY`: `mkdtempSync(…)`, `tmpdir()`, a
- * `/tmp/` literal, or a name bound only to one) is a stub tree: it still needs
- * an entry, since the reader may misjudge a root, but never a build. A file
+ * (lib/test-import-specifiers `TEMPORARY`: `tmpdir()`, `mkdtempSync(prefix)`
+ * under a temporary prefix, a `/tmp/` literal, or a name bound only to one)
+ * and has no `..` is a stub tree: it still needs an entry, since the reader
+ * may misjudge a root, but never a build. A temporary path with any `..` is
+ * read as a real path, and also resolved lexically with its root unknown, so
+ * `/tmp/../repo/packages/hobo/dist` reaches hobo; `mkdtempSync(join(repoRoot,
+ * "x-"))` is a directory under the repository, not a temporary one. A file
  * whose only reaches are stubs is declared `{ "from", "stubOnly": true,
  * "reason" }`, which holds only while the reader sees no other reach from it.
  *
@@ -75,6 +79,7 @@ import { z } from "zod";
 import {
 	COMPUTED,
 	isTemporaryPath,
+	isTemporaryRooted,
 	type ModuleFacts,
 	TEMPORARY,
 } from "./test-import-specifiers.mts";
@@ -145,9 +150,25 @@ interface Reading {
 /** `/…`, `\\…`, `C:\\…`, `C:/…` or `file:…`. */
 const ABSOLUTE = /^(?:[\\/]|[A-Za-z]:[\\/]|file:)/u;
 
-/** The segments of `text`, and, where it starts `./` or `../`, of it read from `file`'s directory. */
+/** `parts` with each `..` taken against the segment before it, as `path.normalize` would. */
+function lexical(parts: readonly string[]): string[] {
+	const out: string[] = [];
+	for (const part of parts)
+		if (part === ".." && out.length > 0 && out.at(-1) !== "..") out.pop();
+		else out.push(part);
+	return out;
+}
+
+/**
+ * The segments of `text`; where it starts `./` or `../`, of it read from
+ * `file`'s directory; and where it starts at a temporary directory and climbs
+ * out with `..`, of it resolved lexically, its root unknown
+ * (`/tmp/../repo/packages/hobo` is `repo/packages/hobo` under some directory).
+ */
 function readings(text: string, file: string): Reading[] {
 	const own = { parts: segments(text), absolute: ABSOLUTE.test(text) };
+	if (isTemporaryRooted(text) && !isTemporaryPath(text))
+		return [own, { parts: lexical(own.parts), absolute: true }];
 	if (!/^\.\.?(?:[\\/]|$)/u.test(text)) return [own];
 	const resolved = posix.join(posix.dirname(file), text.replaceAll("\\", "/"));
 	return resolved === ".." || resolved.startsWith("../")

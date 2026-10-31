@@ -45,7 +45,9 @@
  *   literal anchor, and what a child process loads. Every test task that loads a declared file must have those builds, and a
  *   declaration no test task reaches, that names no workspace package, or
  *   that names no build of a package other than the file's own (an empty
- *   `needs`), fails too, as does a file declared twice.
+ *   `needs`), fails too, as does a file declared twice, and one whose needs
+ *   leave out a package the reader sees it reach (a need the reader sees no
+ *   reach for may stand: it cannot see every reach).
  * - A declaration orders the sibling's build only with a `workspace:`
  *   specifier, unless pnpm's link-workspace-packages is on
  *   (lib/turbo-task-graph `orderedDependency`); a violation says how the
@@ -774,6 +776,9 @@ export function scanTestWorkspaceDeps(
 		{ named: Map<string, string>; computed: string | undefined }
 	>();
 	const reachesAnother = new Set<string>();
+	// A declared file's reaches its entry does not name the build of: a package
+	// the reader sees, and the path that names it.
+	const uncovered = new Map<string, Map<string, string>>();
 	for (const [file, loading] of running) {
 		const { named, computed } = reachesOf(file);
 		if (named.size === 0 && computed === undefined) continue;
@@ -794,6 +799,12 @@ export function scanTestWorkspaceDeps(
 				undeclared.set(file, found);
 				continue;
 			}
+			for (const [name, text] of others)
+				if (!entry.needs.includes(`${name}#build`)) {
+					const missing = uncovered.get(file) ?? new Map<string, string>();
+					if (!missing.has(name)) missing.set(name, text);
+					uncovered.set(file, missing);
+				}
 			const built = graph.buildsBefore(pkg.name, task);
 			for (const need of entry.needs) {
 				const name = neededBuild(need);
@@ -835,6 +846,12 @@ export function scanTestWorkspaceDeps(
 					`"${from}" needs "${need}", and ${name} is not a workspace package`,
 				);
 		}
+		// Each package the reader sees the file reach must be a need; a need it
+		// sees no reach for may stand, since it cannot see every reach.
+		for (const [name, text] of [...(uncovered.get(from) ?? [])].sort())
+			staleness(
+				`"${from}" reaches ${name} ("${shownPath(text)}"), and its entry does not name "${name}#build"`,
+			);
 		// An entry that needs nothing of another package's would silence the
 		// reach it declares: a task builds its own package anyway.
 		const own = owner(from)?.name;

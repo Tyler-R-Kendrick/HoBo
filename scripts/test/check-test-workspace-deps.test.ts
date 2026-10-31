@@ -1289,13 +1289,56 @@ describe("checkTestWorkspaceDeps", () => {
 			);
 		// An empty list, or one naming only the file's own package, silences
 		// the reach it declares.
-		assert.deepEqual(staleIn([]), [empty]);
-		assert.deepEqual(staleIn(["@s/app#build"]), [empty]);
+		const uncovered = `${REGISTRY}: "packages/app/src/run.ts" reaches @s/lib ("*/packages/lib/dist/cli.js"), and its entry does not name "@s/lib#build"`;
+		assert.deepEqual(staleIn([]), [empty, uncovered]);
+		assert.deepEqual(staleIn(["@s/app#build"]), [empty, uncovered]);
 		assert.deepEqual(staleIn(["@s/app#build", "@s/lib#build"]), []);
 		within(declared([]), (dir) => {
 			const run = cli(dir, []);
 			assert.equal(run.status, 1);
 			assert.match(run.stderr, /names no build of another package/u);
+		});
+	});
+
+	it("refuses a declaration whose needs leave out a package the reader sees it reach", () => {
+		// run.ts reaches hobo's dist/ and its own package's; app's test orders
+		// lib and hobo, so only what the entry names can fail it.
+		const declared = (needs: string[]) => ({
+			...base,
+			"turbo.json": turbo({
+				"@s/app#test": {
+					dependsOn: ["build", "@s/lib#build", "@s/hobo#build"],
+				},
+			}),
+			[REGISTRY]: JSON.stringify({
+				reaches: [
+					{ from: "packages/app/src/run.ts", needs, why: "spawns hobo" },
+				],
+			}),
+			"packages/hobo/package.json": manifest("@s/hobo"),
+			"packages/app/package.json": manifest("@s/app"),
+			"packages/app/test/a.test.ts": 'import "../src/run.js";\n',
+			"packages/app/src/run.ts": `${SPAWN}${JOIN}spawn(process.execPath, [join(process.cwd(), "packages", "hobo", "dist", "bin.js")]);\nexport const own = new URL("../dist/x.js", import.meta.url);\n`,
+		});
+		const problems = (needs: string[]) =>
+			within(declared(needs), (dir) => {
+				const report = scanTestWorkspaceDeps(dir);
+				return [
+					...report.violations.map((item) => `violation ${item.imports}`),
+					...report.stale.map((item) => `${item.file}: ${item.reason}`),
+				];
+			});
+		// The review's R2: a need is named, but not the package reached.
+		assert.deepEqual(problems(["@s/lib#build"]), [
+			`${REGISTRY}: "packages/app/src/run.ts" reaches @s/hobo ("*/packages/hobo/dist/bin.js"), and its entry does not name "@s/hobo#build"`,
+		]);
+		assert.deepEqual(problems(["@s/hobo#build"]), []);
+		// A need with no reach the reader can see stays allowed.
+		assert.deepEqual(problems(["@s/hobo#build", "@s/lib#build"]), []);
+		within(declared(["@s/lib#build"]), (dir) => {
+			const run = cli(dir, []);
+			assert.equal(run.status, 1);
+			assert.match(run.stderr, /does not name "@s\/hobo#build"/u);
 		});
 	});
 
@@ -1375,6 +1418,7 @@ describe("checkTestWorkspaceDeps", () => {
 						`${REGISTRY}: "packages/app/src/run.ts" names no build of another package it needs; name one as "<package>#build", or remove the entry`,
 						`${REGISTRY}: "packages/app/src/run.ts" needs "@s/lib", which is not "<package>#build"`,
 						`${REGISTRY}: "packages/app/src/run.ts" needs "@s/nope#build", and @s/nope is not a workspace package`,
+						`${REGISTRY}: "packages/app/src/run.ts" reaches @s/lib ("../../lib/dist/cli.js"), and its entry does not name "@s/lib#build"`,
 						`${REGISTRY}: "packages/app/src/unloaded.ts" is loaded by no test task`,
 					],
 				),

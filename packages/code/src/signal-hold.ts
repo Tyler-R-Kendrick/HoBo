@@ -18,14 +18,8 @@ import { ENDING_SIGNALS } from "../bin/ending-signals.mjs";
 
 /** The part of a process a hold listens on; `process` is one. */
 export interface SignalSource {
-	on(
-		signal: NodeJS.Signals,
-		listener: (signal: NodeJS.Signals) => void,
-	): unknown;
-	off(
-		signal: NodeJS.Signals,
-		listener: (signal: NodeJS.Signals) => void,
-	): unknown;
+	on(signal: NodeJS.Signals, listener: (signal: NodeJS.Signals) => void): void;
+	off(signal: NodeJS.Signals, listener: (signal: NodeJS.Signals) => void): void;
 }
 
 export interface EndingSignalHold {
@@ -49,7 +43,7 @@ export function endingSignalHold(
 	const reactions = new Set<(signal: NodeJS.Signals) => void>();
 	const onSignal = (signal: NodeJS.Signals): void => {
 		first ??= signal;
-		for (const react of [...reactions]) react(signal);
+		for (const react of reactions) react(signal);
 	};
 	return {
 		hold() {

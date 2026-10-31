@@ -144,13 +144,11 @@ describe("in-session panes", () => {
 					return { code: 1, stdout: "" };
 				},
 			};
+			const env: NodeJS.ProcessEnv = { PATH: bin, HOME: bin };
+			if (value !== undefined) env.HOBO_CODE_SEAT_AGENTS = value;
 			await ensureInSessionPanes({
 				runner,
-				env: {
-					PATH: bin,
-					HOME: bin,
-					...(value === undefined ? {} : { HOBO_CODE_SEAT_AGENTS: value }),
-				},
+				env,
 				cwd: bin,
 				hoboHome: join(bin, ".hobo"),
 			});

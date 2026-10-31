@@ -31,12 +31,12 @@ export interface SessionForward {
 
 /** What the forward needs of the ssh it starts; a ChildProcess is one. */
 export interface StartedSsh {
-	kill(signal: NodeJS.Signals): unknown;
-	once(event: "error", listener: (error: Error) => void): unknown;
+	kill(signal: NodeJS.Signals): void;
+	once(event: "error", listener: (error: Error) => void): void;
 	once(
 		event: "exit",
 		listener: (code: number | null, signal: NodeJS.Signals | null) => void,
-	): unknown;
+	): void;
 }
 
 const startSsh = (args: readonly string[]): StartedSsh =>

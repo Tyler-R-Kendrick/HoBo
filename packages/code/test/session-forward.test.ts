@@ -30,14 +30,14 @@ function ssh(): EventEmitter & {
 	kills: string[];
 	kill(signal: string): boolean;
 } {
-	const child = Object.assign(new EventEmitter(), {
-		kills: [] as string[],
+	const kills: string[] = [];
+	return Object.assign(new EventEmitter(), {
+		kills,
 		kill(signal: string) {
-			child.kills.push(signal);
+			kills.push(signal);
 			return true;
 		},
 	});
-	return child;
 }
 
 const machine: DevMachine = {

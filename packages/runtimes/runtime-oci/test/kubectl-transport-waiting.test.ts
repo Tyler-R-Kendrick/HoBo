@@ -36,12 +36,16 @@ import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createProcessKubectlTransport } from "../src/kubectl-transport.js";
+import { reapStandIns, standInPreamble } from "./stand-in-children.js";
 
 const dirs: string[] = [];
 
-afterEach(() => {
-	for (const dir of dirs.splice(0))
-		rmSync(dir, { recursive: true, force: true });
+afterEach(async () => {
+	// A port-forward stand-in stays alive by design: stop it, pass or fail.
+	const made = dirs.splice(0);
+	const survivors = await reapStandIns(made);
+	for (const dir of made) rmSync(dir, { recursive: true, force: true });
+	expect(survivors).toEqual([]);
 });
 
 /**
@@ -55,9 +59,12 @@ function kubectlScript(body: string): string {
 	const bin = join(dir, "kubectl");
 	writeFileSync(
 		bin,
-		["#!/usr/bin/env node", "const argv = process.argv.slice(2);", body].join(
-			"\n",
-		),
+		[
+			"#!/usr/bin/env node",
+			...standInPreamble(dir),
+			"const argv = process.argv.slice(2);",
+			body,
+		].join("\n"),
 		{ mode: 0o755 },
 	);
 	chmodSync(bin, 0o755);

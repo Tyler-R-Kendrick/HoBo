@@ -35,12 +35,16 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createProcessKubectlTransport } from "../src/kubectl-transport.js";
+import { reapStandIns, standInPreamble } from "./stand-in-children.js";
 
 const dirs: string[] = [];
 
-afterEach(() => {
-	for (const dir of dirs.splice(0))
-		rmSync(dir, { recursive: true, force: true });
+afterEach(async () => {
+	// A port-forward stand-in stays alive by design: stop it, pass or fail.
+	const made = dirs.splice(0);
+	const survivors = await reapStandIns(made);
+	for (const dir of made) rmSync(dir, { recursive: true, force: true });
+	expect(survivors).toEqual([]);
 });
 
 /**
@@ -65,6 +69,7 @@ function forwardingKubectl(options: {
 		bin,
 		[
 			"#!/usr/bin/env node",
+			...standInPreamble(dir),
 			"const http = require('node:http');",
 			"const argv = process.argv.slice(2);",
 			"if (argv[0] !== 'port-forward') { process.exit(0); }",

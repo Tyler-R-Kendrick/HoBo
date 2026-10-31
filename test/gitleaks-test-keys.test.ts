@@ -25,6 +25,52 @@ function allowlistedPaths(): readonly RegExp[] {
 	);
 }
 
+/** A tracked file's text as the index holds it. */
+function indexed(file: string): string {
+	const shown = spawnSync("git", ["show", `:${file}`], {
+		cwd: ROOT,
+		encoding: "utf8",
+	});
+	expect(shown.status, shown.stderr).toBe(0);
+	return shown.stdout;
+}
+
+/** Tracked scripts `git grep` finds with `args`; `--cached`: the index, so a sparse checkout is searched whole. */
+function scriptsMatching(args: readonly string[]): readonly string[] {
+	const search = spawnSync(
+		"git",
+		["grep", "-l", "--cached", ...args, "--", "*.ts", "*.mts", "*.mjs", "*.js"],
+		{ cwd: ROOT, encoding: "utf8" },
+	);
+	// 1 is git grep finding nothing.
+	expect([0, 1], search.stderr).toContain(search.status);
+	return search.stdout.split("\n").filter((file) => file !== "");
+}
+
+/**
+ * Every tracked script that reaches the fixtures: one that names the
+ * directory, and one that names a constant such a script exports for it
+ * (`export const TLS_FIXTURES = join(REPO_ROOT, ".../fixtures/tls")`), which
+ * its importers use without naming the directory themselves.
+ */
+function fixtureUsers(): readonly string[] {
+	const naming = scriptsMatching(["-e", "fixtures/tls"]);
+	const constants = naming.flatMap((file) =>
+		[
+			...indexed(file).matchAll(
+				/export\s+const\s+(\w+)\s*=[^;]*fixtures\/tls/gu,
+			),
+		].map(([, name]) => name ?? ""),
+	);
+	const importing =
+		constants.length === 0
+			? []
+			: scriptsMatching(["-w", ...constants.flatMap((name) => ["-e", name])]);
+	return [...new Set([...naming, ...importing])]
+		.filter((file) => file !== "test/gitleaks-test-keys.test.ts")
+		.sort();
+}
+
 function tracked(): readonly string[] {
 	const listing = spawnSync("git", ["ls-files", "-z"], {
 		cwd: ROOT,
@@ -67,30 +113,8 @@ describe("committed test-only keys", () => {
 		expect(headings).toContain(cited);
 	});
 
-	it("are used only by the code their README names", () => {
-		// `--cached`: the index, so a sparse checkout is searched whole.
-		const search = spawnSync(
-			"git",
-			[
-				"grep",
-				"-l",
-				"--cached",
-				"-e",
-				"fixtures/tls",
-				"--",
-				"*.ts",
-				"*.mts",
-				"*.mjs",
-				"*.js",
-			],
-			{ cwd: ROOT, encoding: "utf8" },
-		);
-		expect(search.status, search.stderr).toBe(0);
-		const users = search.stdout
-			.split("\n")
-			.filter(
-				(file) => file !== "" && file !== "test/gitleaks-test-keys.test.ts",
-			);
+	it("are used only by the code their README names, an importer of an exported path to them included", () => {
+		const users = fixtureUsers();
 		const readme = readFileSync(
 			`${ROOT}packages/contract-harness/test/fixtures/tls/README.md`,
 			"utf8",

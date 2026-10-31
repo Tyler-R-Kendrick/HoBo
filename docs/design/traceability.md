@@ -466,15 +466,16 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0170 | [identity-security](./adr/02-identity-security.md#adr-0170) | HoBo runs under OpenSesame's proxied invocation and holds a surrogate in place of the credential: an optional `SecretsPort` adapter, Vercel only, AWS refused by type. | `packages/adapters/adapter-opensesame` |
 | ADR-0172 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0172) | The ai-bdd release gate: HoBo runs ai-bdd as a process, replay-only, reads its report only after an exit code that writes one, and records infrastructure as "not run". | `packages/stage-gate` |
 | ADR-0173 | [architecture-core](./adr/01-architecture-core.md#adr-0173) | The vendored anti-slop plugin carries a SHA-256 manifest and an offline drift test; HoBo keeps its own rule lineage until OpenSesame's rules pass HoBo's recent working set. | — (anti-slop vendor pin) |
+| ADR-0174 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0174) | The mirror lane: HoBo's Vercel and AWS clients and the HoBo-to-Vercel pact verified against a started mirror.cloud emulator (`pnpm run test:mirror`); opt-in, never in `agent:check`, fails rather than skips, labelled emulated, never live; proven by the lane's journal and the pact's provider report, and offline by `scripts/test/mirror-lane.test.ts` and `@hobo/contract-harness`'s HTTP provider, matching-rule and mirror-lane tests. | `packages/contract-harness`, `packages/providers/provider-vercel`, `packages/providers/provider-aws`, `packages/hobo` |
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 145 numbered entries from [adr/README.md](./adr/index.md).
+- Counted ADRs: 162 numbered entries from [adr/README.md](./adr/index.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0173`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
-  ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068, ADR-0171. (ADR-0118–ADR-0173 are contiguous except intentional historical gaps above; ADR-0171 was never assigned.)
+- Explicit numbering gaps through `ADR-0174`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+  ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068, ADR-0171. (ADR-0118–ADR-0174 are contiguous except intentional historical gaps above; ADR-0171 was never assigned.)
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.
 

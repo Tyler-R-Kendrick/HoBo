@@ -178,6 +178,39 @@ jobs:
       - name: Full workspace tests
         run: pnpm exec turbo run test --concurrency=100%
 
+  mirror-lane:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    # The env-gated mirror.cloud contract lane (ADR-0174): provider-vercel,
+    # provider-aws and @hobo/hobo against a started emulator, over HTTP and
+    # then TLS. It needs a mirror release pinned in tools/pins/siblings.json;
+    # while `assets.mirror` is null, pins:fetch fails and so does this job,
+    # which is the lane failing, not skipping. MIRROR_BIN is not set here:
+    # in CI a green run must mean the pinned bytes ran (ADR-0169 item 7).
+    if: ${{ false }}
+    name: mirror.cloud contract lane (emulated)
+    needs: pr-gate
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: corepack enable pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Fetch and verify the pinned mirror binary
+        run: pnpm run pins:fetch mirror
+      - name: Mirror lane over HTTP
+        run: pnpm run test:mirror
+      - name: Mirror lane over TLS (the emulator's throwaway CA)
+        run: pnpm run test:mirror -- --tls
+
   dev-cold-loop-gate:
     # Hosted Actions runners are disabled until explicitly re-enabled.
     if: ${{ false }}

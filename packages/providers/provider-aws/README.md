@@ -47,9 +47,12 @@ test:mirror` alone needs `HOBO_MIRROR_URL` and fails without it). The default
 The two SQS cases need a mirror whose query decoder reads a map entry under the
 model's names (`Attribute.1.Name`, `Attribute.1.Value`): mirror `0158e361`
 drops the attributes, so a FIFO `CreateQueue` and `SetQueueAttributes` fail
-there. The Secrets Manager case declares no description and force-deletes,
-because mirror keeps no `Description` and refuses `DescribeSecret` of a secret
-scheduled for deletion; ADR-0174 lists both.
+there. The Secrets Manager case declares a description, so it needs a mirror
+that keeps one (mirror.cloud `claude/ecstatic-mayer-wbm2c3-secrets-manager-gaps`).
+It still deletes with `forceDelete`: that mirror answers a secret scheduled for
+deletion as AWS does, and this resolver does not handle such a secret yet (a
+second unforced delete is an `InvalidRequestException`); ADR-0174 lists the
+fix it waits for.
 
 ## Default Yard catalog (what AWS *can* allocate)
 

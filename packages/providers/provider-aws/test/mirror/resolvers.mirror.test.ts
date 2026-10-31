@@ -91,18 +91,17 @@ const PRODUCTS: readonly ProductCase[] = [
 		service: "aws.secretsmanager",
 		slot: "secretRef",
 		logicalId: "hobo-lane-stripe",
-		// Two gaps in mirror's secretsmanager, not in the resolver, decide this
-		// case's shape. Mirror keeps no Description (CreateSecret and
-		// UpdateSecret accept it, DescribeSecret never answers it), so a
-		// declared description reads as drift on every reconcile; and mirror
-		// answers DescribeSecret of a secret scheduled for deletion with
-		// InvalidRequestException (a quirk its behaviour file declares), where
-		// AWS answers the record with its DeletedDate. So the case declares no
-		// description and deletes without a recovery window. The description's
-		// drift handling is covered against the fake account in
-		// test/resolvers.test.ts; how the resolver meets a secret AWS has
-		// scheduled for deletion is covered nowhere yet (ADR-0174, residuals).
-		desired: { forceDelete: true },
+		// The description is declared and must read back with no drift: mirror
+		// keeps it (mirror.cloud claude/ecstatic-mayer-wbm2c3-secrets-manager-gaps,
+		// 7cd36e6f). The delete is still forced. Mirror now answers a secret
+		// scheduled for deletion as AWS documents (DescribeSecret with a
+		// DeletedDate, a second unforced DeleteSecret InvalidRequestException),
+		// and this resolver does not handle that yet: an unforced delete here
+		// fails "The secret is scheduled for deletion" on the second delete.
+		// HoBo claude/ecstatic-mayer-wbm2c3-secrets-pending-deletion (cece16e7)
+		// fixes the resolver; with it the case passes unforced, and forceDelete
+		// goes (ADR-0174, residuals).
+		desired: { description: "payment provider key", forceDelete: true },
 		create: "CreateSecret",
 	},
 	{

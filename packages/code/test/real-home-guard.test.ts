@@ -21,7 +21,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
-import { tmpdir, userInfo } from "node:os";
+import { homedir, tmpdir, userInfo } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveHoboHome } from "@hobo/core/hobo-home";
@@ -39,6 +39,12 @@ describe("the homes a test in this package sees", () => {
 		const home = String(process.env.HOME);
 		expect(resolve(home)).not.toBe(resolve(userInfo().homedir));
 		expect(existsSync(home)).toBe(true);
+	});
+
+	it("os.homedir() is that directory too, so the pool runs tests in processes", () => {
+		// In a worker thread, setting process.env.HOME does not move
+		// os.homedir(), which reads the process's own environment.
+		expect(homedir()).toBe(process.env.HOME);
 	});
 
 	it("the default HoBo home is not the account's ~/.hobo", () => {

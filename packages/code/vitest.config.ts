@@ -2,6 +2,11 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
 	test: {
+		// Forks, not threads: test/isolate-user-home.ts moves HOME, and
+		// os.homedir() reads the process's C environment, which a worker
+		// thread's process.env never reaches. In a thread, code that falls back
+		// to os.homedir() would still find the developer's real home.
+		pool: "forks",
 		// One root of throwaway homes per run, and a guard that fails the run
 		// when a test wrote into a real HoBo home (test/real-home-guard.ts).
 		globalSetup: ["test/real-home-guard.ts"],

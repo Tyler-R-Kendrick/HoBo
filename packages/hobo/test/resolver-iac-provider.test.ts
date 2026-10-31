@@ -670,7 +670,7 @@ function stubPulumiAdapter(): PulumiAutomationAdapter {
 			return { resources: {} };
 		},
 		async destroy() {
-			return undefined;
+			return null;
 		},
 		async refresh() {
 			return { drifted: false };

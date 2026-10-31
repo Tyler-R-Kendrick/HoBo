@@ -4,6 +4,9 @@
  *
  *   node --import tsx scripts/run-mirror-lane.mts [--tls] [--package <name>]... [--pins-root <dir>]
  *
+ * `HOBO_MIRROR_LANE_STOP_GRACE_MS` (default 5000) is how long a stop waits
+ * after SIGTERM before SIGKILL.
+ *
  * Starts the mirror.cloud emulator (`mirror up vercel.api aws.dynamodb aws.s3
  * aws.secretsmanager aws.sns aws.sqs aws.ssm`, `--seed hobo-contract`,
  * `MIRROR_CLOCK=controllable`, `MIRROR_VERCEL_FAULTS=1`) on a free loopback
@@ -104,8 +107,26 @@ function readArgs(): LaneOptions {
 	}
 }
 
+/**
+ * `HOBO_MIRROR_LANE_STOP_GRACE_MS`: how long stopping a child waits after
+ * SIGTERM before SIGKILL, 5000 when unset. Anything but a positive integer
+ * is wrong usage.
+ */
+function readStopGrace(): number {
+	const text = process.env.HOBO_MIRROR_LANE_STOP_GRACE_MS;
+	if (text === undefined || text === "") return 5_000;
+	const graceMs = Number(text);
+	if (!/^[1-9][0-9]*$/u.test(text) || !Number.isSafeInteger(graceMs)) {
+		console.error(
+			`mirror-lane: HOBO_MIRROR_LANE_STOP_GRACE_MS must be a positive integer (milliseconds), not ${JSON.stringify(text)}\n${USAGE}`,
+		);
+		process.exit(2);
+	}
+	return graceMs;
+}
+
 /** Every process the lane starts: a signal or the runner's exit stops each, process group included. */
-const children = new LaneChildren();
+const children = new LaneChildren({ graceMs: readStopGrace() });
 
 function runPackage(name: string, env: NodeJS.ProcessEnv): Promise<number> {
 	const { command, args } = commandForPlatform("pnpm", [

@@ -74,6 +74,39 @@ describe("LaneChildren", () => {
 		assert.deepEqual(sent, []);
 	});
 
+	it("waits the grace it was constructed with before it sends SIGKILL to a child that ignores SIGTERM", async (t) => {
+		const listener = await beacon();
+		try {
+			const children = new LaneChildren({ graceMs: 60_000 });
+			const child = node(
+				children,
+				[
+					"process.on('SIGTERM', () => {});",
+					`const socket = require('node:net').connect(${listener.port}, '127.0.0.1', () => socket.write(JSON.stringify({ role: 'stubborn', pid: process.pid }) + '\\n'));`,
+					"setInterval(() => {}, 1 << 30);",
+				].join("\n"),
+			);
+			// Its SIGTERM handler is installed before it reports.
+			await listener.next("stubborn");
+			t.mock.timers.enable({ apis: ["setTimeout"] });
+			const stopped = children.stop(child);
+			t.mock.timers.tick(59_999);
+			const beforeGrace = toGroup(child.pid).map(([, signal]) => signal);
+			t.mock.timers.tick(1);
+			t.mock.timers.reset();
+			await stopped;
+
+			assert.deepEqual(beforeGrace, ["SIGTERM"]);
+			// The grace's SIGKILL, then the exit handler's sweep.
+			assert.deepEqual(
+				toGroup(child.pid).map(([, signal]) => signal),
+				["SIGTERM", "SIGKILL", "SIGKILL"],
+			);
+		} finally {
+			await listener.close();
+		}
+	});
+
 	it("when a leader exits on its own, its exit handler kills what it left in its group", async () => {
 		const listener = await beacon();
 		try {

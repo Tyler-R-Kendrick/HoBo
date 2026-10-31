@@ -743,4 +743,16 @@ describe("run-mirror-lane.mts", () => {
 		assert.equal(run.status, 2);
 		assert.match(run.stderr, /no test:mirror in @hobo\/core/u);
 	});
+
+	it("exits 2 on a stop grace that is not a positive number of milliseconds", () => {
+		const run = lane([], {
+			MIRROR_BIN: fakeMirror(),
+			HOBO_MIRROR_LANE_STOP_GRACE_MS: "soon",
+		});
+		assert.equal(run.status, 2, `${run.stdout}${run.stderr}`);
+		assert.match(
+			run.stderr,
+			/HOBO_MIRROR_LANE_STOP_GRACE_MS must be a positive integer \(milliseconds\), not "soon"/u,
+		);
+	});
 });

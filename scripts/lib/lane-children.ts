@@ -51,11 +51,22 @@ function signal(child: ChildProcess, name: NodeJS.Signals): void {
 	}
 }
 
+/** How a `LaneChildren` stops what it started. */
+export interface LaneChildrenOptions {
+	/** How long a stop waits after SIGTERM before it sends SIGKILL; 5000 by default. */
+	readonly graceMs?: number;
+}
+
 export class LaneChildren {
+	readonly #graceMs: number;
 	readonly #live = new Set<ChildProcess>();
 	/** The stop in progress for a child, so a second stop waits on it rather than signalling again. */
 	readonly #stopping = new Map<ChildProcess, Promise<void>>();
 	#closed = false;
+
+	constructor(options: LaneChildrenOptions = {}) {
+		this.#graceMs = options.graceMs ?? 5_000;
+	}
 
 	/**
 	 * Spawn `command` as the leader of its own process group and track it
@@ -84,11 +95,12 @@ export class LaneChildren {
 
 	/**
 	 * Stop one child and its group: SIGTERM to the group, SIGKILL to it after
-	 * `graceMs` if the child is still running, and the exit handler's sweep.
+	 * `graceMs` (the constructor's grace by default) if the child is still
+	 * running, and the exit handler's sweep.
 	 * Resolves once the child has exited. A child that has already exited is
 	 * not signalled at all, and a second stop waits on the first.
 	 */
-	stop(child: ChildProcess, graceMs = 5_000): Promise<void> {
+	stop(child: ChildProcess, graceMs = this.#graceMs): Promise<void> {
 		const inProgress = this.#stopping.get(child);
 		if (inProgress !== undefined) return inProgress;
 		if (child.pid === undefined || !running(child)) return Promise.resolve();
@@ -107,7 +119,7 @@ export class LaneChildren {
 	}
 
 	/** Start nothing more and stop every child; resolves once each has exited. */
-	async stopAll(graceMs = 5_000): Promise<void> {
+	async stopAll(graceMs = this.#graceMs): Promise<void> {
 		this.#closed = true;
 		await Promise.all(
 			[...this.#live].map((child) => this.stop(child, graceMs)),

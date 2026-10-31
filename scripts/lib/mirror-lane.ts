@@ -246,7 +246,7 @@ export interface RunningMirror {
 	readonly args: readonly string[];
 	/** What it printed so far (stdout and stderr, interleaved), bounded. */
 	output(): string;
-	/** SIGTERM to its process group, SIGKILL after 5 s; resolves once the process is gone. */
+	/** SIGTERM to its process group, SIGKILL after the lane's stop grace; resolves once the process is gone. */
 	stop(): Promise<void>;
 	/**
 	 * Settles, with `MIRROR_EXITED`, if the emulator exits while the lane is

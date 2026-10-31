@@ -205,8 +205,10 @@ describe("run-mirror-lane.mts, stopped by a signal", () => {
 		const lane = runner({
 			MIRROR_BIN: fakeMirror(),
 			FAKE_MIRROR_MODE: "no-banner",
-			// Mirror ignores SIGTERM: the first stop waits out its 5 s grace.
+			// Mirror ignores SIGTERM and the first stop's grace outlasts the
+			// test, so only the second SIGINT can end the run.
 			FAKE_MIRROR_IGNORE_TERM: "1",
+			HOBO_MIRROR_LANE_STOP_GRACE_MS: "86400000",
 			FAKE_BEACON: String(listener.port),
 		});
 		const exit = once(lane.child, "exit");

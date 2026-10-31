@@ -234,7 +234,7 @@ export interface RuntimeReachRegistry {
 	readonly problems: readonly string[];
 }
 
-/** The registry's declarations, parsed from its text; absent text declares nothing. */
+/** The registry's declarations, parsed from its text, and a `from` declared twice; absent text declares nothing. */
 export function parseRuntimeReaches(
 	text: string | undefined,
 ): RuntimeReachRegistry {
@@ -258,5 +258,11 @@ export function parseRuntimeReaches(
 				`entry ${i} is not { "from": string, "needs": string[], "why": string }`,
 			);
 	});
+	// One file, one entry: with two, which one holds is a guess.
+	const counts = new Map<string, number>();
+	for (const { from } of reaches) counts.set(from, (counts.get(from) ?? 0) + 1);
+	for (const [from, count] of counts)
+		if (count > 1)
+			problems.push(`"${from}" is declared ${count} times; keep one entry`);
 	return { reaches, problems };
 }

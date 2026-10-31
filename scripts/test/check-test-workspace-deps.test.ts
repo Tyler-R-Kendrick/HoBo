@@ -1240,6 +1240,34 @@ describe("checkTestWorkspaceDeps", () => {
 		});
 	});
 
+	it("refuses a file the registry declares more than once", () => {
+		const entry = (needs: string[]) => ({
+			from: "packages/app/src/run.ts",
+			needs,
+			why: "spawns lib",
+		});
+		within(
+			{
+				...base,
+				[REGISTRY]: JSON.stringify({
+					reaches: [entry(["@s/lib#build"]), entry(["@s/lib#build"])],
+				}),
+				"packages/app/package.json": manifest("@s/app"),
+				"packages/app/test/a.test.ts": 'import "../src/run.js";\n',
+				"packages/app/src/run.ts": `${SPAWN}${JOIN}spawn(process.execPath, [join(process.cwd(), "packages", "lib", "dist", "cli.js")]);\n`,
+			},
+			(dir) =>
+				assert.deepEqual(
+					scanTestWorkspaceDeps(dir).stale.map(
+						(item) => `${item.file}: ${item.reason}`,
+					),
+					[
+						`${REGISTRY}: "packages/app/src/run.ts" is declared 2 times; keep one entry`,
+					],
+				),
+		);
+	});
+
 	it("refuses a declaration that no test task reaches any more, or that names no workspace package", () => {
 		const reaches = [
 			'import { spawn } from "node:child_process";',

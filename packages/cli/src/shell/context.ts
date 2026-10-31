@@ -1,6 +1,8 @@
 import { access, readdir, realpath, stat } from "node:fs/promises";
+import { homedir } from "node:os";
 import path from "node:path";
 import {
+	type AccountHome,
 	HOBO_HOME_ENTRIES,
 	HoboHomeUnavailable,
 	resolveHoboHome,
@@ -58,6 +60,11 @@ export interface ContextFactoryRequest {
 	readonly uid?: number;
 	/** Where discovery says it ignored a `.hobo` (one line each); stderr by default. */
 	readonly warn?: (message: string) => void;
+	/**
+	 * How discovery asks for the account's home when the env names none
+	 * (`os.homedir()` by default; it throws for a uid with no passwd entry).
+	 */
+	readonly accountHome?: AccountHome;
 }
 
 export type ContextFactory = (
@@ -71,6 +78,7 @@ export async function defaultContextFactory(
 		env: request.env,
 		typescriptAuthoring: ["codegen", "stub", "build"].includes(request.verb),
 		uid: request.uid ?? process.getuid?.(),
+		accountHome: request.accountHome ?? homedir,
 		warn:
 			request.warn ??
 			((message: string) => process.stderr.write(`${message}\n`)),
@@ -97,6 +105,7 @@ interface DiscoveryOptions {
 	readonly typescriptAuthoring: boolean;
 	readonly uid: number | undefined;
 	readonly warn: (message: string) => void;
+	readonly accountHome: AccountHome;
 }
 
 async function findProjectDir(
@@ -105,7 +114,7 @@ async function findProjectDir(
 ): Promise<string | null> {
 	const { env, typescriptAuthoring } = options;
 	const ceilings = await ceilingDirectories(env);
-	const userHomes = await userHoboHomes(env);
+	const userHomes = await userHoboHomes(env, options.accountHome);
 	let current = path.resolve(startDir);
 	while (true) {
 		for (const marker of markers) {
@@ -157,11 +166,12 @@ async function ceilingDirectories(
  */
 async function userHoboHomes(
 	env: NodeJS.ProcessEnv,
+	account: AccountHome,
 ): Promise<ReadonlySet<string>> {
 	const homes = new Set<string>();
 	for (const home of [
-		() => resolveHoboHome(env),
-		() => resolveHoboHome({ HOME: env.HOME }),
+		() => resolveHoboHome(env, account),
+		() => resolveHoboHome({ HOME: env.HOME }, account),
 	]) {
 		try {
 			homes.add(await canonical(home()));

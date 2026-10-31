@@ -5,34 +5,35 @@
  * Discovery excludes the user's HoBo home from the `.hobo` markers, and naming
  * that home needs HOME or an account home. With neither there is no user home
  * to exclude, so discovery must still find the project rather than fail the
- * verb with libuv's `uv_os_homedir returned ENOENT`.
+ * verb with libuv's `uv_os_homedir returned ENOENT`. The account is asked
+ * through the request's `accountHome`, which here fails the way
+ * `os.homedir()` does for such a uid.
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterAll, describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 
-vi.mock("node:os", async (original) => ({
-	...(await original<typeof import("node:os")>()),
-	homedir: () => {
-		throw Object.assign(
-			new Error(
-				"A system error occurred: uv_os_homedir returned ENOENT (no such file or directory)",
-			),
-			{ code: "ERR_SYSTEM_ERROR" },
-		);
-	},
-}));
-
-const { CEILING_DIRECTORIES_ENV, defaultContextFactory } = await import(
-	"../src/shell/context.js"
-);
-const { parseArgv } = await import("../src/shell/parse.js");
+import {
+	CEILING_DIRECTORIES_ENV,
+	defaultContextFactory,
+} from "../src/shell/context.js";
+import { parseArgv } from "../src/shell/parse.js";
 
 const scratch = mkdtempSync(path.join(tmpdir(), "hobo-cli-discovery-nohome-"));
 afterAll(() => {
 	rmSync(scratch, { recursive: true, force: true });
 });
+
+/** `os.homedir()` for a uid with no passwd entry and no HOME. */
+const noAccountHome = (): string => {
+	throw Object.assign(
+		new Error(
+			"A system error occurred: uv_os_homedir returned ENOENT (no such file or directory)",
+		),
+		{ code: "ERR_SYSTEM_ERROR" },
+	);
+};
 
 async function projectDirFrom(cwd: string, env: NodeJS.ProcessEnv) {
 	const context = await defaultContextFactory({
@@ -42,6 +43,7 @@ async function projectDirFrom(cwd: string, env: NodeJS.ProcessEnv) {
 		verb: "plan",
 		args: [],
 		requiresProject: true,
+		accountHome: noAccountHome,
 	});
 	return context.projectDir;
 }

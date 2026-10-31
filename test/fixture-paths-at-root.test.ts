@@ -178,7 +178,7 @@ const ALLOWANCES = {
 	},
 	"packages/hobo/test/station-command.test.ts": {
 		literals: { "/nonexistent/elsewhere": 1 },
-		why: "a decoy HOBO_HOME that is compared, never opened: run() always passes hoboHome (test :61), so `deps.hoboHome ??` at src/station-command.ts:43 short-circuits before deps.env",
+		why: "a decoy HOBO_HOME that is compared, never opened: run() always passes hoboHome (test :59), so `deps.hoboHome ??` at src/station-command.ts:43 short-circuits before deps.env",
 	},
 	"packages/iac/iac-crossplane/test/kubectl-cluster.test.ts": {
 		literals: { "/nonexistent/kubectl": 2 },

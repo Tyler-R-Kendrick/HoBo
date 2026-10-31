@@ -83,17 +83,25 @@ function canonical(path: string): string {
  * passwd entry (a container's `--user 4242`) has no account home to watch
  * beyond HOME, and `os.userInfo()` throws for it.
  */
-function accountHome(): string | undefined {
+/** Asks the password database for this account's home; `os.userInfo()` throws for a uid it lacks. */
+export type PasswdHome = () => string;
+
+const passwdHome: PasswdHome = () => userInfo().homedir;
+
+function accountHome(passwd: PasswdHome): string | undefined {
 	try {
-		return userInfo().homedir || undefined;
+		return passwd() || undefined;
 	} catch {
 		return undefined;
 	}
 }
 
 /** The real HoBo homes a stray write lands in, for this process's environment. */
-export function watchedHomes(env: NodeJS.ProcessEnv = process.env): string[] {
-	const account = accountHome();
+export function watchedHomes(
+	env: NodeJS.ProcessEnv = process.env,
+	passwd: PasswdHome = passwdHome,
+): string[] {
+	const account = accountHome(passwd);
 	const recorded = env[REAL_HOME_ENV]?.trim() ? env[REAL_HOME_ENV] : undefined;
 	const home = recorded ?? (env.HOME?.trim() ? env.HOME : account);
 	const candidates = [
@@ -105,16 +113,18 @@ export function watchedHomes(env: NodeJS.ProcessEnv = process.env): string[] {
 	return [...new Set(candidates)];
 }
 
-function errorCode(error: unknown): string {
-	return error instanceof Error && "code" in error ? String(error.code) : "";
+/** The errno code of a filesystem failure, or "" for anything else. */
+function errorCode(error: Error): string {
+	return "code" in error ? String(error.code) : "";
 }
 
 function lstatOrNull(path: string): Stats | null {
 	try {
 		return lstatSync(path);
 	} catch (error) {
-		if (errorCode(error) === "ENOENT" || errorCode(error) === "ENOTDIR")
-			return null;
+		if (!(error instanceof Error)) throw error;
+		const code = errorCode(error);
+		if (code === "ENOENT" || code === "ENOTDIR") return null;
 		throw error;
 	}
 }
@@ -135,6 +145,7 @@ function namesIn(dir: string): string[] | null {
 		try {
 			return readdirSync(dir, { encoding: "utf8" }).sort();
 		} catch (error) {
+			if (!(error instanceof Error)) throw error;
 			const code = errorCode(error);
 			if (code === "EACCES" || code === "EPERM") return [];
 			if (code !== "ENOENT" && code !== "ENOTDIR") throw error;

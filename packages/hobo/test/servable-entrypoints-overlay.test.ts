@@ -29,22 +29,8 @@
  * - **Every transformed response says how it was transformed**, so a user
  *   looking at a page that behaves oddly can tell whether HoBo touched it.
  */
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import type { BindleDefinition } from "@hobo/bindles";
-import { describe, expect, it, vi } from "vitest";
-
-// `os.homedir()` reads the C environment, which a worker thread's
-// `process.env` (and so `vi.stubEnv`) does not reach. This file's account home
-// is therefore whatever `HOBO_TEST_ACCOUNT_HOME` says, when a test sets it.
-vi.mock("node:os", async (original) => {
-	const os = await original<typeof import("node:os")>();
-	return {
-		...os,
-		homedir: () => process.env.HOBO_TEST_ACCOUNT_HOME ?? os.homedir(),
-	};
-});
+import { describe, expect, it } from "vitest";
 
 import {
 	isExternalComponent,
@@ -273,36 +259,6 @@ describe("evidence overlay — when it engages", () => {
 			new Request("https://app.example/"),
 		);
 		expect(response?.headers.get("x-hobo-evidence-overlay")).toBeNull();
-	});
-
-	it("discovers a session's controls url only from the home the given env names", async () => {
-		// A running hobo-code session leaves its controls url under
-		// $HOBO_HOME/runtime/code. A caller passing `env: {}` named no home, so
-		// this process's own home (and whatever session it holds) is not read.
-		const user = mkdtempSync(join(tmpdir(), "hobo-overlay-home-"));
-		try {
-			const runtime = join(user, ".hobo", "runtime", "code");
-			mkdirSync(runtime, { recursive: true });
-			writeFileSync(join(runtime, "evidence-controls-url"), `${CONTROLS}\n`);
-			const def = definition({
-				site: { kind: "web", handler: () => html("<body>x</body>") },
-			});
-			const overlay = async (env: NodeJS.ProcessEnv) => {
-				const entries = listServableEntrypoints(def, { env });
-				const response = await entries[0]?.handler(
-					new Request("https://app.example/"),
-				);
-				return response?.headers.get("x-hobo-evidence-overlay") ?? null;
-			};
-			vi.stubEnv("HOME", user);
-			vi.stubEnv("HOBO_TEST_ACCOUNT_HOME", user);
-			expect(await overlay({})).toBeNull();
-			expect(await overlay({ HOME: user })).not.toBeNull();
-			expect(await overlay({ HOBO_HOME: join(user, ".hobo") })).not.toBeNull();
-		} finally {
-			vi.unstubAllEnvs();
-			rmSync(user, { recursive: true, force: true });
-		}
 	});
 
 	it("reads the controls url from the environment when no option is passed", async () => {

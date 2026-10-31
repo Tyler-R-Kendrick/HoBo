@@ -92,26 +92,33 @@ export class HoboHomeUnavailable extends Error {
 	}
 }
 
+/** Asks the system for the account's home: `os.homedir()` unless a caller supplies one. */
+export type AccountHome = () => string;
+
 /**
  * `HOBO_HOME`, or `<HOME or os.homedir()>/.hobo`. Never a temp directory. An
  * empty or blank (whitespace-only) value counts as unset: `HOBO_HOME= hobo …`
- * is how a shell unsets it for one command.
+ * is how a shell unsets it for one command. `account` is how the account's
+ * home is asked for when the environment names none.
  */
-export function resolveHoboHome(env: HoboHomeEnv = process.env): string {
+export function resolveHoboHome(
+	env: HoboHomeEnv = process.env,
+	account: AccountHome = homedir,
+): string {
 	const explicit = env.HOBO_HOME;
 	if (isSet(explicit)) return explicit;
 	const home = env.HOME;
 	if (isSet(home)) return join(home, HOBO_HOME_DIRNAME);
-	return join(accountHome(), HOBO_HOME_DIRNAME);
+	return join(accountHome(account), HOBO_HOME_DIRNAME);
 }
 
 function isSet(value: string | undefined): value is string {
 	return value !== undefined && value.trim().length > 0;
 }
 
-function accountHome(): string {
+function accountHome(account: AccountHome): string {
 	try {
-		return homedir();
+		return account();
 	} catch (error) {
 		throw new HoboHomeUnavailable(
 			"HOBO_HOME and HOME are unset and this account has no home directory",

@@ -361,6 +361,65 @@ describe("a failure writing the member", () => {
 		assert.deepEqual(readdirSync(dir), ["a.tar.gz"]);
 	});
 
+	it("rejects an interrupted unpack and renames nothing into place, even when the partial file cannot be removed", async (t) => {
+		const dir = scratch("interrupted-kept");
+		const path = join(dir, "a.tar.gz");
+		writeFileSync(path, ARCHIVE);
+		const dest = join(dir, "out");
+		// An embedder's own listener: the guard cleans up and does not end the process.
+		const stay = (): void => undefined;
+		process.on("SIGTERM", stay);
+		t.after(() => {
+			process.off("SIGTERM", stay);
+		});
+		// The guard's removal of the partial file fails, and so does the failure path's.
+		const realRm = fs.rmSync;
+		t.mock.method(fs, "rmSync", (target: string, options?: fs.RmOptions) => {
+			if (String(target).endsWith(".partial")) {
+				throw injected("EBUSY", "rmSync");
+			}
+			return realRm(target, options);
+		});
+		// SIGTERM arrives during the read; every write still succeeds.
+		const realWrite = fs.writeSync;
+		let signalled = false;
+		t.mock.method(
+			fs,
+			"writeSync",
+			(fd: number, buffer: Uint8Array, offset?: number, length?: number) => {
+				if (fd > 2 && !signalled) {
+					signalled = true;
+					process.emit("SIGTERM", "SIGTERM");
+				}
+				return realWrite(fd, buffer, offset, length);
+			},
+		);
+		syncBuiltinESMExports();
+		await assert.rejects(
+			extractMember(path, "mirror", dest, sha256Hex(ARCHIVE)),
+			(error: Error) => {
+				assert.ok(error instanceof PinsError, String(error));
+				assert.equal(error.code, "INTERRUPTED");
+				const partial = readdirSync(dir).find((name) =>
+					name.endsWith(".partial"),
+				);
+				assert.ok(
+					partial !== undefined,
+					"the partial file the guard could not remove",
+				);
+				assert.ok(
+					error.message.endsWith(
+						`; the partial file was kept at ${join(dir, partial)}`,
+					),
+					error.message,
+				);
+				return true;
+			},
+		);
+		assert.equal(signalled, true);
+		assert.equal(existsSync(dest), false);
+	});
+
 	for (const [name, code] of [
 		["writeSync", "ENOSPC"],
 		["fsyncSync", "EIO"],

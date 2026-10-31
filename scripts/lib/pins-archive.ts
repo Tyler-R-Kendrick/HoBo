@@ -286,6 +286,17 @@ export async function extractMember(
 		});
 		fd = undefined;
 		writing(`closing ${partial}`, () => closeSync(out));
+		// A signal is handled only between turns of the event loop, and nothing
+		// from the last await to the rename yields, so a signal seen by now is
+		// the last one that can stop this unpack: after it, nothing is renamed
+		// into place, even when the guard could not remove the partial file.
+		const signal = guard.interrupted();
+		if (signal !== null) {
+			throw new PinsError(
+				"INTERRUPTED",
+				`unpacking ${member} was interrupted by ${signal}`,
+			);
+		}
 		writing("renaming the partial file into place", () =>
 			renameSync(partial, dest),
 		);
@@ -317,7 +328,9 @@ export async function extractMember(
 			? `the partial file was kept at ${partial}`
 			: "nothing was kept";
 		const signal = guard.interrupted();
-		if (signal !== null) {
+		const interrupted =
+			failure instanceof PinsError && failure.code === "INTERRUPTED";
+		if (signal !== null && !interrupted) {
 			throw new PinsError(
 				"INTERRUPTED",
 				`unpacking ${member} was interrupted by ${signal}; ${outcome}`,

@@ -18,7 +18,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { configDefaults } from "vitest/config";
 
@@ -55,50 +55,91 @@ interface Collection {
 	readonly exclude: readonly string[];
 }
 
+/** What `support/read-vitest-configs.mts` reports for one config. */
 interface TestOptions {
 	readonly include?: readonly string[];
 	readonly exclude?: readonly string[];
 	readonly dir?: string;
 	readonly root?: string;
-	readonly projects?: unknown;
-	readonly setupFiles?: unknown;
-	readonly globalSetup?: unknown;
-	readonly pool?: unknown;
-	readonly isolate?: unknown;
-	readonly testTimeout?: unknown;
-	readonly hookTimeout?: unknown;
+	readonly projectsDeclared: boolean;
+	readonly setupFiles?: readonly string[] | string;
+	readonly globalSetup?: readonly string[] | string;
+	readonly pool?: string;
+	readonly isolate?: boolean;
+	readonly testTimeout?: number;
+	readonly hookTimeout?: number;
 }
 
 interface UserConfig {
+	readonly config: string;
 	readonly root?: string;
-	readonly test?: TestOptions;
+	readonly test: TestOptions;
 }
 
+/**
+ * Every tracked config, read once in a child process under tsx, so a config
+ * whose own directory's toolchain is not installed here (site/'s tsconfig
+ * extends a package only site installs) still loads.
+ */
+const READ = (() => {
+	let read: Promise<ReadonlyMap<string, UserConfig>> | undefined;
+	return () => {
+		read ??= new Promise((resolveRead, rejectRead) => {
+			for (const config of CONFIGS) {
+				// A config listed by git but absent here (a sparse checkout) is a
+				// failure, not a pass: the guard cannot vouch for a file it did not read.
+				if (!existsSync(path.join(ROOT, config))) {
+					rejectRead(new Error(`${config} is tracked but not on disk`));
+					return;
+				}
+			}
+			const reader = spawnSync(
+				process.execPath,
+				[
+					"--import",
+					"tsx",
+					path.join(ROOT, "test/support/read-vitest-configs.mts"),
+					...CONFIGS.map((config) => path.join(ROOT, config)),
+				],
+				{
+					cwd: ROOT,
+					encoding: "utf8",
+					env: { ...process.env, NODE_OPTIONS: "" },
+					maxBuffer: 64 * 1024 * 1024,
+				},
+			);
+			if (reader.status !== 0) {
+				rejectRead(
+					new Error(`reading the vitest configs failed:\n${reader.stderr}`),
+				);
+				return;
+			}
+			// SAFETY: the reader prints exactly one JSON list of UserConfig, one per config it was given.
+			const configs = JSON.parse(reader.stdout) as readonly UserConfig[];
+			resolveRead(
+				new Map(
+					configs.map((user) => [path.relative(ROOT, user.config), user]),
+				),
+			);
+		});
+		return read;
+	};
+})();
+
 async function loadUserConfig(config: string): Promise<UserConfig> {
-	const absolute = path.join(ROOT, config);
-	// A config listed by git but absent here (a sparse checkout) is a failure,
-	// not a pass: the guard cannot vouch for a file it did not read.
-	expect(existsSync(absolute), `${config} is tracked but not on disk`).toBe(
-		true,
-	);
-	const module: { readonly default: unknown } = await import(
-		pathToFileURL(absolute).href
-	);
-	const exported =
-		module.default instanceof Function
-			? await module.default({ command: "serve", mode: "test" })
-			: await module.default;
-	// SAFETY: a vitest config module's default export is a UserConfig; only `root` and `test` are read, and each reader checks what it uses.
-	return (exported ?? {}) as UserConfig;
+	const user = (await READ()).get(config);
+	expect(user, `${config} was not read`).toBeDefined();
+	// SAFETY: the assertion above fails the test when the reader did not report this config.
+	return user as UserConfig;
 }
 
 async function load(config: string): Promise<Collection> {
 	const user = await loadUserConfig(config);
-	const test = user.test ?? {};
+	const test = user.test;
 	expect(
-		test.projects,
+		test.projectsDeclared,
 		`${config} declares projects; this guard reads one collection per config`,
-	).toBeUndefined();
+	).toBe(false);
 	const own = path.posix.dirname(config);
 	const base = test.dir ?? test.root ?? user.root;
 	return {
@@ -200,10 +241,10 @@ describe("a package with a mirror lane keeps the root config in its default lane
 	it.each(
 		packages,
 	)("%s/vitest.config.ts merges the root config: its setup files, global setup, pool and timeouts", async (dir) => {
-		const root = (await loadUserConfig("vitest.config.ts")).test ?? {};
+		const root = (await loadUserConfig("vitest.config.ts")).test;
 		const own = `${dir}/vitest.config.ts`;
 		expect(CONFIGS).toContain(own);
-		const test = (await loadUserConfig(own)).test ?? {};
+		const test = (await loadUserConfig(own)).test;
 
 		expect(test.setupFiles).toEqual(root.setupFiles);
 		expect(test.globalSetup).toEqual(root.globalSetup);
@@ -218,8 +259,8 @@ describe("a package with a mirror lane keeps the root config in its default lane
 	it.each(
 		packages.filter((dir) => dir.startsWith("packages/providers/")),
 	)("%s/vitest.config.ts keeps the root's isolate setting", async (dir) => {
-		const root = (await loadUserConfig("vitest.config.ts")).test ?? {};
-		const test = (await loadUserConfig(`${dir}/vitest.config.ts`)).test ?? {};
+		const root = (await loadUserConfig("vitest.config.ts")).test;
+		const test = (await loadUserConfig(`${dir}/vitest.config.ts`)).test;
 		expect(test.isolate).toBe(root.isolate);
 	});
 });

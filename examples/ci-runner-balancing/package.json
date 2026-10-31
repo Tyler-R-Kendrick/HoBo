@@ -13,7 +13,8 @@
 		"local-gate": "node --import tsx src/bin/local-gate.ts"
 	},
 	"dependencies": {
-		"@bufbuild/protobuf": "^2.12.1"
+		"@bufbuild/protobuf": "^2.12.1",
+		"@hobo/core": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/node": "^24.13.2"

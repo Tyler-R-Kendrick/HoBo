@@ -103,9 +103,11 @@ user-level state: dotfiles aside, only names in `HOBO_HOME_ENTRIES`
 (`@hobo/core/hobo-home`: `durable/`, `runtime/`, `stations/`, `keys/`, `tools/`,
 `sandboxes/`, `worktrees/`, `workspaces/`, `worlds/`, `yards/`, `oci/`,
 `connections/`, `claims/`, `auth-md/`, `evidence/`, `trust-roots/`,
-`identity-migrations/`, `profile.json`, `yard.json`, `installed-runtimes.json`,
-`hobo.broker.json`, `broker-runtime.json`). `test/hobo-home-entries.test.ts`
-fails when a package joins a name under a HoBo home that the list lacks.
+`identity-migrations/`, `last-resort-runner/`, `profile.json`, `yard.json`,
+`installed-runtimes.json`, `hobo.broker.json`, `broker-runtime.json`).
+`test/hobo-home-entries.test.ts` fails when a package or an example joins a
+name under a HoBo home that the list lacks, or builds a HoBo home from HOME by
+hand instead of through `resolveHoboHome`.
 
 Every marker, not only `.hobo/`, counts only when it is the current uid's own,
 because discovery decides which `app.ts` or `bindle.ts` `hobo` loads and runs:

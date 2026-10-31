@@ -54,6 +54,7 @@ export const HOBO_HOME_ENTRIES: ReadonlySet<string> = new Set([
 	"identity-migrations",
 	"installed-runtimes.json",
 	"keys",
+	"last-resort-runner",
 	"oci",
 	"profile.json",
 	"runtime",

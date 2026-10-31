@@ -146,6 +146,9 @@ platform (Linux/macOS), registers **ephemeral** (one job per registration,
 auto-deregisters), serves the `hobo-last-resort` label, and re-registers
 while queued runs remain (`--once` / `--max N` to bound it). GitHub does not
 bill self-hosted minutes, so the last resort also costs $0 in Actions spend.
+It installs into `--dir`, else `HOBO_RB_RUNNER_DIR`, else `last-resort-runner/`
+in the HoBo home (`resolveHoboHome` from `@hobo/core/hobo-home`: `HOBO_HOME`,
+else `~/.hobo`).
 
 **Security posture:** a registered runner executes the repository's workflow
 code on your machine. Use it for your own repository and branches only —

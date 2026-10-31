@@ -5,6 +5,9 @@
  *     [--max 10] [--dir <install dir>] [--labels hobo-last-resort]
  *     [--allow-public]
  *
+ * The install dir defaults to HOBO_RB_RUNNER_DIR, else `last-resort-runner`
+ * in the HoBo home (`resolveHoboHome`: HOBO_HOME, else `~/.hobo`).
+ *
  * Registers this machine as an ephemeral self-hosted runner for the
  * repository and serves queued jobs until the queue drains (or --once).
  * Needs a token able to mint runner registration tokens (repo admin):
@@ -19,9 +22,11 @@
 
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { hostname, homedir } from "node:os";
+import { hostname } from "node:os";
 import path from "node:path";
 import process from "node:process";
+
+import { resolveHoboHome } from "@hobo/core/hobo-home";
 
 import {
 	evaluateRegistrationGuard,
@@ -55,7 +60,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
 		maxIterations: 10,
 		dir:
 			env.HOBO_RB_RUNNER_DIR ??
-			path.join(homedir(), ".hobo", "last-resort-runner"),
+			path.join(resolveHoboHome(env), "last-resort-runner"),
 		labels: ["hobo-last-resort"],
 		allowPublic: env.HOBO_RB_ALLOW_PUBLIC === "1",
 	};

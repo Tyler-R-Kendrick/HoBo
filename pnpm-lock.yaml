@@ -94,6 +94,9 @@ importers:
       '@bufbuild/protobuf':
         specifier: ^2.12.1
         version: 2.12.1
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../packages/core
     devDependencies:
       '@types/node':
         specifier: ^24.13.2

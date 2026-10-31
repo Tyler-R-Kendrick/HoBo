@@ -105,7 +105,11 @@ user-level state: dotfiles aside, only names in `HOBO_HOME_ENTRIES`
 `connections/`, `claims/`, `auth-md/`, `evidence/`, `trust-roots/`,
 `identity-migrations/`, `profile.json`, `yard.json`, `installed-runtimes.json`,
 `hobo.broker.json`, `broker-runtime.json`). `test/hobo-home-entries.test.ts`
-fails when a package joins a name under a HoBo home that the list lacks. Before
+fails when a package joins a name under a HoBo home that the list lacks. A
+`.hobo` also counts only when the current uid owns it and can read it, as git's
+`safe.directory` trusts only a repository its user owns: anyone can create
+`/tmp/.hobo` and plant a `session.json` in it. Discovery skips any other `.hobo`
+and prints one line on stderr naming the path and its owner. Before
 this rule, every directory under `$HOME` resolved to `$HOME`, and a stray
 `/tmp/.hobo` made `/tmp` the project of every temp dir.
 

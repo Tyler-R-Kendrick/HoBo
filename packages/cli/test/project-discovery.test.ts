@@ -14,7 +14,13 @@
  * here sets it to its own temp root, so nothing above that root decides the
  * answer.
  */
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	mkdirSync,
+	mkdtempSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -44,6 +50,7 @@ function root(...dirs: string[]): string {
 async function projectDirFrom(
 	cwd: string,
 	env: NodeJS.ProcessEnv,
+	as: { readonly uid?: number; readonly warn?: (line: string) => void } = {},
 ): Promise<string | null> {
 	const context = await defaultContextFactory({
 		cwd,
@@ -52,9 +59,14 @@ async function projectDirFrom(
 		verb: "plan",
 		args: [],
 		requiresProject: false,
+		...as,
 	});
 	return context.projectDir;
 }
+
+/** The uid these files belong to, and one that owns none of them. */
+const me = process.getuid?.() ?? 0;
+const someoneElse = me + 4242;
 
 describe("a .hobo that is user-level state is not a project", () => {
 	it("skips the user's HoBo home in $HOME", async () => {
@@ -154,6 +166,55 @@ describe("a .hobo that is user-level state is not a project", () => {
 		expect(await projectDirFrom(path.join(top, "app", "sub"), env)).toBe(
 			path.join(top, "app"),
 		);
+	});
+});
+
+describe("a .hobo is trusted only from its owner, like git's safe.directory", () => {
+	it("still takes this uid's own .hobo", async () => {
+		const top = root("app/.hobo", "app/sub");
+		writeFileSync(path.join(top, "app", ".hobo", "session.json"), "{}");
+		const warnings: string[] = [];
+		expect(
+			await projectDirFrom(
+				path.join(top, "app", "sub"),
+				{ [CEILING_DIRECTORIES_ENV]: path.dirname(top) },
+				{ uid: me, warn: (line) => warnings.push(line) },
+			),
+		).toBe(path.join(top, "app"));
+		expect(warnings).toEqual([]);
+	});
+
+	it("ignores another uid's readable .hobo in a 1777 parent, and says whose it is", async () => {
+		// Anyone can make /tmp/.hobo and plant a session.json in it.
+		const top = root("tmp/.hobo", "tmp/scratch-1");
+		chmodSync(path.join(top, "tmp"), 0o1777);
+		writeFileSync(path.join(top, "tmp", ".hobo", "session.json"), "{}");
+		const warnings: string[] = [];
+		expect(
+			await projectDirFrom(
+				path.join(top, "tmp", "scratch-1"),
+				{ [CEILING_DIRECTORIES_ENV]: path.dirname(top) },
+				{ uid: someoneElse, warn: (line) => warnings.push(line) },
+			),
+		).toBe(null);
+		expect(warnings).toEqual([
+			`hobo: ignoring ${path.join(top, "tmp", ".hobo")} as a project marker: owned by uid ${me}, not ${someoneElse}`,
+		]);
+	});
+
+	it("ignores a 0700 .hobo another uid owns, without reading it", async () => {
+		const top = root("shared/.hobo/build", "shared/scratch-1");
+		chmodSync(path.join(top, "shared", ".hobo"), 0o700);
+		const warnings: string[] = [];
+		expect(
+			await projectDirFrom(
+				path.join(top, "shared", "scratch-1"),
+				{ [CEILING_DIRECTORIES_ENV]: path.dirname(top) },
+				{ uid: someoneElse, warn: (line) => warnings.push(line) },
+			),
+		).toBe(null);
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toContain(`owned by uid ${me}`);
 	});
 });
 

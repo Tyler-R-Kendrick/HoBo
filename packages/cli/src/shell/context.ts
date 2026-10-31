@@ -1,4 +1,4 @@
-import { access, readdir, realpath } from "node:fs/promises";
+import { access, readdir, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import {
 	HOBO_HOME_ENTRIES,
@@ -48,6 +48,14 @@ export interface ContextFactoryRequest {
 	readonly verb: string;
 	readonly args: readonly string[];
 	readonly requiresProject: boolean;
+	/**
+	 * Whose `.hobo` discovery trusts: only one this uid owns counts as a project
+	 * marker, as git's `safe.directory` trusts only a repository its user owns.
+	 * Defaults to `process.getuid()`; unchecked where there is none (Windows).
+	 */
+	readonly uid?: number;
+	/** Where discovery says it ignored a `.hobo` (one line each); stderr by default. */
+	readonly warn?: (message: string) => void;
 }
 
 export type ContextFactory = (
@@ -57,11 +65,14 @@ export type ContextFactory = (
 export async function defaultContextFactory(
 	request: ContextFactoryRequest,
 ): Promise<CliContext> {
-	const projectDir = await findProjectDir(
-		request.cwd,
-		request.env,
-		["codegen", "stub", "build"].includes(request.verb),
-	);
+	const projectDir = await findProjectDir(request.cwd, {
+		env: request.env,
+		typescriptAuthoring: ["codegen", "stub", "build"].includes(request.verb),
+		uid: request.uid ?? process.getuid?.(),
+		warn:
+			request.warn ??
+			((message: string) => process.stderr.write(`${message}\n`)),
+	});
 	if (request.requiresProject && !projectDir) {
 		throw new NoBindleError(request.cwd, {
 			monorepo: await looksLikeHoboMonorepo(request.cwd),
@@ -79,11 +90,18 @@ export async function defaultContextFactory(
 	};
 }
 
+interface DiscoveryOptions {
+	readonly env: NodeJS.ProcessEnv;
+	readonly typescriptAuthoring: boolean;
+	readonly uid: number | undefined;
+	readonly warn: (message: string) => void;
+}
+
 async function findProjectDir(
 	startDir: string,
-	env: NodeJS.ProcessEnv,
-	typescriptAuthoring = false,
+	options: DiscoveryOptions,
 ): Promise<string | null> {
+	const { env, typescriptAuthoring } = options;
 	const ceilings = await ceilingDirectories(env);
 	const userHomes = await userHoboHomes(env);
 	let current = path.resolve(startDir);
@@ -91,7 +109,10 @@ async function findProjectDir(
 		for (const marker of markers) {
 			const candidate = path.join(current, marker);
 			if (!(await exists(candidate))) continue;
-			if (marker === ".hobo" && !(await isProjectState(candidate, userHomes)))
+			if (
+				marker === ".hobo" &&
+				!(await isProjectState(candidate, userHomes, options))
+			)
 				continue;
 			return current;
 		}
@@ -154,20 +175,42 @@ async function userHoboHomes(
 
 /**
  * Whether the `.hobo` at `dir` is a project's state rather than a user-level
- * HoBo home. Not when it is the user's own home; not when everything in it
- * (dotfiles aside) is user-level state (`HOBO_HOME_ENTRIES`). An empty
- * `.hobo`, or one that is not a directory, still marks a project.
+ * HoBo home. Not when it is the user's own home; not when another uid owns it
+ * or it cannot be read (anyone can make `/tmp/.hobo` and plant a
+ * `session.json` in it, so, as git's `safe.directory` does, only this uid's own
+ * is trusted; the skip is reported in one line); not when everything in it
+ * (dotfiles aside) is user-level state (`HOBO_HOME_ENTRIES`). An empty `.hobo`,
+ * or a file named `.hobo` this uid owns, still marks a project.
  */
 async function isProjectState(
 	dir: string,
 	userHomes: ReadonlySet<string>,
+	options: DiscoveryOptions,
 ): Promise<boolean> {
 	if (userHomes.has(await canonical(dir))) return false;
+	let owner: number;
+	try {
+		owner = (await stat(dir)).uid;
+	} catch {
+		return false; // gone since the walk saw it
+	}
+	if (options.uid !== undefined && owner !== options.uid) {
+		options.warn(
+			`hobo: ignoring ${dir} as a project marker: owned by uid ${owner}, not ${options.uid}`,
+		);
+		return false;
+	}
 	let entries: string[];
 	try {
 		entries = await readdir(dir);
-	} catch {
-		return true;
+	} catch (error) {
+		const code =
+			error instanceof Error && "code" in error ? String(error.code) : "";
+		if (code === "ENOTDIR") return true;
+		options.warn(
+			`hobo: ignoring ${dir} as a project marker: cannot read it (${code || String(error)}); owned by uid ${owner}`,
+		);
+		return false;
 	}
 	// Dotfiles (`.DS_Store`, an editor's swap file) say nothing about whose it is.
 	const named = entries.filter((entry) => !entry.startsWith("."));

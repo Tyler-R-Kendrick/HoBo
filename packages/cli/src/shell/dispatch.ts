@@ -72,7 +72,7 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 			plan: createPlanCommand(),
 			up: createUpCommand(),
 			down: createDownCommand(),
-			...(options.commands),
+			...options.commands,
 		});
 	const contextFactory = options.contextFactory ?? defaultContextFactory;
 
@@ -173,6 +173,7 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 				const context = await contextFactory({
 					cwd: request.cwd,
 					env: runOptions.env ?? process.env,
+					warn: runOptions.onProgress ?? defaultProgressSink,
 					flags: request.flags,
 					verb: request.verb,
 					args: request.args,

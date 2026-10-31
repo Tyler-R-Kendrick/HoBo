@@ -61,6 +61,18 @@ describe("extractMember", () => {
 		});
 	});
 
+	it("writes the member 0755 whatever mode its header gives: setuid dropped, 0644 made executable", async () => {
+		for (const mode of ["0006755\0", "0004755\0", "0000644\0", "0001777\0"]) {
+			const bytes = tarGz([
+				{ name: "mirror", body: BINARY, raw: [[100, mode]] },
+			]);
+			const { dir, path } = archiveFile(bytes);
+			const dest = join(dir, "out");
+			await extractMember(path, "mirror", dest, sha256Hex(bytes));
+			assert.equal(statSync(dest).mode & 0o7777, 0o755, mode);
+		}
+	});
+
 	it("refuses an absolute or climbing name anywhere in the archive, and writes nothing", async () => {
 		for (const name of ["/etc/escaped", "../../escaped", "/mirror"]) {
 			const bytes = tarGz([

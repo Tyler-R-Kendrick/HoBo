@@ -28,7 +28,13 @@
  *   ARCHIVE_UNREADABLE;
  * - the extracted file is written to a private partial file, made 0755
  *   through its own descriptor and renamed into place only when the archive's
- *   digest matched; any failure leaves nothing behind;
+ *   digest matched. The mode is always 0755, whatever the member's header
+ *   says: setuid, setgid and sticky bits are dropped, and a 0644 member is
+ *   made executable. What the reader is held to against `tar` is the name and
+ *   the bytes, not the mode;
+ * - on any failure the partial file is removed, and the message ends with
+ *   "nothing was kept", or with where the partial file was kept when it
+ *   could not be removed;
  * - a failure to create, write, sync or rename that file (no space, an I/O
  *   error, no permission, a write that makes no progress) is
  *   ARCHIVE_WRITE_FAILED, naming the errno and keeping the error as its

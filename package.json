@@ -91,6 +91,7 @@
 		"test:file": "vitest run --no-isolate --passWithNoTests",
 		"test:fuzz": "pnpm --filter @hobo/fuzz run test:fuzz",
 		"test:fuzz:nightly": "pnpm --filter @hobo/fuzz run test:fuzz:nightly",
+		"test:mirror": "node --import tsx scripts/run-mirror-lane.mts",
 		"test:mutation": "pnpm run test:mutation:core && pnpm run test:mutation:scripts",
 		"test:mutation:core": "pnpm --filter @hobo/core exec stryker run",
 		"test:mutation:scripts": "stryker run stryker.scripts.conf.json",

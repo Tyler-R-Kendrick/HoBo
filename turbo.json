@@ -28,7 +28,8 @@
     "https_proxy",
     "no_proxy",
     "CELLD_BIN",
-    "CELLD_ESBUILD"
+    "CELLD_ESBUILD",
+    "MIRROR_BIN"
   ],
   "tasks": {
     "build": {
@@ -57,6 +58,7 @@
     "test:schema": { "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },
     "test:contract:consumer": { "dependsOn": ["^build"], "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": ["pacts/**"] },
     "test:contract:provider": { "dependsOn": ["build"], "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },
+    "test:mirror": { "dependsOn": ["^build"], "cache": false, "outputs": [] },
     "//#typecheck:root": {
       "inputs": ["tsconfig.json", "tsconfig.base.json", "scripts/**", "test/**", "!scripts/ci/**"],
       "outputs": []

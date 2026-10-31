@@ -542,6 +542,7 @@ Use these lanes instead:
 - `pnpm test:fuzz` for Jazzer-shaped serialized-input smoke (does not start a long campaign).
 - `pnpm test:fuzz:nightly` for the docker-gated RESTler/Toxiproxy/Testcontainers plan. Skip without Docker. Never live Azure/AWS/GCP/paid SaaS.
 - `pnpm test:mutation` for the mutation-score gate. Scoped on purpose — see "Mutation testing" below.
+- `pnpm test:mirror` for the env-gated mirror.cloud contract lane (ADR-0174): `@hobo/provider-vercel`, `@hobo/provider-aws` and `@hobo/hobo` (and the provider side of `packages/hobo/contracts/hobo-vercel-api.pact.json`) against a mirror emulator the runner starts on loopback (`MIRROR_BIN`, or the `mirror` pin from `pnpm run pins:fetch mirror`; `-- --tls` serves it over HTTPS with a throwaway CA). Opt-in and manual: `agent:check`, `test:unit` and `test:contract:*` never select it, because each package's default vitest config excludes `test/mirror/**` and the files avoid the `.contract.test.ts` and `*provider*` names. Selected without a binary it exits 1 with `MIRROR_BIN_REQUIRED`; a test file run without `HOBO_MIRROR_URL` fails with `MIRROR_URL_REQUIRED`. A green run is HoBo against mirror's reading of the providers' documents: call it emulated, never live.
 
 ### Fixture paths: never a made-up directory at the filesystem root
 
@@ -711,6 +712,12 @@ Tests that require a binary or hardware **fail rather than skip** when it is
 absent — `packages/runtimes/runtime-celld/test/live-*.test.ts` says so in the
 error text. That is deliberate: a live lane that silently passes without its
 subject is worse than one that stops.
+The mirror lane (`pnpm run test:mirror`, ADR-0174) follows the same rule once
+selected: no `MIRROR_BIN` and no fetched pin is `MIRROR_BIN_REQUIRED` and exit
+1, an emulator that never answers is `MIRROR_UNHEALTHY`, and a `test/mirror`
+file run with no `HOBO_MIRROR_URL` fails its global setup. `MIRROR_BIN` is
+listed in `globalPassThroughEnv` and `HOBO_MIRROR_URL`/`HOBO_MIRROR_CA` ride
+`HOBO_*`; in CI the lane refuses `MIRROR_BIN` as `pins:status` does.
 
 `turbo.json` runs `envMode: "strict"`, so a task sees only what
 `globalPassThroughEnv` lists. Two consequences worth knowing before diagnosing a

@@ -24,7 +24,7 @@ import { request as httpsRequest } from "node:https";
 import { type AddressInfo, createServer } from "node:net";
 import { isAbsolute, join, resolve } from "node:path";
 
-import { PINS_FILE, PinsError, parsePins } from "./pins.ts";
+import { PINS_FILE, parsePins } from "./pins.ts";
 import { refuseOverridesInCi } from "./pins-asset-ops.ts";
 import {
 	assetFor,
@@ -41,7 +41,8 @@ export type MirrorLaneErrorCode =
 	| "MIRROR_BIN_UNUSABLE"
 	| "MIRROR_NOT_FETCHED"
 	| "MIRROR_START_FAILED"
-	| "MIRROR_UNHEALTHY";
+	| "MIRROR_UNHEALTHY"
+	| "MIRROR_JOURNAL_UNREADABLE";
 
 /** Every refusal of the lane is named, and its message starts with the name. */
 export class MirrorLaneError extends Error {
@@ -365,14 +366,45 @@ interface JournalLine {
 	readonly status: number;
 }
 
-function journalLine(entry: {
-	readonly [key: string]: string | number;
-}): JournalLine {
-	return {
-		service: String(entry.ServiceID ?? ""),
-		operation: String(entry.Operation ?? ""),
-		status: Number(entry.Status ?? 0),
-	};
+type JsonValue =
+	| null
+	| boolean
+	| number
+	| string
+	| readonly JsonValue[]
+	| { readonly [key: string]: JsonValue };
+
+const tagOf = Object.prototype.toString;
+
+/** The entries of one journal answer, or MIRROR_JOURNAL_UNREADABLE naming what is wrong. */
+function journalEntries(service: string, body: string): readonly JournalLine[] {
+	const unreadable = (problem: string) =>
+		new MirrorLaneError(
+			"MIRROR_JOURNAL_UNREADABLE",
+			`GET /_mirror/journal?service=${service} ${problem}`,
+		);
+	let parsed: JsonValue;
+	try {
+		// SAFETY: JSON.parse yields a JSON value; its shape is checked below.
+		parsed = JSON.parse(body) as JsonValue;
+	} catch {
+		throw unreadable("did not answer JSON");
+	}
+	// Mirror encodes an empty journal as `null`, a Go nil slice.
+	if (parsed === null) return [];
+	if (!Array.isArray(parsed)) throw unreadable("did not answer a list");
+	return parsed.map((entry: JsonValue) => {
+		if (tagOf.call(entry) !== "[object Object]") {
+			throw unreadable("answered an entry that is not an object");
+		}
+		// SAFETY: the tag check above proves this JSON value is an object.
+		const record = entry as { readonly [key: string]: JsonValue };
+		return {
+			service: String(record.ServiceID ?? ""),
+			operation: String(record.Operation ?? ""),
+			status: Number(record.Status ?? 0),
+		};
+	});
 }
 
 /**
@@ -397,22 +429,19 @@ export async function summarizeJournal(
 			ca,
 		);
 		if (answer.status !== 200) {
-			throw new PinsError(
-				"HTTP_STATUS",
+			throw new MirrorLaneError(
+				"MIRROR_JOURNAL_UNREADABLE",
 				`GET /_mirror/journal?service=${service} answered ${answer.status}`,
 			);
 		}
-		// SAFETY: the journal is a JSON list of flat objects (or null when empty); fields are read by name below.
-		const entries = (JSON.parse(answer.body) ?? []) as {
-			readonly [key: string]: string | number;
-		}[];
+		const entries = journalEntries(service, answer.body);
 		if (
 			entries.length === LEGACY_JOURNAL_CAP ||
 			entries.length === JOURNAL_LIMIT
 		) {
 			truncated.push(service);
 		}
-		for (const line of entries.map(journalLine)) {
+		for (const line of entries) {
 			const key = `${line.service} ${line.operation} ${line.status}`;
 			const seen = tally.get(key);
 			tally.set(key, { ...line, count: (seen?.count ?? 0) + 1 });

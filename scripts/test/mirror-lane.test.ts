@@ -317,6 +317,27 @@ describe("summarizeJournal", () => {
 		]);
 	});
 
+	for (const [name, status, body] of [
+		["an answer that is not 200", 500, `{"error":"boom"}`],
+		["an answer that is not JSON", 200, "<html>busy</html>"],
+		["an answer that is not a list", 200, `{"entries":[]}`],
+		["an entry that is not an object", 200, `["CreateProject"]`],
+	] as const) {
+		it(`refuses ${name} with the lane's own MIRROR_JOURNAL_UNREADABLE`, async () => {
+			const url = await journalServer((_path, response) => {
+				response.writeHead(status, { "content-type": "application/json" });
+				response.end(body);
+			});
+			await assert.rejects(
+				summarizeJournal({ url }, ["aws.s3"]),
+				(error: Error) =>
+					error instanceof MirrorLaneError &&
+					error.code === "MIRROR_JOURNAL_UNREADABLE" &&
+					/aws\.s3/u.test(error.message),
+			);
+		});
+	}
+
 	it("reports a service whose answer is exactly 100 entries as truncated (an emulator without ?limit=)", async () => {
 		const url = await journalServer((_path, response) => {
 			response.writeHead(200, { "content-type": "application/json" });

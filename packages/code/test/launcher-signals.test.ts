@@ -16,6 +16,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { ENDING_SIGNALS } from "../bin/ending-signals.mjs";
 import { forwardSignal, launcherSignals } from "../bin/launcher-signals.mjs";
+import { testEnv } from "./test-env.js";
 
 const bin = join(dirname(fileURLToPath(import.meta.url)), "..", "bin");
 
@@ -132,11 +133,11 @@ const waiting = setInterval(() => {
 		process.execPath,
 		["--import", preload, join(pkg, "bin", "hobo-code.mjs")],
 		{
-			env: {
+			env: testEnv({
 				PATH: process.env.PATH ?? "",
 				HOBO_CODE_SKIP_STALE_REBUILD: "1",
 				NODE_NO_WARNINGS: "1",
-			},
+			}),
 			stdio: ["ignore", "pipe", "pipe"],
 		},
 	);

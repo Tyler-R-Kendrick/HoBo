@@ -25,6 +25,7 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 
 import { isJsonString, parseJsonObject } from "../src/json.js";
+import { testEnv } from "./test-env.js";
 
 // `hobo-code session serve --host <machine>` forwards a resident browser over
 // SSH under a Station authorization, and closes that authorization when the
@@ -99,6 +100,8 @@ interface Forwarded {
 	readonly audit: readonly string[];
 	/** Whether the stand-in `ssh` ever started. */
 	readonly sshRan: boolean;
+	/** The stand-in's TMUX_TMPDIR and HOBO_CODE_SEAT_AGENTS, space-separated. */
+	readonly sshEnv: string;
 	/** No stand-in `ssh` is left running. */
 	readonly standInEnded: boolean;
 	readonly output: string;
@@ -182,9 +185,10 @@ async function forwardThenEnd(ending: Ending): Promise<Forwarded> {
 	const ssh = join(bin, "ssh");
 	const pidFile = join(root, "ssh.pid");
 	const release = join(root, "ssh.release");
+	const envFile = join(root, "ssh.env");
 	writeFileSync(
 		ssh,
-		`#!/bin/sh\n${ending.stubbornSsh === true ? "trap '' INT TERM HUP QUIT\n" : ""}echo $$ > '${pidFile}'\nwhile [ ! -e '${release}' ]; do sleep 0.1; done\nexit 0\n`,
+		`#!/bin/sh\n${ending.stubbornSsh === true ? "trap '' INT TERM HUP QUIT\n" : ""}printf '%s %s' "$TMUX_TMPDIR" "$HOBO_CODE_SEAT_AGENTS" > '${envFile}'\necho $$ > '${pidFile}'\nwhile [ ! -e '${release}' ]; do sleep 0.1; done\nexit 0\n`,
 	);
 	chmodSync(ssh, 0o755);
 	const marker = join(root, "window");
@@ -213,7 +217,7 @@ async function forwardThenEnd(ending: Ending): Promise<Forwarded> {
 		],
 		{
 			cwd: project,
-			env: {
+			env: testEnv({
 				PATH: `${bin}:${process.env.PATH ?? ""}`,
 				HOME: root,
 				HOBO_HOME: hoboHome,
@@ -226,7 +230,7 @@ async function forwardThenEnd(ending: Ending): Promise<Forwarded> {
 				...(preloads.length > 0
 					? { NODE_OPTIONS: preloads.join(" ") }
 					: undefined),
-			},
+			}),
 			stdio: ["ignore", "pipe", "pipe"],
 		},
 	);
@@ -283,6 +287,7 @@ async function forwardThenEnd(ending: Ending): Promise<Forwarded> {
 		code,
 		audit,
 		sshRan: existsSync(pidFile),
+		sshEnv: existsSync(envFile) ? readFileSync(envFile, "utf8") : "",
 		standInEnded: left.length === 0,
 		output,
 	};
@@ -312,6 +317,9 @@ describe.skipIf(process.platform !== "linux")(
 					expect(ended.audit, ended.output).toContain("pam.SessionEnded");
 					expect(ended.standInEnded).toBe(true);
 					expect(ended.code, ended.output).toBe(status);
+					// What hobo-code started reached this file's tmux, not the
+					// developer's, and would seat no agents there.
+					expect(ended.sshEnv).toBe(`${process.env.TMUX_TMPDIR} 0`);
 				},
 				FORWARD_DEADLINE_MS + 3 * END_GRACE_MS,
 			);

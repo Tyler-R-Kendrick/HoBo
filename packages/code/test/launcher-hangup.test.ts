@@ -10,6 +10,7 @@ import {
 	hangUpWhenLauncherGoes,
 	type LaunchedProcess,
 } from "../src/launcher-hangup.js";
+import { testEnv } from "./test-env.js";
 
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const entry = join(pkgRoot, "src", "bin", "hobo-code.ts");
@@ -133,13 +134,13 @@ process.exit(0);
 		);
 		const run = spawn(process.execPath, [launcher], {
 			cwd: pkgRoot,
-			env: {
+			env: testEnv({
 				PATH: process.env.PATH ?? "",
 				HOME: root,
 				HOBO_HOME: join(root, "home"),
 				TMPDIR: root,
 				NODE_NO_WARNINGS: "1",
-			},
+			}),
 			stdio: ["ignore", "pipe", "pipe"],
 		});
 		let stdout = "";

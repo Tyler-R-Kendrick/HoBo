@@ -898,9 +898,12 @@ signal while it is being closed is only recorded.
 Vitest clears inherited Git repository selectors before loading tests, so a
 pre-commit run cannot redirect temporary repositories, worktrees, or indexes to
 the checkout being committed. It also gives each test file a tmux server of its
-own (`TMUX_TMPDIR` under the test TMPDIR, `TMUX` cleared, the server killed
-after the file) and sets `HOBO_CODE_SEAT_AGENTS=0`, so no test reaches the
-developer's tmux or starts their agent CLIs (`test/isolate-tmux.ts`). Tests still set those variables explicitly for
+own (`TMUX_TMPDIR` under the test TMPDIR, `TMUX` cleared, and the server on that
+socket killed after the file, by the socket's path) and sets
+`HOBO_CODE_SEAT_AGENTS=0`, so no test reaches the developer's tmux or starts
+their agent CLIs (`test/isolate-tmux.ts`). A test that starts a process with an
+environment of its own builds it with `testEnv` (`test/test-env.ts`), which
+carries both. Tests still set those variables explicitly for
 their own temporary repositories. Set `HOBO_TEST_MAX_WORKERS` to bound Vitest
 workers on slow or memory-constrained hosts and `HOBO_TEST_TIMEOUT` to adjust
 the default per-test and hook budgets. Turbo's strict environment passes both

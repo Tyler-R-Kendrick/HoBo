@@ -14,6 +14,8 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { testEnv } from "./test-env.js";
+
 // hobo-code composes HoBo in process: a `/hobo <verb>` in its shell loads
 // @hobo/hobo's composition, whose default runtime keeps its event store in a
 // `hobo-yard-*` directory under TMPDIR. However hobo-code is ended, that store
@@ -223,15 +225,14 @@ async function endTheShell(ending: Ending, run: Run = {}): Promise<Ended> {
 		`stty -a > '${at("stty-after")}'`,
 		`while [ ! -e '${at("done")}' ]; do sleep 0.1; done`,
 	].join("; ");
-	const env: NodeJS.ProcessEnv = {
+	const env: NodeJS.ProcessEnv = testEnv({
 		PATH: process.env.PATH ?? "",
 		HOME: root,
 		HOBO_HOME: join(root, "home"),
 		TMPDIR: tmp,
+		// The case's own tmux server, not the file's; testEnv also turns off
+		// the seating of the agent CLIs found on PATH (`claude`, `codex`, ...).
 		TMUX_TMPDIR: tmuxDir,
-		// The shell seats the agent CLIs it finds on PATH in tmux; a test must
-		// not start the developer's own (`claude`, `codex`, ...).
-		HOBO_CODE_SEAT_AGENTS: "0",
 		TERM: "xterm-256color",
 		HOBO_CODE_ENGINE: "none",
 		HOBO_CODE_FROM_SOURCE: "0",
@@ -242,7 +243,7 @@ async function endTheShell(ending: Ending, run: Run = {}): Promise<Ended> {
 		// within a moment.
 		HOBO_CODE_SIDECAR_POLL_MS: "250",
 		NODE_NO_WARNINGS: "1",
-	};
+	});
 	if (run.busyVerb === true) env.HOBO_CODE_HOBO_BIN = busyHobo;
 	const script = spawn("script", ["-qfec", command, "/dev/null"], {
 		cwd: project,

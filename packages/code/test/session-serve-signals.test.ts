@@ -5,6 +5,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { testEnv } from "./test-env.js";
+
 // `hobo-code session serve` runs a loopback session browser until a signal
 // stops it, and closes its server before it ends. The launcher passes SIGHUP
 // and SIGQUIT on as well as SIGINT and SIGTERM (a closing terminal is a
@@ -37,7 +39,7 @@ function serveThenSignal(signal: NodeJS.Signals): Promise<Stopped> {
 	return new Promise((resolve, reject) => {
 		const run = spawn(process.execPath, [launcher, "session", "serve"], {
 			cwd: pkgRoot,
-			env: {
+			env: testEnv({
 				PATH: process.env.PATH ?? "",
 				HOME: root,
 				HOBO_HOME: join(root, "home"),
@@ -45,7 +47,7 @@ function serveThenSignal(signal: NodeJS.Signals): Promise<Stopped> {
 				HOBO_CODE_FROM_SOURCE: "0",
 				HOBO_CODE_SKIP_STALE_REBUILD: "1",
 				NODE_NO_WARNINGS: "1",
-			},
+			}),
 			stdio: ["ignore", "pipe", "pipe"],
 		});
 		let output = "";

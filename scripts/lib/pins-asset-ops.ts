@@ -70,7 +70,7 @@ function fetchHint(name: string): string {
  * others), `GITHUB_ACTIONS` or `TF_BUILD` (Azure Pipelines) set to anything
  * but empty, false or 0. Nothing else is read.
  */
-function inCi(env: NodeJS.ProcessEnv): boolean {
+export function inCi(env: NodeJS.ProcessEnv): boolean {
 	return [env.CI, env.GITHUB_ACTIONS, env.TF_BUILD].some((value) => {
 		const set = (value ?? "").toLowerCase();
 		return set !== "" && set !== "false" && set !== "0";

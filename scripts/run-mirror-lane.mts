@@ -48,6 +48,7 @@ import {
 	MIRROR_LANE_SEED,
 	MIRROR_LANE_SERVICES,
 	type RunningMirror,
+	refusePinsRootInCi,
 	resolveMirrorBin,
 	startMirror,
 	summarizeJournal,
@@ -247,6 +248,7 @@ process.once("exit", () => {
 
 let status = 1;
 try {
+	refusePinsRootInCi(process.env, options.pinsRoot, root);
 	const binary = await resolveMirrorBin(process.env, options.pinsRoot);
 	console.log(`mirror-lane: mirror ${binary.path}`);
 	console.log(`mirror-lane:   from ${binary.origin}`);

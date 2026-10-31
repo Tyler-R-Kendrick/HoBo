@@ -212,8 +212,51 @@ describe("resolveMirrorBin", () => {
 		assert.equal(found.path, path);
 		assert.equal(found.verified, true);
 		assert.match(found.origin, /pin v1\.0\.0/u);
+		// The origin line names the pins file the pin came from.
+		assert.ok(
+			found.origin.includes(join(root, "tools/pins/siblings.json")),
+			found.origin,
+		);
 	});
 });
+
+/**
+ * A pins root holding a pin for this machine's target, and a cache holding
+ * bytes that match it: a script that records that it ran. What a CI job
+ * would run if `--pins-root` let it pick its own pin.
+ */
+interface PinnedElsewhere {
+	readonly pinsRoot: string;
+	readonly cache: string;
+	/** Written by the pinned bytes when they run. */
+	readonly ran: string;
+}
+
+function pinnedElsewhere(): PinnedElsewhere {
+	const pinsRoot = scratch("mirror-lane");
+	const cache = scratch("mirror-lane");
+	const ran = join(scratch("mirror-lane"), "ran");
+	const bytes = `#!/bin/sh\necho ran > ${JSON.stringify(ran)}\nexit 3\n`;
+	const sha256 = sha256Hex(bytes);
+	const url = "https://example.com/mirror";
+	writeManifest(
+		pinsRoot,
+		`{"mirror":{"repo":"https://example.com/o/mirror","tag":"v9.9.9","files":{"${currentTarget()}":{"url":"${url}","sha256":"${sha256}","size":${bytes.length},"entry":"mirror"}}},"opensesame-kit":null}`,
+	);
+	mkdirSync(join(cache, "siblings", sha256), { recursive: true, mode: 0o700 });
+	chmodSync(join(cache, "siblings"), 0o700);
+	writeFileSync(
+		cachedPath(join(cache, "siblings"), {
+			url,
+			sha256,
+			size: bytes.length,
+			entry: "mirror",
+		}),
+		bytes,
+		{ mode: 0o755 },
+	);
+	return { pinsRoot, cache, ran };
+}
 
 describe("startMirror", () => {
 	it("starts the lane's services on a free loopback port with the seed, the controllable clock and the fault routes, and stops it", async () => {
@@ -574,6 +617,40 @@ describe("run-mirror-lane.mts", () => {
 			run.stderr,
 		);
 		assert.doesNotMatch(run.stdout, /passed|ok \(/u);
+	});
+
+	it("refuses --pins-root other than this repository in CI, as pins:status refuses an override, and runs nothing", () => {
+		const elsewhere = pinnedElsewhere();
+		const run = lane(["--pins-root", elsewhere.pinsRoot], {
+			MIRROR_BIN: "",
+			CI: "true",
+			XDG_CACHE_HOME: elsewhere.cache,
+		});
+		assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
+		assert.match(run.stderr, /OVERRIDE_IN_CI: --pins-root/u);
+		assert.ok(run.stderr.includes(elsewhere.pinsRoot), run.stderr);
+		assert.equal(existsSync(elsewhere.ran), false, "the pinned binary ran");
+	});
+
+	it("takes --pins-root in CI with HOBO_PINS_ALLOW_OVERRIDE=1, and says which pins file it read", () => {
+		const elsewhere = pinnedElsewhere();
+		const run = lane(["--pins-root", elsewhere.pinsRoot], {
+			MIRROR_BIN: "",
+			CI: "true",
+			HOBO_PINS_ALLOW_OVERRIDE: "1",
+			XDG_CACHE_HOME: elsewhere.cache,
+		});
+		assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
+		assert.match(
+			run.stdout,
+			new RegExp(
+				`from pin v9\\.9\\.9 in ${join(elsewhere.pinsRoot, "tools/pins/siblings.json").replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}`,
+				"u",
+			),
+		);
+		// The pinned bytes ran (and, being a stand-in, exited at once).
+		assert.equal(existsSync(elsewhere.ran), true);
+		assert.match(run.stderr, /MIRROR_START_FAILED/u);
 	});
 
 	it("reads the pin from --pins-root and the cache from XDG_CACHE_HOME", () => {

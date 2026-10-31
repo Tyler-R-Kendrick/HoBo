@@ -37,8 +37,8 @@ import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 
 import { LaneChildren } from "./lane-children.ts";
-import { PINS_FILE, parsePins } from "./pins.ts";
-import { refuseOverridesInCi } from "./pins-asset-ops.ts";
+import { PINS_FILE, PinsError, parsePins } from "./pins.ts";
+import { inCi, refuseOverridesInCi } from "./pins-asset-ops.ts";
 import {
 	assetFor,
 	cacheDir,
@@ -175,8 +175,27 @@ export async function resolveMirrorBin(
 	return {
 		path,
 		verified: true,
-		origin: `pin ${pin.tag} (${target} sha256 ${asset.sha256.slice(0, 12)}, re-hashed from the cache)`,
+		origin: `pin ${pin.tag} in ${file} (${target} sha256 ${asset.sha256.slice(0, 12)}, re-hashed from the cache)`,
 	};
+}
+
+/**
+ * `--pins-root` reads the pin from a directory other than the repository: an
+ * override like `MIRROR_BIN`, since whoever names the directory chooses the
+ * bytes. In CI it is refused with the refusal `pins:status` uses for one
+ * (ADR-0169, item 7), unless `HOBO_PINS_ALLOW_OVERRIDE=1`.
+ */
+export function refusePinsRootInCi(
+	env: NodeJS.ProcessEnv,
+	pinsRoot: string,
+	repositoryRoot: string,
+): void {
+	if (resolve(pinsRoot) === resolve(repositoryRoot)) return;
+	if (!inCi(env) || env.HOBO_PINS_ALLOW_OVERRIDE === "1") return;
+	throw new PinsError(
+		"OVERRIDE_IN_CI",
+		`--pins-root ${pinsRoot} is set in CI: a pin read from outside the repository is chosen by whoever names the directory, so a green run would not mean the repository's pinned release ran. Drop it, or set HOBO_PINS_ALLOW_OVERRIDE=1 if this run is meant to test another pin`,
+	);
 }
 
 /** A loopback port nothing listened on a moment ago (mirror has no way to report a port it chose). */

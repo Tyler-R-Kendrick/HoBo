@@ -153,14 +153,22 @@ function calledSpecifier(
 	return undefined;
 }
 
+/**
+ * Stands in an assembled path for the part computed at run time: a template
+ * literal's substitution, or a `join(…)`/`resolve(…)` argument that is not a
+ * literal. It is not a character a path holds, so a literal `*` (a glob) stays
+ * literal; the check shows it as `*`.
+ */
+export const COMPUTED = "\u0000";
+
 /** What a file names, read from one parse. */
 export interface ModuleFacts {
 	/** Every module specifier, in source order. */
 	readonly imports: ImportSpecifier[];
 	/**
 	 * The path text it assembles: each string or template literal that is not an
-	 * import specifier (a substitution reads `*`), and each `join(…)`/`resolve(…)`
-	 * call's arguments joined with `/`, a non-literal argument read as `*`.
+	 * import specifier, and each `join(…)`/`resolve(…)` call's arguments joined
+	 * with `/`; a substitution or a non-literal argument reads `COMPUTED`.
 	 */
 	readonly paths: string[];
 	/**
@@ -197,7 +205,7 @@ function templateText(node: ts.Node): string | undefined {
 	if (ts.isTemplateExpression(node))
 		return [
 			node.head.text,
-			...node.templateSpans.map((span) => `*${span.literal.text}`),
+			...node.templateSpans.map((span) => `${COMPUTED}${span.literal.text}`),
 		].join("");
 	return undefined;
 }
@@ -262,7 +270,7 @@ export function readModule(source: string, fileName: string): ModuleFacts {
 			)
 				paths.push(
 					node.arguments
-						.map((argument) => templateText(argument) ?? "*")
+						.map((argument) => templateText(argument) ?? COMPUTED)
 						.join("/"),
 				);
 		} else if (

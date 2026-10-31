@@ -10,9 +10,18 @@
 			"why": "links packages/core, packages/runtime and packages/runtimes/runtime-local into a generated app and runs its code, which imports them by name"
 		},
 		{
+			"from": "packages/cli/test/codegen-app-compilation.test.ts",
+			"needs": ["@hobo/core#build", "@hobo/runtime#build"],
+			"why": "links packages/core and packages/runtime into a generated project's node_modules/@hobo by a name it computes, and type-checks the generated declarations against their exports' types, dist/index.d.ts"
+		},
+		{
 			"from": "packages/cli/test/typescript-project-codegen.test.ts",
-			"needs": ["@hobo/bindles#build"],
-			"why": "links node_modules/@hobo/bindles into a generated project and imports the generated code, which imports @hobo/bindles"
+			"needs": [
+				"@hobo/bindles#build",
+				"@hobo/core#build",
+				"@hobo/runtime#build"
+			],
+			"why": "links packages/bindles, and packages/runtime and packages/core by a name it computes, into generated projects' node_modules/@hobo, compiles the generated code against their dist/ types and imports it, which imports them by name"
 		},
 		{
 			"from": "packages/code/src/composed-hobo.ts",

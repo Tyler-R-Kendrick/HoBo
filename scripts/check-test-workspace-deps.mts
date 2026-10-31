@@ -36,8 +36,10 @@
  *   specifier computed at run time cannot be read.
  * - A path a loaded file assembles at run time that names another package's
  *   `dist/`, or ends at its directory in a file that spawns, links or loads by
- *   a computed path (lib/test-runtime-reaches), fails unless
- *   `scripts/test-deps-runtime-reaches.json` declares what the file needs.
+ *   a computed path, or does either for a package it names by a computed
+ *   segment (`join(root, "packages", name, "dist")`; lib/test-runtime-reaches),
+ *   fails unless `scripts/test-deps-runtime-reaches.json` declares what the
+ *   file needs.
  *   Every test task that loads a declared file must have those builds, and a
  *   declaration no test task reaches, or that names no workspace package,
  *   fails too.
@@ -79,7 +81,9 @@ import { type ModuleFacts, readModule } from "./lib/test-import-specifiers.mts";
 import {
 	parseRuntimeReaches,
 	RUNTIME_REACHES_FILE,
-	runtimeReaches,
+	type RuntimeReaches,
+	runtimeReachReader,
+	shownPath,
 } from "./lib/test-runtime-reaches.mts";
 import {
 	catalogValues,
@@ -685,33 +689,42 @@ export function scanTestWorkspaceDeps(
 	const declared = new Map(
 		registry.reaches.map((entry) => [entry.from, entry]),
 	);
-	const dirs = packages.map(({ name, dir }) => ({ name, dir }));
-	const reachedBy = new Map<string, Map<string, string>>();
+	const readReaches = runtimeReachReader(
+		packages.map(({ name, dir }) => ({ name, dir })),
+	);
+	const reachedBy = new Map<string, RuntimeReaches>();
 	const reachesOf = (file: string) => {
 		let reached = reachedBy.get(file);
 		if (reached === undefined) {
-			reached = runtimeReaches(factsOf(file), dirs);
+			reached = readReaches(factsOf(file), file);
 			reachedBy.set(file, reached);
 		}
 		return reached;
 	};
 	const neededBuild = (need: string) => /^(.+)#build$/u.exec(need)?.[1];
-	const undeclared = new Map<string, Map<string, string>>();
+	const undeclared = new Map<
+		string,
+		{ named: Map<string, string>; computed: string | undefined }
+	>();
 	const reachesAnother = new Set<string>();
 	for (const [file, loading] of running) {
-		const reached = reachesOf(file);
-		if (reached.size === 0) continue;
+		const { named, computed } = reachesOf(file);
+		if (named.size === 0 && computed === undefined) continue;
 		const entry = declared.get(file);
 		for (const key of loading) {
 			const { pkg, task } = tasks.get(key)!;
-			const others = [...reached].filter(([name]) => name !== pkg.name);
-			if (others.length === 0) continue;
+			// A computed segment may name any package, so it counts as another.
+			const others = [...named].filter(([name]) => name !== pkg.name);
+			if (others.length === 0 && computed === undefined) continue;
 			reachesAnother.add(file);
 			if (entry === undefined) {
-				const named = undeclared.get(file) ?? new Map<string, string>();
+				const found = undeclared.get(file) ?? {
+					named: new Map<string, string>(),
+					computed,
+				};
 				for (const [name, text] of others)
-					if (!named.has(name)) named.set(name, text);
-				undeclared.set(file, named);
+					if (!found.named.has(name)) found.named.set(name, text);
+				undeclared.set(file, found);
 				continue;
 			}
 			const built = graph.buildsBefore(pkg.name, task);
@@ -766,11 +779,18 @@ export function scanTestWorkspaceDeps(
 	const unmodelled = [
 		...workspace.unmodelled,
 		...(tracked?.nested ?? []),
-		...[...undeclared].map(([file, named]) => {
+		...[...undeclared].map(([file, { named, computed }]) => {
 			const names = [...named.keys()].sort();
+			const reached = [
+				...names,
+				...(computed === undefined
+					? []
+					: ["a package it names by a computed segment"]),
+			];
+			const text = names.length > 0 ? named.get(names[0]!) : computed;
 			return {
 				file,
-				reason: `reaches ${names.join(", ")} at run time through a path it assembles ("${named.get(names[0]!)}"), which this check cannot follow; declare what it needs in ${RUNTIME_REACHES_FILE}`,
+				reason: `reaches ${reached.join(", ")} at run time through a path it assembles ("${shownPath(text ?? "")}"), which this check cannot follow; declare what it needs in ${RUNTIME_REACHES_FILE}`,
 			};
 		}),
 	].sort(byFile);

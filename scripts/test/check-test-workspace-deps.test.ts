@@ -938,6 +938,60 @@ describe("checkTestWorkspaceDeps", () => {
 		);
 	});
 
+	it("fails closed on a path that names a package by a computed segment after a packages directory or a scope", () => {
+		const symlink =
+			'import { symlinkSync } from "node:fs";\nimport { fileURLToPath } from "node:url";\n';
+		const computed = "a package it names by a computed segment";
+		within(
+			grouped({
+				"packages/app/test/join.test.ts": `${SPAWN}${JOIN}const name = "lib";\nspawn(process.execPath, [join(process.cwd(), "packages", name, "dist", "bin.js")]);\n`,
+				"packages/app/test/template.test.ts": `${SPAWN}${JOIN}const name = "lib";\nspawn(process.execPath, [join(process.cwd(), \`packages/\${name}/dist/bin.js\`)]);\n`,
+				"packages/app/test/group.test.ts": `${SPAWN}${JOIN}const name = "rt";\nspawn(process.execPath, [join(process.cwd(), "..", "runtimes", name, "dist", "x.js")]);\n`,
+				// The scope a workspace package's name is under is a group of packages.
+				"packages/app/test/scope.test.ts": `${symlink}${JOIN}export const link = (from: string, name: string) => symlinkSync(from, join("/tmp/x", \`node_modules/@s/\${name}\`), "dir");\n`,
+				// Relative to the file, ../../ is packages/.
+				"packages/app/test/climb.test.ts": `${symlink}for (const name of ["lib"]) symlinkSync(fileURLToPath(new URL(\`../../\${name}\`, import.meta.url)), "/tmp/x", "dir");\n`,
+				// A named package followed by a computed segment may be its dist/.
+				"packages/app/test/sub.test.ts": `${SPAWN}${JOIN}export const run = (file: string) => spawn(process.execPath, [join(process.cwd(), "packages", "lib", file)]);\n`,
+				// A computed package's tracked file needs no build.
+				"packages/app/test/manifest.test.ts": `${SPAWN}${JOIN}spawn("true");\nexport const manifest = (name: string) => join(process.cwd(), "packages", name, "package.json");\n`,
+				// A glob's literal * is not a computed segment, nor a computed root.
+				"packages/app/test/glob.test.ts": `${SPAWN}spawn("true");\nexport const globs = ["packages/*/dist/**", "*/lib/dist/x.js"];\n`,
+				// Nothing here links or loads, so a directory it computes reaches nothing.
+				"packages/app/test/quiet.test.ts": `${JOIN}export const dir = (name: string) => join(process.cwd(), "packages", name);\n`,
+			}),
+			(dir) =>
+				assert.deepEqual(unmodelledIn(dir), [
+					reaching("packages/app/test/climb.test.ts", computed, "../../*"),
+					reaching(
+						"packages/app/test/group.test.ts",
+						computed,
+						"*/../runtimes/*/dist/x.js",
+					),
+					reaching(
+						"packages/app/test/join.test.ts",
+						computed,
+						"*/packages/*/dist/bin.js",
+					),
+					reaching(
+						"packages/app/test/scope.test.ts",
+						computed,
+						"/tmp/x/node_modules/@s/*",
+					),
+					reaching(
+						"packages/app/test/sub.test.ts",
+						"@s/lib",
+						"*/packages/lib/*",
+					),
+					reaching(
+						"packages/app/test/template.test.ts",
+						computed,
+						"*/packages/*/dist/bin.js",
+					),
+				]),
+		);
+	});
+
 	it("checks a declared runtime reach: each need must be ordered for every test task that loads it", () => {
 		const run = [
 			'import { spawn } from "node:child_process";',

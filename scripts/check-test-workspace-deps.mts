@@ -1,44 +1,147 @@
 #!/usr/bin/env node
 /**
- * Every workspace package a package's tests import must be one the package
- * declares.
+ * Every workspace package a test loads must be built before the turbo task
+ * that runs the test.
  *
- * turbo builds a package's dependencies before its tests (`test` depends on
- * `^build`), and it knows them only from `package.json`. A test that imports a
- * sibling the package does not declare — by name (`@hobo/runtime-local`) or by
- * a relative path into the sibling's directory
+ * turbo orders a task only on what `turbo.json` and `package.json` say. A test
+ * that loads a sibling package — by name (`@hobo/runtime-local`) or by a
+ * relative path into the sibling's directory
  * (`../../../runtimes/runtime-local/dist/actor-host/in-memory.js`) — passes
  * only when something else happened to build that sibling first, and fails on
  * a clean checkout or a filtered run. This check finds those imports.
  *
+ * - Scope: the workspace packages under `packages/`, `examples/` and
+ *   `src/draft/` that have the script for the task.
+ * - Files: everything under a `test/`, `tests/` or `__tests__/` directory
+ *   (fixtures and helpers included), `*.test.*` and `*.spec.*` anywhere, and
+ *   `vitest*.config.*`. In a git repository only tracked files are read.
+ * - Tasks: every test file runs under `test`; a file under
+ *   `contracts/consumer/` or `contracts/provider/` also runs under
+ *   `test:contract:consumer` / `test:contract:provider` where the package has
+ *   that script. Each task must have the sibling built (lib/turbo-task-graph).
+ * - A type-only import counts only where the package's tsconfig compiles the
+ *   file: anywhere else it is erased before the test runs.
+ * - Imports are read from the syntax tree (lib/test-import-specifiers). A
+ *   specifier computed at run time, and a `dist/` path built for a child
+ *   process or a URL, cannot be read and are not checked.
+ *
+ * Fix one by declaring the sibling in `devDependencies` where the test imports
+ * it by name, or, for a relative import (which needs no declaration to
+ * resolve), by naming its build on the task:
+ * `"@hobo/runtime#test": { "dependsOn": ["build", "@hobo/runtime-local#build"] }`.
+ * A devDependency widens the package's own `build` and `typecheck`, and every
+ * dependent's; a task override orders that task only.
+ *
  * Usage: node --import tsx scripts/check-test-workspace-deps.mts [--json] [--root <dir>]
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { execFileSync } from "node:child_process";
+import { readdirSync, readFileSync, realpathSync } from "node:fs";
+import { dirname, join, posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import ts from "typescript";
+
+import { GIT_OUTPUT_MAX_BUFFER } from "./lib/git-output.ts";
+import { importSpecifiersOf } from "./lib/test-import-specifiers.mts";
+import {
+	type GraphPackage,
+	type TaskConfig,
+	TurboTaskGraph,
+} from "./lib/turbo-task-graph.mts";
 
 export interface Violation {
 	/** The importing package's name. */
 	readonly package: string;
 	/** The test file, relative to the repository root. */
 	readonly file: string;
+	/** The turbo task that runs the file. */
+	readonly task: string;
 	/** The workspace package it reaches. */
 	readonly imports: string;
 	/** The specifier as written. */
 	readonly specifier: string;
 }
 
-interface WorkspacePackage {
-	readonly name: string;
-	readonly dir: string;
-	readonly declared: ReadonlySet<string>;
+export interface CheckOptions {
+	/** Repository-relative paths to read; by default git's tracked files, or a walk outside a repository. */
+	readonly files?: readonly string[];
 }
 
-/** The `packages:` globs of pnpm-workspace.yaml (only the `*` forms this repository uses). */
-function workspaceGlobs(root: string): string[] {
-	const globs: string[] = [];
+interface Manifest {
+	readonly name?: string;
+	readonly scripts?: Readonly<Record<string, string>>;
+	readonly dependencies?: Readonly<Record<string, string>>;
+	readonly devDependencies?: Readonly<Record<string, string>>;
+	readonly optionalDependencies?: Readonly<Record<string, string>>;
+}
+
+interface WorkspacePackage extends GraphPackage {
+	/** Repository-relative, `/`-separated. */
+	readonly dir: string;
+}
+
+const SCOPES = ["packages/", "examples/", "src/draft/"];
+const CONTRACT_TASKS = [
+	["contracts/consumer/", "test:contract:consumer"],
+	["contracts/provider/", "test:contract:provider"],
+] as const;
+const SOURCE = /\.(?:[cm]?[jt]sx?)$/u;
+const TEST_NAME = /\.(?:test|spec)\.[cm]?[jt]sx?$/u;
+const VITEST_CONFIG = /^vitest[^/]*\.config\.[cm]?[jt]s$/u;
+const TEST_DIRS = new Set(["test", "tests", "__tests__"]);
+const WALK_SKIP = new Set([
+	"node_modules",
+	".git",
+	"dist",
+	"coverage",
+	".turbo",
+]);
+
+function readJson<T>(path: string): T | undefined {
+	try {
+		// SAFETY: the callers read only the fields their type names, each optional.
+		return JSON.parse(readFileSync(path, "utf8")) as T;
+	} catch {
+		return undefined;
+	}
+}
+
+function walk(root: string, dir = ""): string[] {
+	const out: string[] = [];
+	for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
+		if (WALK_SKIP.has(entry.name)) continue;
+		const path = dir === "" ? entry.name : `${dir}/${entry.name}`;
+		if (entry.isDirectory()) out.push(...walk(root, path));
+		else if (entry.isFile()) out.push(path);
+	}
+	return out;
+}
+
+/** git's tracked files (submodules' included) when `root` is a work tree's top, else undefined. */
+function trackedFiles(root: string): string[] | undefined {
+	try {
+		const git = (args: string[]) =>
+			execFileSync("git", ["-C", root, ...args], {
+				encoding: "utf8",
+				maxBuffer: GIT_OUTPUT_MAX_BUFFER,
+				stdio: ["ignore", "pipe", "ignore"],
+			});
+		if (
+			realpathSync(git(["rev-parse", "--show-toplevel"]).trim()) !==
+			realpathSync(root)
+		)
+			return undefined;
+		return git(["ls-files", "-z", "--recurse-submodules"])
+			.split("\0")
+			.filter(Boolean);
+	} catch {
+		return undefined;
+	}
+}
+
+/** The `packages:` globs of pnpm-workspace.yaml (`*` segments, as this repository writes them). */
+function workspaceGlobs(root: string): string[][] {
+	const globs: string[][] = [];
 	let inPackages = false;
 	for (const line of readFileSync(
 		join(root, "pnpm-workspace.yaml"),
@@ -50,227 +153,171 @@ function workspaceGlobs(root: string): string[] {
 		}
 		if (!inPackages) continue;
 		const match = /^\s+-\s+["']?([^"'\s]+)["']?\s*$/u.exec(line);
-		if (match?.[1]) globs.push(match[1]);
+		if (match?.[1] && !match[1].startsWith("!"))
+			globs.push(match[1].split("/"));
 		else if (/^\S/u.test(line)) break;
 	}
 	return globs;
 }
 
-function isDirectory(path: string): boolean {
-	try {
-		return statSync(path).isDirectory();
-	} catch {
-		return false;
+function matches(glob: readonly string[], dir: string): boolean {
+	const parts = dir.split("/");
+	return (
+		glob.length === parts.length &&
+		glob.every((part, i) => part === "*" || part === parts[i])
+	);
+}
+
+function workspacePackages(
+	root: string,
+	files: readonly string[],
+): WorkspacePackage[] {
+	const globs = workspaceGlobs(root);
+	const listed = new Set(files);
+	const found: { dir: string; manifest: Manifest }[] = [];
+	for (const file of files) {
+		if (!file.endsWith("/package.json")) continue;
+		const dir = file.slice(0, -"/package.json".length);
+		if (!globs.some((glob) => matches(glob, dir))) continue;
+		const manifest = readJson<Manifest>(join(root, file));
+		if (manifest?.name) found.push({ dir, manifest });
 	}
+	const names = new Set(found.map((item) => item.manifest.name));
+	return found.map(({ dir, manifest }) => ({
+		name: manifest.name!,
+		dir,
+		scripts: new Set(Object.keys(manifest.scripts ?? {})),
+		dependencies: [
+			...Object.keys(manifest.dependencies ?? {}),
+			...Object.keys(manifest.devDependencies ?? {}),
+			...Object.keys(manifest.optionalDependencies ?? {}),
+		].filter((name) => names.has(name)),
+		tasks: listed.has(`${dir}/turbo.json`)
+			? readJson<{ tasks?: Record<string, TaskConfig> }>(
+					join(root, dir, "turbo.json"),
+				)?.tasks
+			: undefined,
+	}));
 }
 
-function expand(root: string, glob: string): string[] {
-	let candidates = [root];
-	for (const part of glob.split("/")) {
-		const next: string[] = [];
-		for (const base of candidates) {
-			if (part !== "*") {
-				if (isDirectory(join(base, part))) next.push(join(base, part));
-				continue;
-			}
-			let names: string[] = [];
-			try {
-				names = readdirSync(base);
-			} catch {
-				continue;
-			}
-			for (const name of names)
-				if (name !== "node_modules" && isDirectory(join(base, name)))
-					next.push(join(base, name));
-		}
-		candidates = next;
+/** The tasks that run `path` (relative to its package), or none for a file no test task loads. */
+function tasksRunning(path: string, scripts: ReadonlySet<string>): string[] {
+	if (!SOURCE.test(path) || path.endsWith(".d.ts")) return [];
+	const parts = path.split("/");
+	const name = parts.at(-1)!;
+	const config = parts.length === 1 && VITEST_CONFIG.test(name);
+	if (
+		!config &&
+		!TEST_NAME.test(name) &&
+		!parts.slice(0, -1).some((part) => TEST_DIRS.has(part))
+	)
+		return [];
+	const tasks = scripts.has("test") ? ["test"] : [];
+	for (const [prefix, task] of CONTRACT_TASKS)
+		if ((config || path.includes(prefix)) && scripts.has(task))
+			tasks.push(task);
+	return tasks;
+}
+
+/** Whether the package's tsconfig compiles `file` (an absolute path). */
+function compiledBy(
+	root: string,
+	pkg: WorkspacePackage,
+	cache: Map<string, Set<string>>,
+	file: string,
+): boolean {
+	let names = cache.get(pkg.dir);
+	if (names === undefined) {
+		names = new Set<string>();
+		const dir = join(root, pkg.dir);
+		const configPath = join(dir, "tsconfig.json");
+		const read = ts.readConfigFile(configPath, ts.sys.readFile);
+		if (read.config !== undefined)
+			for (const name of ts.parseJsonConfigFileContent(
+				read.config,
+				ts.sys,
+				dir,
+				undefined,
+				configPath,
+			).fileNames)
+				names.add(resolve(name));
+		cache.set(pkg.dir, names);
 	}
-	return candidates;
+	return names.has(resolve(file));
 }
 
-/** The fields of a package.json this check reads. */
-interface Manifest {
-	readonly name?: string;
-	readonly dependencies?: Readonly<Record<string, string>>;
-	readonly devDependencies?: Readonly<Record<string, string>>;
-	readonly peerDependencies?: Readonly<Record<string, string>>;
-	readonly optionalDependencies?: Readonly<Record<string, string>>;
-}
-
-/** A directory's package.json, or undefined where it has none or it does not parse. */
-function manifestOf(dir: string): Manifest | undefined {
-	try {
-		// SAFETY: a workspace package.json is an object whose dependency fields map names to specifiers; only those fields and `name` are read.
-		return JSON.parse(
-			readFileSync(join(dir, "package.json"), "utf8"),
-		) as Manifest;
-	} catch {
-		return undefined;
-	}
-}
-
-function workspacePackages(root: string): WorkspacePackage[] {
-	const found = new Map<string, WorkspacePackage>();
-	for (const glob of workspaceGlobs(root))
-		for (const dir of expand(root, glob)) {
-			const manifest = manifestOf(dir);
-			if (!manifest?.name) continue;
-			const declared = new Set<string>([
-				...Object.keys(manifest.dependencies ?? {}),
-				...Object.keys(manifest.devDependencies ?? {}),
-				...Object.keys(manifest.peerDependencies ?? {}),
-				...Object.keys(manifest.optionalDependencies ?? {}),
-			]);
-			found.set(dir, { name: manifest.name, dir, declared });
-		}
-	return [...found.values()];
-}
-
-const SKIP = new Set([
-	"node_modules",
-	"dist",
-	"coverage",
-	".turbo",
-	"fixtures",
-]);
-
-/** Test files of a package: anything under test/ or tests/, and *.test.* / *.spec.* anywhere else. */
-function testFiles(dir: string, inTests = false): string[] {
-	const out: string[] = [];
-	let entries: string[] = [];
-	try {
-		entries = readdirSync(dir);
-	} catch {
-		return out;
-	}
-	for (const name of entries) {
-		if (SKIP.has(name)) continue;
-		const path = join(dir, name);
-		let stats;
-		try {
-			stats = statSync(path);
-		} catch {
-			continue;
-		}
-		if (stats.isDirectory()) {
-			// A nested workspace package is its own package.
-			if (statSafe(join(path, "package.json"))) continue;
-			out.push(
-				...testFiles(path, inTests || name === "test" || name === "tests"),
-			);
-			continue;
-		}
-		if (!/\.(?:[cm]?[jt]sx?)$/u.test(name)) continue;
-		if (inTests || /\.(?:test|spec)\.[cm]?[jt]sx?$/u.test(name)) out.push(path);
-	}
-	return out;
-}
-
-function statSafe(path: string): boolean {
-	try {
-		return statSync(path).isFile();
-	} catch {
-		return false;
-	}
-}
-
-/**
- * The import specifiers of a file: static and type imports, re-exports,
- * side-effect imports, `import()` and `require()`. TypeScript's own scanner
- * reads them, so text inside a comment, a string or a template literal is not
- * an import (runtime-local's tests hold a Bindle's source, imports and all, in
- * a template literal).
- */
-export function specifiersOf(source: string): string[] {
-	return ts
-		.preProcessFile(source, true, true)
-		.importedFiles.map((file) => file.fileName);
-}
-
-/**
- * The builds the root turbo.json orders before a package's tasks by name
- * (`"@hobo/runtime#test": { "dependsOn": ["build", "@hobo/runtime-local#build"] }`).
- * That is how a test reaches a sibling that cannot be a dependency because the
- * sibling already depends on the package (a cycle turbo refuses).
- */
-function turboTaskBuilds(root: string): Map<string, Set<string>> {
-	const ordered = new Map<string, Set<string>>();
-	let config: { tasks?: Record<string, { dependsOn?: string[] }> };
-	try {
-		// SAFETY: the root turbo.json is turbo's own schema; only `tasks.<key>.dependsOn` (string arrays) is read.
-		config = JSON.parse(
-			readFileSync(join(root, "turbo.json"), "utf8"),
-		) as typeof config;
-	} catch {
-		return ordered;
-	}
-	for (const [key, task] of Object.entries(config.tasks ?? {})) {
-		const at = key.lastIndexOf("#");
-		if (at <= 0) continue;
-		const owner = key.slice(0, at);
-		for (const dependency of task.dependsOn ?? []) {
-			const match = /^(.+)#build$/u.exec(dependency);
-			if (!match?.[1]) continue;
-			const set = ordered.get(owner) ?? new Set<string>();
-			set.add(match[1]);
-			ordered.set(owner, set);
-		}
-	}
-	return ordered;
-}
-
-/**
- * The violations under `root`, for the production packages (those under
- * `packages/`, as `check-package-boundaries.mts` scopes itself): a test of one
- * that reaches a workspace package it neither declares nor has built first by
- * name in turbo.json.
- */
-export function checkTestWorkspaceDeps(root: string): Violation[] {
-	const packages = workspacePackages(root);
-	const ordered = turboTaskBuilds(root);
-	const production = join(root, "packages");
+/** The violations under `root` (see the header). */
+export function checkTestWorkspaceDeps(
+	root: string,
+	options: CheckOptions = {},
+): Violation[] {
+	const files = options.files ?? trackedFiles(root) ?? walk(root);
+	const packages = workspacePackages(root, files);
 	const byName = new Map(packages.map((pkg) => [pkg.name, pkg]));
 	const byDir = [...packages].sort((a, b) => b.dir.length - a.dir.length);
 	const owner = (path: string) =>
-		byDir.find(
-			(pkg) => path === pkg.dir || path.startsWith(`${pkg.dir}${sep}`),
-		);
+		byDir.find((pkg) => path === pkg.dir || path.startsWith(`${pkg.dir}/`));
+	const graph = new TurboTaskGraph(
+		byName,
+		readJson<{ tasks?: Record<string, TaskConfig> }>(join(root, "turbo.json"))
+			?.tasks ?? {},
+	);
+	const tsconfigs = new Map<string, Set<string>>();
+	const seen = new Set<string>();
 	const violations: Violation[] = [];
-	for (const pkg of packages.filter((item) =>
-		item.dir.startsWith(`${production}${sep}`),
-	))
-		for (const file of testFiles(pkg.dir)) {
-			for (const specifier of specifiersOf(readFileSync(file, "utf8"))) {
-				let target: WorkspacePackage | undefined;
-				if (specifier.startsWith(".")) {
-					const reached = owner(resolve(dirname(file), specifier));
-					if (reached && reached !== pkg) target = reached;
-				} else {
-					const parts = specifier.split("/");
-					const name = specifier.startsWith("@")
-						? parts.slice(0, 2).join("/")
-						: parts[0]!;
-					const named = byName.get(name);
-					if (named && named !== pkg) target = named;
-				}
-				if (
-					target &&
-					!pkg.declared.has(target.name) &&
-					!ordered.get(pkg.name)?.has(target.name)
-				)
-					violations.push({
-						package: pkg.name,
-						file: relative(root, file),
-						imports: target.name,
-						specifier,
-					});
+	for (const file of files) {
+		const pkg = owner(file);
+		if (pkg === undefined || !SCOPES.some((scope) => pkg.dir.startsWith(scope)))
+			continue;
+		const tasks = tasksRunning(file.slice(pkg.dir.length + 1), pkg.scripts);
+		if (tasks.length === 0) continue;
+		let source: string;
+		try {
+			source = readFileSync(join(root, file), "utf8");
+		} catch {
+			continue;
+		}
+		for (const { specifier, typeOnly } of importSpecifiersOf(source, file)) {
+			let target: WorkspacePackage | undefined;
+			if (
+				specifier === "." ||
+				specifier === ".." ||
+				specifier.startsWith("./") ||
+				specifier.startsWith("../")
+			)
+				target = owner(
+					posix.normalize(posix.join(posix.dirname(file), specifier)),
+				);
+			else {
+				const parts = specifier.split("/");
+				target = byName.get(
+					specifier.startsWith("@") ? parts.slice(0, 2).join("/") : parts[0]!,
+				);
+			}
+			if (target === undefined || target === pkg) continue;
+			if (typeOnly && !compiledBy(root, pkg, tsconfigs, join(root, file)))
+				continue;
+			const needed = graph.needsBuilt(target.name);
+			for (const task of tasks) {
+				const built = graph.buildsBefore(pkg.name, task);
+				if (needed.every((name) => built.has(name))) continue;
+				const key = `${file}\0${task}\0${target.name}\0${specifier}`;
+				if (seen.has(key)) continue;
+				seen.add(key);
+				violations.push({
+					package: pkg.name,
+					file,
+					task,
+					imports: target.name,
+					specifier,
+				});
 			}
 		}
-	return violations.sort(
-		(a, b) =>
-			a.package.localeCompare(b.package) ||
-			a.file.localeCompare(b.file) ||
-			a.specifier.localeCompare(b.specifier),
+	}
+	const order = (item: Violation) =>
+		`${item.file}\0${item.task}\0${item.imports}\0${item.specifier}`;
+	return violations.sort((a, b) =>
+		order(a) < order(b) ? -1 : order(a) > order(b) ? 1 : 0,
 	);
 }
 
@@ -290,7 +337,7 @@ if (
 	else
 		for (const item of violations)
 			process.stderr.write(
-				`${item.file}: ${item.package} imports ${item.imports} (${item.specifier}) but does not declare it in package.json; turbo will not build it before these tests\n`,
+				`${item.file}: ${item.package}#${item.task} loads ${item.imports} (${item.specifier}), and turbo builds it after; declare it in devDependencies if the test imports it by name, else add "${item.imports}#build" to "${item.package}#${item.task}".dependsOn in turbo.json\n`,
 			);
 	process.exitCode = violations.length === 0 ? 0 : 1;
 }

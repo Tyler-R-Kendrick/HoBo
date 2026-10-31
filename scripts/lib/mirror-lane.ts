@@ -62,6 +62,17 @@ export class MirrorLaneError extends Error {
 	}
 }
 
+/** A JSON value as `JSON.parse` returns it. */
+type JsonValue =
+	| null
+	| boolean
+	| number
+	| string
+	| readonly JsonValue[]
+	| { readonly [key: string]: JsonValue };
+
+const tagOf = Object.prototype.toString;
+
 /** The emulated services the lane starts: Vercel's REST API and the AWS services HoBo's resolvers reach. */
 export const MIRROR_LANE_SERVICES = Object.freeze([
 	"vercel.api",
@@ -250,6 +261,134 @@ function mirrorEnv(ambient: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
 	return { ...env, MIRROR_CLOCK: "controllable", MIRROR_VERCEL_FAULTS: "1" };
 }
 
+/** How mirror's start-up ended before it could be asked for its health. */
+type Announcement =
+	| { readonly kind: "banner"; readonly version: string }
+	| { readonly kind: "closed" }
+	| { readonly kind: "spawn-error"; readonly error: Error }
+	| { readonly kind: "timeout" };
+
+/** `mirror <version> listening on <scheme>://<address>`, the line mirror prints once its specs are loaded. */
+const BANNER = /^mirror (\S+) listening on (https?):\/\/(\S+)$/u;
+
+/**
+ * Wait for this child's own banner naming exactly `scheme://address`, or for
+ * it to end first. Decided by the child's output and exit events, and by one
+ * deadline: nothing is polled.
+ */
+function announced(
+	child: ChildProcess,
+	scheme: string,
+	address: string,
+	timeoutMs: number,
+): Promise<Announcement> {
+	return new Promise((resolveAnnouncement) => {
+		let partial = "";
+		const read = (chunk: Buffer) => {
+			const lines = `${partial}${chunk.toString("utf8")}`.split("\n");
+			partial = lines.pop() ?? "";
+			for (const line of lines) {
+				const banner = BANNER.exec(line.trim());
+				if (banner?.[2] === scheme && banner[3] === address) {
+					finish({ kind: "banner", version: banner[1] ?? "" });
+				}
+			}
+		};
+		const closed = () => finish({ kind: "closed" });
+		const failed = (error: Error) => finish({ kind: "spawn-error", error });
+		const timer = setTimeout(() => finish({ kind: "timeout" }), timeoutMs);
+		function finish(announcement: Announcement): void {
+			clearTimeout(timer);
+			child.stdout?.off("data", read);
+			child.stderr?.off("data", read);
+			child.off("close", closed);
+			child.off("error", failed);
+			resolveAnnouncement(announcement);
+		}
+		child.stdout?.on("data", read);
+		child.stderr?.on("data", read);
+		child.once("close", closed);
+		child.once("error", failed);
+	});
+}
+
+/** What `/_mirror/health` said once the banner was printed. */
+type Health =
+	| { readonly kind: "ours" }
+	| { readonly kind: "another"; readonly version: string }
+	| { readonly kind: "unhealthy"; readonly detail: string };
+
+/** Mirror prints its banner just before it binds: a refusal right after it is retried, 25 ms apart, at most this often. */
+const BIND_RETRIES = 40;
+
+/** The two fields of a `/_mirror/health` answer the lane reads. */
+interface HealthAnswer {
+	readonly ok: boolean;
+	readonly version: string;
+}
+
+function healthOf(body: string): HealthAnswer {
+	let parsed: JsonValue;
+	try {
+		// SAFETY: JSON.parse yields a JSON value; its shape is checked below.
+		parsed = JSON.parse(body) as JsonValue;
+	} catch {
+		return { ok: false, version: "" };
+	}
+	if (tagOf.call(parsed) !== "[object Object]") {
+		return { ok: false, version: "" };
+	}
+	// SAFETY: the tag check above proves this JSON value is an object.
+	const record = parsed as { readonly [key: string]: JsonValue };
+	const version = record.version;
+	return {
+		ok: record.status === "ok",
+		version: tagOf.call(version) === "[object String]" ? String(version) : "",
+	};
+}
+
+function refused(error: Error): boolean {
+	return "code" in error && error.code === "ECONNREFUSED";
+}
+
+/**
+ * Ask the health route, after the banner, whether the process answering is
+ * the one that printed it: the same version, and status ok.
+ */
+async function confirmHealth(
+	url: string,
+	ca: string | undefined,
+	version: string,
+): Promise<Health> {
+	for (let attempt = 1; ; attempt += 1) {
+		try {
+			const health = await get(`${url}/_mirror/health`, ca);
+			const answer = healthOf(health.body);
+			if (health.status !== 200 || !answer.ok) {
+				return {
+					kind: "unhealthy",
+					detail: `answered ${health.status} ${health.body.slice(0, 200)}`,
+				};
+			}
+			return answer.version === version
+				? { kind: "ours" }
+				: { kind: "another", version: answer.version };
+		} catch (error) {
+			if (
+				!(error instanceof Error) ||
+				!refused(error) ||
+				attempt >= BIND_RETRIES
+			) {
+				return {
+					kind: "unhealthy",
+					detail: `could not be reached: ${error instanceof Error ? error.message : String(error)}`,
+				};
+			}
+			await new Promise((resolveWait) => setTimeout(resolveWait, 25));
+		}
+	}
+}
+
 async function startOnce(
 	options: MirrorOptions,
 	port: number,
@@ -280,16 +419,17 @@ async function startOnce(
 	};
 	child.stdout?.on("data", keep);
 	child.stderr?.on("data", keep);
-	let spawnError: Error | undefined;
-	child.once("error", (error) => {
-		spawnError = error;
+	child.on("error", () => {
+		// Reported through `announced`; kept here so it is never unhandled.
 	});
-	const tls = options.tlsDir !== undefined;
-	const url = `${tls ? "https" : "http"}://127.0.0.1:${port}`;
+	const scheme = options.tlsDir === undefined ? "http" : "https";
+	const address = `127.0.0.1:${port}`;
+	const url = `${scheme}://${address}`;
 	const caFile =
 		options.tlsDir === undefined ? undefined : join(options.tlsDir, "ca.pem");
+	const gone = () => child.exitCode !== null || child.signalCode !== null;
 	const stop = async () => {
-		if (child.exitCode === null && child.signalCode === null) {
+		if (child.pid !== undefined && !gone()) {
 			child.kill("SIGTERM");
 			const killer = setTimeout(() => child.kill("SIGKILL"), 5_000);
 			await exited(child);
@@ -297,57 +437,66 @@ async function startOnce(
 		}
 		rmSync(cwd, { recursive: true, force: true });
 	};
-	const deadline = Date.now() + (options.startTimeoutMs ?? 120_000);
-	for (;;) {
-		if (spawnError !== undefined) {
-			await stop();
-			throw new MirrorLaneError(
-				"MIRROR_START_FAILED",
-				`${options.bin} could not be started: ${spawnError.message}`,
-			);
-		}
-		if (child.exitCode !== null || child.signalCode !== null) {
-			if (/address already in use/u.test(output)) {
-				await stop();
-				return "port-taken";
-			}
-			await stop();
-			throw new MirrorLaneError(
-				"MIRROR_START_FAILED",
-				`${options.bin} ${args.join(" ")} exited (${child.exitCode ?? child.signalCode}) before it answered /_mirror/health; it printed:\n${output.trim().slice(-2_000)}`,
-			);
-		}
-		const ca =
-			caFile !== undefined && existsSync(caFile)
-				? readFileSync(caFile, "utf8")
-				: undefined;
-		if (!tls || ca !== undefined) {
-			try {
-				const health = await get(`${url}/_mirror/health`, ca);
-				if (health.status === 200 && /"status":"ok"/u.test(health.body)) {
-					return {
-						url,
-						port,
-						pid: child.pid ?? 0,
-						...(caFile === undefined ? undefined : { caFile }),
-						args,
-						output: () => output,
-						stop,
-					};
-				}
-			} catch {
-				// Not listening yet: mirror loads its specs before it binds.
-			}
-		}
-		if (Date.now() > deadline) {
-			await stop();
-			throw new MirrorLaneError(
-				"MIRROR_UNHEALTHY",
-				`${options.bin} did not answer GET ${url}/_mirror/health within ${options.startTimeoutMs ?? 120_000} ms; it printed:\n${output.trim().slice(-2_000)}`,
-			);
-		}
-		await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+	const printed = () => output.trim().slice(-2_000);
+	const portTaken = () => /address already in use/u.test(output);
+	const timeoutMs = options.startTimeoutMs ?? 120_000;
+
+	const announcement = await announced(child, scheme, address, timeoutMs);
+	if (announcement.kind === "spawn-error") {
+		await stop();
+		throw new MirrorLaneError(
+			"MIRROR_START_FAILED",
+			`${options.bin} could not be started: ${announcement.error.message}`,
+		);
 	}
+	if (announcement.kind === "closed") {
+		await stop();
+		if (portTaken()) return "port-taken";
+		throw new MirrorLaneError(
+			"MIRROR_START_FAILED",
+			`${options.bin} ${args.join(" ")} exited (${child.exitCode ?? child.signalCode}) before it printed that it is listening on ${url}; it printed:\n${printed()}`,
+		);
+	}
+	if (announcement.kind === "timeout") {
+		await stop();
+		throw new MirrorLaneError(
+			"MIRROR_UNHEALTHY",
+			`${options.bin} did not print "mirror <version> listening on ${url}" within ${timeoutMs} ms; it printed:\n${printed()}`,
+		);
+	}
+	const ca =
+		caFile !== undefined && existsSync(caFile)
+			? readFileSync(caFile, "utf8")
+			: undefined;
+	if (caFile !== undefined && ca === undefined) {
+		await stop();
+		throw new MirrorLaneError(
+			"MIRROR_START_FAILED",
+			`${options.bin} announced ${url} but wrote no ${caFile}; it printed:\n${printed()}`,
+		);
+	}
+	const health = await confirmHealth(url, ca, announcement.version);
+	if (health.kind === "ours" && !gone() && !portTaken()) {
+		return {
+			url,
+			port,
+			pid: child.pid ?? 0,
+			...(caFile === undefined ? undefined : { caFile }),
+			args,
+			output: () => output,
+			stop,
+		};
+	}
+	if (health.kind === "another" || portTaken()) {
+		// Another process holds the port: mirror cannot bind it and exits.
+		await stop();
+		return "port-taken";
+	}
+	await stop();
+	throw new MirrorLaneError(
+		"MIRROR_UNHEALTHY",
+		`${options.bin} announced ${url}, but GET /_mirror/health ${health.kind === "unhealthy" ? health.detail : "came from a process that has since exited"}; it printed:\n${printed()}`,
+	);
 }
 
 /**
@@ -367,7 +516,9 @@ export async function startMirror(
 	}
 	throw new MirrorLaneError(
 		"MIRROR_START_FAILED",
-		`every port mirror was given was taken before it could bind (${ATTEMPTS} attempts)`,
+		options.port === undefined
+			? `every port mirror was given was taken before it could bind (${ATTEMPTS} attempts)`
+			: `port ${options.port} was taken by another process`,
 	);
 }
 
@@ -393,16 +544,6 @@ interface JournalLine {
 	readonly operation: string;
 	readonly status: number;
 }
-
-type JsonValue =
-	| null
-	| boolean
-	| number
-	| string
-	| readonly JsonValue[]
-	| { readonly [key: string]: JsonValue };
-
-const tagOf = Object.prototype.toString;
 
 /** The entries of one journal answer, or MIRROR_JOURNAL_UNREADABLE naming what is wrong. */
 function journalEntries(service: string, body: string): readonly JournalLine[] {

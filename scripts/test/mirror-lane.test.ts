@@ -27,6 +27,7 @@ import {
 	MIRROR_LANE_SEED,
 	MIRROR_LANE_SERVICES,
 	MirrorLaneError,
+	type RunningMirror,
 	resolveMirrorBin,
 	startMirror,
 	summarizeJournal,
@@ -60,7 +61,13 @@ const server = createServer((request, response) => {
 	const mirrorEnv = Object.keys(process.env).filter((key) => key.startsWith("MIRROR_")).sort().map((key) => key + "=" + process.env[key]);
 	response.end(JSON.stringify({ args, clock: process.env.MIRROR_CLOCK, faults: process.env.MIRROR_VERCEL_FAULTS, mirrorEnv, cwd: process.cwd(), cwdEntries: require("node:fs").readdirSync("."), readsConfig: existsSync(".mirror/config.json") }));
 });
-setTimeout(() => server.listen(Number(port), host, () => console.log("mirror fake listening on http://" + bind)), 150);
+server.on("error", (error) => {
+	console.error("listen tcp " + bind + ": bind: " + (error.code === "EADDRINUSE" ? "address already in use" : error.message));
+	process.exit(1);
+});
+// Like mirror: the banner first, then (a moment later) the bind.
+if (mode !== "no-banner") console.error("mirror fake listening on http://" + bind);
+setTimeout(() => server.listen(Number(port), host), 50);
 process.on("SIGTERM", () => { console.log("mirror fake: SIGTERM"); process.exit(0); });
 `;
 
@@ -82,6 +89,27 @@ function getJson(url: string): Promise<{
 	readonly readsConfig: boolean;
 }> {
 	return fetch(url).then((response) => response.json());
+}
+
+/**
+ * `startMirror` must refuse: a mirror it started anyway is stopped before the
+ * test fails, so a red run leaves no process behind.
+ */
+async function refusedStart(
+	options: Parameters<typeof startMirror>[0],
+	refusal: (error: Error) => boolean,
+): Promise<void> {
+	let started: RunningMirror;
+	try {
+		started = await startMirror(options);
+	} catch (error) {
+		assert.ok(error instanceof Error && refusal(error), String(error));
+		return;
+	}
+	await started.stop();
+	assert.fail(
+		`startMirror answered ${started.url} where it should have refused`,
+	);
 }
 
 function alive(pid: number): boolean {
@@ -261,25 +289,25 @@ describe("startMirror", () => {
 
 	it("passes --tls-self-signed and waits for the CA it writes", async () => {
 		const tlsDir = scratch("mirror-lane");
-		await assert.rejects(
-			startMirror({
+		await refusedStart(
+			{
 				bin: fakeMirror(),
 				env: process.env,
 				tlsDir,
 				startTimeoutMs: 1_000,
-			}),
+			},
 			// The stand-in serves plain HTTP and writes no ca.pem: a TLS start
 			// must not be reported healthy on the strength of an HTTP answer.
-			/MIRROR_UNHEALTHY/u,
+			(error) => /MIRROR_UNHEALTHY/u.test(error.message),
 		);
 	});
 
 	it("fails with MIRROR_START_FAILED and what mirror printed when it exits first", async () => {
-		await assert.rejects(
-			startMirror({
+		await refusedStart(
+			{
 				bin: fakeMirror(),
 				env: { ...process.env, FAKE_MIRROR_MODE: "exit" },
-			}),
+			},
 			(error: Error) =>
 				error instanceof MirrorLaneError &&
 				error.code === "MIRROR_START_FAILED" &&
@@ -301,14 +329,51 @@ describe("startMirror", () => {
 		assert.equal(existsSync(mark), true);
 	});
 
+	it("trusts no health answer before mirror's own listening banner", async () => {
+		await refusedStart(
+			{
+				bin: fakeMirror(),
+				env: { ...process.env, FAKE_MIRROR_MODE: "no-banner" },
+				startTimeoutMs: 500,
+			},
+			(error: Error) =>
+				error instanceof MirrorLaneError &&
+				error.code === "MIRROR_UNHEALTHY" &&
+				/listening on http:\/\/127\.0\.0\.1:\d+/u.test(error.message),
+		);
+	});
+
+	it("takes a health answer from another process on the port as the port being taken, not as mirror", async () => {
+		const other = createServer((_request, response) => {
+			response.writeHead(200, { "content-type": "application/json" });
+			response.end('{"status":"ok","uptime_ms":86400000,"version":"another"}');
+		});
+		await new Promise<void>((resolve) =>
+			other.listen(0, "127.0.0.1", () => resolve()),
+		);
+		try {
+			// SAFETY: a server listening on a TCP port reports an AddressInfo, never a pipe name.
+			const { port } = other.address() as AddressInfo;
+			await refusedStart(
+				{ bin: fakeMirror(), env: process.env, port },
+				(error: Error) =>
+					error instanceof MirrorLaneError &&
+					error.code === "MIRROR_START_FAILED" &&
+					/taken/u.test(error.message),
+			);
+		} finally {
+			await new Promise<void>((resolve) => other.close(() => resolve()));
+		}
+	});
+
 	it("gives up with MIRROR_UNHEALTHY and stops the process when health never answers ok", async () => {
-		await assert.rejects(
-			startMirror({
+		await refusedStart(
+			{
 				bin: fakeMirror(),
 				env: { ...process.env, FAKE_MIRROR_MODE: "unhealthy" },
 				startTimeoutMs: 1_000,
-			}),
-			/MIRROR_UNHEALTHY/u,
+			},
+			(error) => /MIRROR_UNHEALTHY/u.test(error.message),
 		);
 	});
 });

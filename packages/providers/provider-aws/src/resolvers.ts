@@ -1768,9 +1768,12 @@ const END_SECOND = 253402300800n;
 
 /**
  * A JSON number (RFC 8259 section 6) in decimal parts: sign, whole digits,
- * fraction digits, exponent. Bounded at 40 digits a part and three exponent
- * digits, far past any epoch seconds in the years 0000 to 9999, so the exact
- * arithmetic below stays small.
+ * fraction digits, exponent. At most 40 whole digits and 40 fraction digits;
+ * the exponent's text may have up to three digits, and its value is capped at
+ * 40 either way in {@link instantFromEpochSeconds}. That is far past any epoch
+ * seconds in the years 0000 to 9999 AWS would write, and it keeps the exact
+ * arithmetic small. A number past either bound is refused even when its value
+ * is in range (`1e-41`, or a fraction of 41 digits).
  */
 const JSON_NUMBER =
 	/^(-?)(0|[1-9]\d{0,39})(?:\.(\d{1,40}))?(?:[eE]([+-]?\d{1,3}))?$/u;

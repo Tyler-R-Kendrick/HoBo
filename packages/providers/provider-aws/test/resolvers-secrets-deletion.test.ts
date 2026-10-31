@@ -858,7 +858,8 @@ describe("DeletedDate as a provider answers it", () => {
 		["-62167219200.0004", "before 0000, though it rounds into it"],
 		["253402300799.9995", "in 9999, but it rounds into 10000"],
 		["253402300800", "the first second of 10000"],
-		["1e41", "an exponent past the bound"],
+		["1e41", "past 9999, whatever the exponent cap"],
+		["1e-41", "in range, but an exponent past the cap of 40"],
 	])("refuses the epoch-seconds text %s (%s)", async (raw) => {
 		const runner = harness(liveSecret(), { rawDeletedDate: raw });
 
@@ -868,6 +869,22 @@ describe("DeletedDate as a provider answers it", () => {
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 		);
 		expect(refusal?.message).toContain(`AWS returned a DeletedDate (${raw})`);
+	});
+
+	it("refuses an in-range epoch-seconds text with 41 fraction digits", async () => {
+		const runner = harness(liveSecret(), {
+			rawDeletedDate: `0.${"0".repeat(40)}1`,
+		});
+
+		const refusal = await refusalOf(runner.read());
+
+		expect(refusal instanceof ResolverError ? refusal.code : "").toBe(
+			"RESOLVER_OUTPUT_UNPARSEABLE",
+		);
+		// A 41-digit run is token-shaped, so the quote is scrubbed like one.
+		expect(refusal?.message).toContain(
+			"AWS returned a DeletedDate (0.[redacted])",
+		);
 	});
 
 	// The reviver sees a nested DeletedDate (inside Tags here) before the

@@ -18,12 +18,20 @@
  * sparse-file data, and `tar` never reads a name there; mirror's archives are
  * made with `tar --format=ustar`, so they never carry one.
  *
- * Names are compared as `tar` would write them out: repeated slashes
- * collapsed, any leading `./` and a directory's trailing `/` removed, so
- * `.//mirror` is `mirror` and a second copy spelled that way is the member
- * twice. A regular file whose name ends in `/` is refused: `tar` extracts it
- * as a directory (the old convention for type `\0`, which GNU tar applies to
- * type `0` too).
+ * A name is read in the one spelling `tar` extracts as written and also finds
+ * when asked for it by name (`tar -xzf A mirror`), and compared byte for byte
+ * with the member. So an entry is refused when its name, prefix included:
+ *
+ * - starts with `/`: `tar` strips the `/` and extracts it beside the rest,
+ *   where `/mirror` overwrites `mirror`;
+ * - has a `..` segment: `tar` will not extract it;
+ * - has a `.` or empty segment (`./mirror`, `bin//mirror`, `bin/./mirror`):
+ *   `tar` extracts it where the plain name goes, yet `tar -xzf A mirror`
+ *   does not find it;
+ * - ends in `/` and is a regular file: `tar` extracts it as a directory (the
+ *   old convention for type `\0`, which GNU tar applies to type `0` too).
+ *
+ * A directory's one trailing `/` is dropped before it is compared.
  *
  * The scan ends at the two zero blocks that end the archive; what follows them
  * is not read, as `tar` does not read it. A single zero block followed by an
@@ -85,11 +93,39 @@ function octal(
 	return Number.parseInt(text, 8);
 }
 
-/** A name as `tar` writes it out: `//` collapsed, leading `./` and a trailing `/` removed. */
-export function normaliseName(name: string): string {
-	let normal = name.replace(/\/{2,}/gu, "/");
-	while (normal.startsWith("./")) normal = normal.slice(2);
-	return normal.endsWith("/") ? normal.slice(0, -1) : normal;
+/**
+ * The path an entry of `type` stored as `raw` is extracted to, in the one
+ * spelling the reader compares; any other spelling is refused.
+ */
+function entryPath(raw: string, type: string, archive: string): string {
+	const shown = JSON.stringify(raw);
+	if (type === "0" && raw.endsWith("/")) {
+		throw new PinsError(
+			"ARCHIVE_UNSAFE",
+			`${archive} has a regular file named ${shown}, which tar extracts as a directory because the name ends in "/"; refusing to read it as a file`,
+		);
+	}
+	const path = type === "5" && raw.endsWith("/") ? raw.slice(0, -1) : raw;
+	if (path.startsWith("/")) {
+		throw new PinsError(
+			"ARCHIVE_UNSAFE",
+			`${archive} has an entry with the absolute name ${shown}, which tar strips of its "/" and extracts beside the others; refusing it`,
+		);
+	}
+	const parts = path.split("/");
+	if (parts.includes("..")) {
+		throw new PinsError(
+			"ARCHIVE_UNSAFE",
+			`${archive} has an entry named ${shown}, which climbs with ".."; refusing it`,
+		);
+	}
+	if (parts.some((part) => part === "" || part === ".")) {
+		throw new PinsError(
+			"ARCHIVE_UNSAFE",
+			`${archive} has an entry named ${shown}, with a "." or empty segment: tar extracts it where the plain name goes but does not find it by that name; refusing it`,
+		);
+	}
+	return path;
 }
 
 function parseHeader(block: Buffer, archive: string): TarHeader {
@@ -142,13 +178,7 @@ function parseHeader(block: Buffer, archive: string): TarHeader {
 	const name = field(block, 0, 100);
 	const prefix = field(block, 345, 155);
 	const raw = prefix === "" ? name : `${prefix}/${name}`;
-	if (type === "0" && raw.endsWith("/")) {
-		throw new PinsError(
-			"ARCHIVE_UNSAFE",
-			`${archive} has a regular file named ${JSON.stringify(raw)}, which tar extracts as a directory because the name ends in "/"; refusing to read it as a file`,
-		);
-	}
-	return { name: normaliseName(raw), size, type };
+	return { name: entryPath(raw, type, archive), size, type };
 }
 
 /**

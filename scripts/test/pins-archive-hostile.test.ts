@@ -200,8 +200,8 @@ describe("entry types the reader does not model", () => {
 });
 
 describe("member names", () => {
-	it("one name spelled two ways is the member twice", async () => {
-		for (const second of [".//mirror", "./mirror/", "mirror/"]) {
+	it("refuses a second copy of the member spelled another way", async () => {
+		for (const second of [".//mirror", "./mirror", "./mirror/", "mirror/"]) {
 			const bytes = tarGz([
 				{ name: "mirror", body: BINARY },
 				{ name: second, body: SMUGGLED },
@@ -215,11 +215,19 @@ describe("member names", () => {
 		}
 	});
 
-	it("matches a member written as .//bin//mirror", async () => {
-		const bytes = tarGz([{ name: ".//bin//mirror", body: BINARY }]);
-		const { dir, path } = archiveFile(bytes);
-		await extractMember(path, "bin/mirror", join(dir, "out"), sha256Hex(bytes));
-		assert.deepEqual(readFileSync(join(dir, "out")), BINARY);
+	it("refuses a member written as ./mirror or .//bin//mirror, which tar does not find by the plain name", async () => {
+		for (const [name, member] of [
+			["./mirror", "mirror"],
+			[".//bin//mirror", "bin/mirror"],
+		] as const) {
+			const bytes = tarGz([{ name, body: BINARY }]);
+			const { dir, path } = archiveFile(bytes);
+			await assert.rejects(
+				extractMember(path, member, join(dir, "out"), sha256Hex(bytes)),
+				refusal("ARCHIVE_UNSAFE"),
+				name,
+			);
+		}
 	});
 });
 

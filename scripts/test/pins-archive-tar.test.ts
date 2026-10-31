@@ -134,6 +134,72 @@ const CASES: readonly Case[] = [
 		member: "bin/mirror",
 		reader: "ARCHIVE_UNSAFE",
 	},
+	// Names tar extracts somewhere other than as written, or not at all.
+	{
+		what: "mirror, then /mirror",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{ name: "/mirror", body: EVIL },
+		],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "a lone /mirror",
+		entries: [{ name: "/mirror", body: GOOD }],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "evil, mirror, then a hard link /mirror to evil",
+		entries: [
+			{ name: "evil", body: EVIL },
+			{ name: "mirror", body: GOOD },
+			{ name: "/mirror", type: "1", linkname: "evil" },
+		],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "mirror, then ../mirror",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{ name: "../mirror", body: EVIL },
+		],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "mirror, then a/../mirror",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{ name: "a/../mirror", body: EVIL },
+		],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "bin/, bin/mirror, then bin/./mirror",
+		entries: [
+			{ name: "bin/", type: "5" },
+			{ name: "bin/mirror", body: GOOD },
+			{ name: "bin/./mirror", body: EVIL },
+		],
+		member: "bin/mirror",
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "a lone ./mirror, which tar -xzf A mirror does not find",
+		entries: [{ name: "./mirror", body: GOOD }],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "a lone .//bin//mirror, which tar -xzf A bin/mirror does not find",
+		entries: [{ name: ".//bin//mirror", body: GOOD }],
+		member: "bin/mirror",
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "the prefix bin/ before mirror, stored as bin//mirror",
+		entries: [{ name: "mirror", prefix: "bin/", body: GOOD }],
+		member: "bin/mirror",
+		reader: "ARCHIVE_UNSAFE",
+	},
 ];
 
 function archiveOf(crafted: Case): string {

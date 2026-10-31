@@ -43,39 +43,34 @@ describe("extractMember", () => {
 		return { dir, path };
 	}
 
-	it("writes only the named member, with its bytes and mode 0755; ./name matches too", async () => {
+	it("writes only the named member, with its bytes and mode 0755", async () => {
 		const { dir, path } = archiveFile(ARCHIVE);
 		const dest = join(dir, "mirror-entry");
 		await extractMember(path, "mirror", dest, sha256Hex(ARCHIVE));
 		assert.deepEqual(readFileSync(dest), BINARY);
 		assert.equal(statSync(dest).mode & 0o777, 0o755);
 		assert.deepEqual(readdirSync(dir).sort(), ["a.tar.gz", "mirror-entry"]);
-
-		const dottedBytes = tarGz([{ name: "./mirror", body: BINARY }]);
-		const dotted = archiveFile(dottedBytes);
-		await extractMember(
-			dotted.path,
-			"mirror",
-			join(dotted.dir, "out"),
-			sha256Hex(dottedBytes),
-		);
-		assert.deepEqual(readFileSync(join(dotted.dir, "out")), BINARY);
 		assert.deepEqual(await memberDigest(path, "mirror"), {
 			archive: sha256Hex(ARCHIVE),
 			member: sha256Hex(BINARY),
 		});
 	});
 
-	it("never makes a path of a name in the archive", async () => {
-		const bytes = tarGz([
-			{ name: "../../escaped", body: "x" },
-			{ name: "/etc/escaped", body: "x" },
-			{ name: "mirror", body: BINARY },
-		]);
-		const { dir, path } = archiveFile(bytes);
-		await extractMember(path, "mirror", join(dir, "out"), sha256Hex(bytes));
-		assert.deepEqual(readdirSync(dir).sort(), ["a.tar.gz", "out"]);
-		assert.equal(existsSync(join(dir, "..", "..", "escaped")), false);
+	it("refuses an absolute or climbing name anywhere in the archive, and writes nothing", async () => {
+		for (const name of ["/etc/escaped", "../../escaped", "/mirror"]) {
+			const bytes = tarGz([
+				{ name, body: "x" },
+				{ name: "mirror", body: BINARY },
+			]);
+			const { dir, path } = archiveFile(bytes);
+			await assert.rejects(
+				extractMember(path, "mirror", join(dir, "out"), sha256Hex(bytes)),
+				refusal("ARCHIVE_UNSAFE"),
+				name,
+			);
+			assert.deepEqual(readdirSync(dir), ["a.tar.gz"]);
+			assert.equal(existsSync(join(dir, "..", "..", "escaped")), false);
+		}
 	});
 
 	const hostile: [string, Buffer, string][] = [

@@ -93,6 +93,16 @@ function mismatch(body: PactJsonValue, actual: PactJsonValue) {
 	return matchResponseBody(rulesOf(body), EXAMPLE, actual);
 }
 
+/** The same against another example. */
+function mismatchWith(
+	example: PactJsonValue,
+	body: PactJsonValue,
+	actual: PactJsonValue,
+) {
+	const [first] = parseResponseMatchingRules(document({ body }, example));
+	return matchResponseBody(first?.rules ?? [], example, actual);
+}
+
 describe("parseMatchingPath", () => {
 	it("reads $, .name and [index] steps", () => {
 		expect(parseMatchingPath("$")).toEqual([]);
@@ -269,20 +279,74 @@ describe("a type rule on an array", () => {
 	});
 });
 
+describe("a regex, as Pact-JVM applies it", () => {
+	it("matches the whole value, not a part of it", () => {
+		const rule = {
+			"$.id": { matchers: [{ match: "regex", regex: "prj_[0-9a-f]{12}" }] },
+		};
+		expect(
+			mismatch(rule, { ...EXAMPLE, id: "prj_07c967ca6d97" }),
+		).toBeUndefined();
+		expect(mismatch(rule, { ...EXAMPLE, id: "xprj_07c967ca6d97y" })).toBe(
+			"body field $.id does not match regex prj_[0-9a-f]{12}",
+		);
+	});
+
+	it("is refused when read for a value the example does not give as a string", () => {
+		expect(() =>
+			rulesOf({
+				"$.tags[0].at": { matchers: [{ match: "regex", regex: "\\d+" }] },
+			}),
+		).toThrow(
+			/regex applies to a string, and the example's \$\.tags\[0\]\.at is a number/u,
+		);
+		expect(() =>
+			rulesOf({ "$.project": { matchers: [{ match: "regex", regex: ".*" }] } }),
+		).toThrow(MatchingRuleError);
+	});
+});
+
+describe("a type rule on an array whose example has several elements", () => {
+	const example = { ...EXAMPLE, tags: [{ at: 1 }, { at: "one" }] };
+	const rule = { "$.tags": { matchers: [{ match: "type" }] } };
+
+	it("compares each element with the example's at that index, and past them with its first", () => {
+		expect(
+			mismatchWith(example, rule, {
+				...example,
+				tags: [{ at: 2 }, { at: "two" }, { at: 3 }],
+			}),
+		).toBeUndefined();
+		expect(
+			mismatchWith(example, rule, { ...example, tags: [{ at: 2 }, { at: 3 }] }),
+		).toBe(
+			"body field $.tags[1].at is a number, not a string like the example (type rule at $.tags)",
+		);
+		expect(
+			mismatchWith(example, rule, {
+				...example,
+				tags: [{ at: 2 }, { at: "two" }, { at: "three" }],
+			}),
+		).toBe(
+			"body field $.tags[2].at is a string, not a number like the example (type rule at $.tags)",
+		);
+	});
+});
+
 describe("combine", () => {
 	const both = (combine: PactJsonValue) => ({
 		"$.id": {
 			combine,
 			matchers: [
-				{ match: "regex", regex: "^prj_" },
-				{ match: "regex", regex: "[0-9a-f]{12}$" },
+				{ match: "regex", regex: "prj_.*" },
+				{ match: "regex", regex: ".*[0-9a-f]{12}" },
 			],
 		},
 	});
 
 	it("AND, the default, needs every matcher", () => {
 		expect(mismatch(both("AND"), { ...EXAMPLE, id: "prj_x" })).toBe(
-			"body field $.id does not match regex [0-9a-f]{12}$",
+			"body field $.id does not match regex .*[0-9a-f]{12}",
 		);
 		expect(
 			mismatch(both("AND"), { ...EXAMPLE, id: "prj_0123456789ab" }),
@@ -292,7 +356,7 @@ describe("combine", () => {
 	it("OR needs one", () => {
 		expect(mismatch(both("OR"), { ...EXAMPLE, id: "prj_x" })).toBeUndefined();
 		expect(mismatch(both("OR"), { ...EXAMPLE, id: "dpl_x" })).toBe(
-			"body field $.id matches none of the rule at $.id: does not match regex ^prj_; does not match regex [0-9a-f]{12}$",
+			"body field $.id matches none of the rule at $.id: does not match regex prj_.*; does not match regex .*[0-9a-f]{12}",
 		);
 	});
 });

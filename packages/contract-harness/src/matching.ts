@@ -27,12 +27,15 @@
  *   the largest weighting).
  * - `type`: "equal if they are the same type". On an object every key of the
  *   example must be present, and each is compared by type in turn (extra keys
- *   are allowed, as v2 "Response body" allows them); on an array every
- *   element is compared with the example's first element (v2's own example
- *   holds a `min: 5` list to its one example element), and `min` / `max`
- *   bound "the length of the actual value" ("MinType", "MaxType").
- * - `regex`: matched against "the string representation of a value": a
- *   string, number or boolean.
+ *   are allowed, as v2 "Response body" allows them); on an array each
+ *   element is compared with the example's element at the same index while
+ *   the example has one and with its first past that, as pact-reference does
+ *   (v2's own example holds a `min: 5` list to its one example element), and
+ *   `min` / `max` bound "the length of the actual value" ("MinType",
+ *   "MaxType").
+ * - `regex`: a full match, as Pact-JVM's and pact-reference's are, against
+ *   "the string representation of a value" (a string, number or boolean). A
+ *   regex rule is refused when read unless the example's value is a string.
  * - `equality`, the default, compares by value and resets a cascading rule on
  *   a child ("Add an equality matcher").
  * - `combine` is `AND` (the default: every matcher) or `OR` (at least one)
@@ -207,7 +210,14 @@ function parseMatcher(value: PactJsonValue, where: string): Matcher {
 				throw new MatchingRuleError(`${where} names regex without a pattern`);
 			}
 			try {
-				return { match: "regex", regex: new RegExp(source, "u"), source };
+				// A full match, as Pact-JVM's (`Matcher.matches()`) and
+				// pact-reference's regex matchers are: the pattern must cover the
+				// whole value, not some part of it.
+				return {
+					match: "regex",
+					regex: new RegExp(`^(?:${source})$`, "u"),
+					source,
+				};
 			} catch {
 				throw new MatchingRuleError(
 					`${where} regex ${JSON.stringify(source)} does not compile`,
@@ -294,19 +304,24 @@ function parseRules(
 			);
 		}
 		const steps = parseMatchingPath(path);
-		if (at(example, steps) === undefined) {
+		const value = at(example, steps);
+		if (value === undefined) {
 			throw new MatchingRuleError(
 				`${here} names no field of the example response body`,
+			);
+		}
+		const parsed = matchers.map((matcher, index) =>
+			parseMatcher(matcher, `${here}.matchers[${index}]`),
+		);
+		if (parsed.some((matcher) => matcher.match === "regex") && !isText(value)) {
+			throw new MatchingRuleError(
+				`${here}: a regex applies to a string, and the example's ${path} is ${kindOf(value)}`,
 			);
 		}
 		return Object.freeze({
 			path,
 			steps,
-			matchers: Object.freeze(
-				matchers.map((matcher, index) =>
-					parseMatcher(matcher, `${here}.matchers[${index}]`),
-				),
-			),
+			matchers: Object.freeze(parsed),
 			combine: parseCombine(rule.combine, here),
 		});
 	});
@@ -480,10 +495,15 @@ function byType(
 		if (matcher.max !== undefined && actual.length > matcher.max) {
 			return `body field ${where} has ${count}, more than max ${matcher.max} ${because}`;
 		}
+		// pact-reference: an element is compared with the example's at the
+		// same index while the example has one, and past it with the first.
 		const [first] = example;
 		if (first === undefined) return undefined;
 		for (const index of actual.keys()) {
-			const reason = compare(rules, child(node, index, first));
+			const reason = compare(
+				rules,
+				child(node, index, example[index] ?? first),
+			);
 			if (reason !== undefined) return reason;
 		}
 	}

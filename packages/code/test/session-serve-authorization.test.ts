@@ -3,6 +3,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	renameSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -213,6 +214,65 @@ describe("session serve --host, failing once the Station authorization is open",
 		expect(served.result.code).toBe("HOBO_CODE_SESSION_REMOTE_DENIED");
 		expect(served.closes).toEqual(["session-serve-failed"]);
 		expect(audit(served.hoboHome)).toEqual([
+			"pam.GatewayStarted",
+			"pam.GatewayStopped",
+		]);
+	});
+});
+
+/** Make the Station's audit unwritable (a directory where the file was); the undo. */
+function breakAudit(hoboHome: string): () => void {
+	const path = auditPath(hoboHome);
+	renameSync(path, `${path}.saved`);
+	mkdirSync(path);
+	return () => {
+		rmSync(path, { recursive: true });
+		renameSync(`${path}.saved`, path);
+	};
+}
+
+describe("session serve --host, when closing the authorization fails too", () => {
+	it("still answers with the verb's own failure, and notes the close's", async () => {
+		const served = await serve((gateway, _context, hoboHome) => ({
+			...gateway,
+			auditTypes: () => {
+				breakAudit(hoboHome);
+				throw new Error("the gateway's audit could not be read");
+			},
+		}));
+		expect(served.result.ok).toBe(false);
+		expect(served.result.code).toBe("HOBO_CODE_SESSION_FAILED");
+		expect(served.result.message).toContain(
+			"the gateway's audit could not be read",
+		);
+		expect(served.result.message).toMatch(
+			/closing the Station authorization failed too: .*EISDIR/u,
+		);
+		expect(served.result.data).toEqual(
+			expect.objectContaining({
+				authorizationCloseError: expect.stringContaining("EISDIR"),
+			}),
+		);
+	});
+});
+
+describe("the Station gateway's close", () => {
+	it("is done only once every step is: retried, it writes what it could not", async () => {
+		const root = mkdtempSync(join(tmpdir(), "a"));
+		roots.push(root);
+		const hoboHome = join(root, "h");
+		stationWithPam(hoboHome);
+		const gateway = await openStationGateway({
+			hoboHome,
+			stationId: STATION,
+			isolationClass: "development",
+		});
+		const restore = breakAudit(hoboHome);
+		await expect(gateway.close("first-try")).rejects.toThrow(/EISDIR/u);
+		restore();
+		await gateway.close("second-try");
+		await gateway.close("third-try");
+		expect(audit(hoboHome)).toEqual([
 			"pam.GatewayStarted",
 			"pam.GatewayStopped",
 		]);

@@ -281,7 +281,7 @@ export async function openStationGateway(
 		return upstreamSocket;
 	};
 	const localProxies = new Set<SshAgentProxy>();
-	let closed = false;
+	let stopped = false;
 	return {
 		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		broker: gateway as PaneSessionBroker,
@@ -329,16 +329,45 @@ export async function openStationGateway(
 				stop: proxy.stop,
 			};
 		},
+		// Every step is tried, and done only once it has succeeded: a close that
+		// failed part way (an audit that could not be written) can be retried,
+		// and the gateway's stop, with its pam.GatewayStopped, is always tried.
 		async close(reason) {
-			if (closed) return;
-			closed = true;
-			await Promise.all([...localProxies].map((proxy) => proxy.close()));
-			if (reason !== undefined) {
-				for (const session of gateway.listSessions()) {
-					await gateway.endSession(session.sessionId, reason);
+			if (stopped) return;
+			const failures: unknown[] = [];
+			for (const proxy of [...localProxies]) {
+				try {
+					await proxy.close();
+					localProxies.delete(proxy);
+				} catch (error) {
+					failures.push(error);
 				}
 			}
-			await gateway.stop();
+			if (reason !== undefined) {
+				for (const session of gateway.listSessions()) {
+					try {
+						await gateway.endSession(session.sessionId, reason);
+					} catch (error) {
+						failures.push(error);
+					}
+				}
+			}
+			try {
+				await gateway.stop();
+				stopped = true;
+			} catch (error) {
+				failures.push(error);
+			}
+			if (failures.length > 0) {
+				throw new AggregateError(
+					failures,
+					failures
+						.map((failure) =>
+							failure instanceof Error ? failure.message : String(failure),
+						)
+						.join("; "),
+				);
+			}
 		},
 	};
 }

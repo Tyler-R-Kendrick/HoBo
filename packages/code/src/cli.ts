@@ -1722,6 +1722,35 @@ export function applyDenseChrome(message: string): string {
  */
 const SESSION_SERVE_FAILED = "session-serve-failed";
 
+/** Close `gateway`, saying `reason`; the error, if closing failed. */
+async function closeAuthorization(
+	gateway: OpenedGateway,
+	reason: string,
+): Promise<Error | undefined> {
+	try {
+		await gateway.close(reason);
+		return undefined;
+	} catch (error) {
+		return error instanceof Error ? error : new Error(String(error));
+	}
+}
+
+/**
+ * `result`, noting that closing the Station authorization afterwards failed
+ * as well. The verb's own answer stays the answer; the close is a note on it.
+ */
+function withCloseFailure(
+	result: HoboCodeCliResult,
+	closeError: Error,
+): HoboCodeCliResult {
+	const note = `closing the Station authorization failed too: ${closeError.message}`;
+	return {
+		...result,
+		message: `${result.message}\n${note}`,
+		data: { ...result.data, authorizationCloseError: closeError.message },
+	};
+}
+
 /**
  * Run the hobo-code CLI. Dispatch is the default verb when none is given.
  */
@@ -3697,179 +3726,200 @@ export async function runHoboCodeCli(
 			// The Station authorization `session serve --host` opens, while it is
 			// this verb's to close: the forward-sessions action hands it to the
 			// caller, which closes it when the forward ends. On any other way out
-			// of here (a failure, or a throw after it opened) it is closed below.
-			let authorization: OpenedGateway | undefined;
-			let handedOff = false;
-			try {
-				const requestedHost =
-					args[0] === "serve" && isJsonString(flags.host)
-						? flags.host
-						: undefined;
-				const requestedPort =
-					args[0] === "serve" && isJsonString(flags.port)
-						? flags.port
-						: undefined;
-				if (requestedHost && requestedPort === undefined) {
-					return fail(
-						"HOBO_CODE_SESSION_REMOTE_PORT_REQUIRED",
-						panel("✕ session", [
-							"remote session serving requires a fixed --port",
-							"the same loopback port is used on both sides of the SSH forward",
-						]),
-						[`hobo-code session serve --host ${requestedHost} --port 4242`],
-					);
-				}
-				const servePort =
-					requestedPort !== undefined && /^\d+$/u.test(requestedPort)
-						? Number.parseInt(requestedPort, 10)
-						: undefined;
-				if (
-					requestedPort !== undefined &&
-					(servePort === undefined || servePort < 1 || servePort > 65_535)
-				) {
-					return fail(
-						"HOBO_CODE_SESSION_INVALID_PORT",
-						panel("✕ session", [
-							"--port must be an integer from 1 through 65535",
-						]),
-						["hobo-code session serve --port 4242"],
-					);
-				}
-
-				let remoteServe: RemoteSessionServe | undefined;
-				if (requestedHost && servePort !== undefined) {
-					const projectMachines = loadDevMachines(projectDir);
-					const declaredMachines = projectMachines.declared
-						? projectMachines
-						: loadDevMachines(
-								join(dirname(fileURLToPath(import.meta.url)), ".."),
-							);
-					const resolution = resolveMachine(
-						declaredMachines.machines,
-						requestedHost,
-					);
-					if (resolution !== null && "ambiguous" in resolution) {
-						return fail(
-							"HOBO_CODE_SESSION_AMBIGUOUS_MACHINE",
-							panel("✕ session", [
-								`"${requestedHost}" is the host of more than one declared machine.`,
-								...resolution.ambiguous.map(
-									(m) => `  ${m.id} · ${m.isolationClass}`,
-								),
-								"name one by its declared id",
-							]),
-							["hobo-code machines"],
-						);
-					}
-					const machine =
-						resolution !== null && "machine" in resolution
-							? resolution.machine
+			// of here (a refusal, or a throw after it opened) it is closed below.
+			const opened: {
+				authorization?: OpenedGateway;
+				handedOff: boolean;
+			} = { handedOff: false };
+			const answer = await (async (): Promise<
+				HoboCodeCliResult | undefined
+			> => {
+				try {
+					const requestedHost =
+						args[0] === "serve" && isJsonString(flags.host)
+							? flags.host
 							: undefined;
-					if (!machine) {
+					const requestedPort =
+						args[0] === "serve" && isJsonString(flags.port)
+							? flags.port
+							: undefined;
+					if (requestedHost && requestedPort === undefined) {
 						return fail(
-							"HOBO_CODE_SESSION_UNKNOWN_MACHINE",
+							"HOBO_CODE_SESSION_REMOTE_PORT_REQUIRED",
 							panel("✕ session", [
-								`"${requestedHost}" is not a declared dev machine.`,
-								declaredMachines.declared
-									? `known · ${declaredMachines.machines.map((m) => m.id).join(", ") || "none"}`
-									: `no ${DEV_MACHINES_FILE} beside the devenv files`,
-								"remote browsers have no fallback to arbitrary SSH hosts",
+								"remote session serving requires a fixed --port",
+								"the same loopback port is used on both sides of the SSH forward",
 							]),
-							["hobo-code machines"],
+							[`hobo-code session serve --host ${requestedHost} --port 4242`],
+						);
+					}
+					const servePort =
+						requestedPort !== undefined && /^\d+$/u.test(requestedPort)
+							? Number.parseInt(requestedPort, 10)
+							: undefined;
+					if (
+						requestedPort !== undefined &&
+						(servePort === undefined || servePort < 1 || servePort > 65_535)
+					) {
+						return fail(
+							"HOBO_CODE_SESSION_INVALID_PORT",
+							panel("✕ session", [
+								"--port must be an integer from 1 through 65535",
+							]),
+							["hobo-code session serve --port 4242"],
 						);
 					}
 
-					deps.beforeAuthorization?.();
-					const gateway = await (deps.openStationGateway ?? openStationGateway)(
-						{
+					let remoteServe: RemoteSessionServe | undefined;
+					if (requestedHost && servePort !== undefined) {
+						const projectMachines = loadDevMachines(projectDir);
+						const declaredMachines = projectMachines.declared
+							? projectMachines
+							: loadDevMachines(
+									join(dirname(fileURLToPath(import.meta.url)), ".."),
+								);
+						const resolution = resolveMachine(
+							declaredMachines.machines,
+							requestedHost,
+						);
+						if (resolution !== null && "ambiguous" in resolution) {
+							return fail(
+								"HOBO_CODE_SESSION_AMBIGUOUS_MACHINE",
+								panel("✕ session", [
+									`"${requestedHost}" is the host of more than one declared machine.`,
+									...resolution.ambiguous.map(
+										(m) => `  ${m.id} · ${m.isolationClass}`,
+									),
+									"name one by its declared id",
+								]),
+								["hobo-code machines"],
+							);
+						}
+						const machine =
+							resolution !== null && "machine" in resolution
+								? resolution.machine
+								: undefined;
+						if (!machine) {
+							return fail(
+								"HOBO_CODE_SESSION_UNKNOWN_MACHINE",
+								panel("✕ session", [
+									`"${requestedHost}" is not a declared dev machine.`,
+									declaredMachines.declared
+										? `known · ${declaredMachines.machines.map((m) => m.id).join(", ") || "none"}`
+										: `no ${DEV_MACHINES_FILE} beside the devenv files`,
+									"remote browsers have no fallback to arbitrary SSH hosts",
+								]),
+								["hobo-code machines"],
+							);
+						}
+
+						deps.beforeAuthorization?.();
+						const gateway = await (
+							deps.openStationGateway ?? openStationGateway
+						)({
 							hoboHome,
 							stationId: platform.station.stationId,
 							isolationClass: machine.isolationClass,
-						},
-					);
-					authorization = gateway;
-					let outcome: Awaited<ReturnType<typeof brokerPaneSession>>;
-					outcome = await brokerPaneSession(machine, "resident-browser", {
-						broker: gateway.broker,
-						subject: "hobo-code",
-						ttlSeconds: 3600,
+						});
+						opened.authorization = gateway;
+						let outcome: Awaited<ReturnType<typeof brokerPaneSession>>;
+						outcome = await brokerPaneSession(machine, "resident-browser", {
+							broker: gateway.broker,
+							subject: "hobo-code",
+							ttlSeconds: 3600,
+						});
+						const auditTypes = gateway.auditTypes();
+						if (!outcome.ok) {
+							return fail(
+								"HOBO_CODE_SESSION_REMOTE_DENIED",
+								panel("✕ session", [
+									`the Station refused browser access to ${machine.id}`,
+									outcome.failure.reason,
+									"SSH forwarding was not opened; there is no fallback",
+								]),
+								["hobo-code machines", "hobo-code auth"],
+							);
+						}
+						if (!auditTypes.includes("pam.SessionStarted")) {
+							return fail(
+								"HOBO_CODE_SESSION_REMOTE_AUDIT_MISSING",
+								panel("✕ session", [
+									`the Station authorized ${machine.id} without a start audit event`,
+									"SSH forwarding was not opened",
+								]),
+								["hobo-code auth status"],
+							);
+						}
+						let identity: ResolvedSshIdentity;
+						try {
+							identity = await gateway.resolveSshIdentity(outcome.pane);
+						} catch (error) {
+							return fail(
+								"HOBO_CODE_SESSION_REMOTE_IDENTITY_UNAVAILABLE",
+								panel("✕ session", [
+									error instanceof Error ? error.message : String(error),
+									"SSH forwarding was not opened; there is no ambient-key fallback",
+								]),
+								["ssh-add -l", "hobo-code auth status"],
+							);
+						}
+						remoteServe = {
+							machine,
+							port: servePort,
+							authorizationSessionId: outcome.pane.sessionId,
+							authorizationExpiresAt: outcome.pane.expiresAt,
+							auditTypes,
+							identityAgent: identity.pane.identityAgent,
+							closeAuthorization: gateway.close,
+						};
+					}
+					const resident = await runResidentSessionCli({
+						args,
+						hoboHome,
+						projectDir,
+						approved: flags.approve === true,
+						...(servePort !== undefined ? { servePort } : undefined),
+						...(remoteServe !== undefined ? { remoteServe } : undefined),
 					});
-					const auditTypes = gateway.auditTypes();
-					if (!outcome.ok) {
-						return fail(
-							"HOBO_CODE_SESSION_REMOTE_DENIED",
-							panel("✕ session", [
-								`the Station refused browser access to ${machine.id}`,
-								outcome.failure.reason,
-								"SSH forwarding was not opened; there is no fallback",
-							]),
-							["hobo-code machines", "hobo-code auth"],
+					if (resident) {
+						opened.handedOff = remoteServe !== undefined;
+						return ok(
+							"HOBO_CODE_RESIDENT_SESSION",
+							panel("✓ session", resident.message.split("\n")),
+							resident.data,
 						);
 					}
-					if (!auditTypes.includes("pam.SessionStarted")) {
-						return fail(
-							"HOBO_CODE_SESSION_REMOTE_AUDIT_MISSING",
-							panel("✕ session", [
-								`the Station authorized ${machine.id} without a start audit event`,
-								"SSH forwarding was not opened",
-							]),
-							["hobo-code auth status"],
-						);
-					}
-					let identity: ResolvedSshIdentity;
-					try {
-						identity = await gateway.resolveSshIdentity(outcome.pane);
-					} catch (error) {
-						return fail(
-							"HOBO_CODE_SESSION_REMOTE_IDENTITY_UNAVAILABLE",
-							panel("✕ session", [
-								error instanceof Error ? error.message : String(error),
-								"SSH forwarding was not opened; there is no ambient-key fallback",
-							]),
-							["ssh-add -l", "hobo-code auth status"],
-						);
-					}
-					remoteServe = {
-						machine,
-						port: servePort,
-						authorizationSessionId: outcome.pane.sessionId,
-						authorizationExpiresAt: outcome.pane.expiresAt,
-						auditTypes,
-						identityAgent: identity.pane.identityAgent,
-						closeAuthorization: gateway.close,
-					};
-				}
-				const resident = await runResidentSessionCli({
-					args,
-					hoboHome,
-					projectDir,
-					approved: flags.approve === true,
-					...(servePort !== undefined ? { servePort } : undefined),
-					...(remoteServe !== undefined ? { remoteServe } : undefined),
-				});
-				if (resident) {
-					handedOff = remoteServe !== undefined;
-					return ok(
-						"HOBO_CODE_RESIDENT_SESSION",
-						panel("✓ session", resident.message.split("\n")),
-						resident.data,
+					return undefined;
+				} catch (error) {
+					return fail(
+						"HOBO_CODE_SESSION_FAILED",
+						panel("✕ session", [
+							error instanceof Error ? error.message : String(error),
+						]),
+						["hobo-code session --help", "hobo-code session list"],
 					);
 				}
-			} catch (error) {
-				return fail(
-					"HOBO_CODE_SESSION_FAILED",
-					panel("✕ session", [
-						error instanceof Error ? error.message : String(error),
-					]),
-					["hobo-code session --help", "hobo-code session list"],
+			})();
+			// The one close on every way out but the hand-off, the refusals above
+			// included, so each pam.SessionEnded says why. A close that fails too
+			// is noted on the verb's own answer, which it never replaces.
+			if (opened.authorization !== undefined && !opened.handedOff) {
+				const closeError = await closeAuthorization(
+					opened.authorization,
+					SESSION_SERVE_FAILED,
 				);
-			} finally {
-				// The one close on every way out but the hand-off, the refusals
-				// above included, so each pam.SessionEnded says why.
-				if (authorization !== undefined && !handedOff) {
-					await authorization.close(SESSION_SERVE_FAILED);
+				if (closeError !== undefined) {
+					return withCloseFailure(
+						answer ??
+							fail(
+								"HOBO_CODE_SESSION_FAILED",
+								panel("✕ session", ["the session verb ended with no answer"]),
+							),
+						closeError,
+					);
 				}
 			}
+			if (answer !== undefined) return answer;
 		}
 		const sessionHome =
 			env.HOBO_CODE_EPHEMERAL_SESSION === "1"

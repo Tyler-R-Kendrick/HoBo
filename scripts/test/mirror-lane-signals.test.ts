@@ -23,6 +23,7 @@ import {
 	beacon,
 	fakeMirror,
 	fakePnpmDir,
+	laneEnv,
 	type Reported,
 	stillRunning,
 } from "./support/mirror-fakes.ts";
@@ -73,7 +74,7 @@ function runner(env: NodeJS.ProcessEnv): Lane {
 			"@hobo/provider-vercel",
 		],
 		{
-			env: { ...process.env, NODE_OPTIONS: "", CI: "", TMPDIR: TEMP, ...env },
+			env: laneEnv({ TMPDIR: TEMP, ...env }),
 			stdio: ["ignore", "pipe", "pipe"],
 		},
 	);

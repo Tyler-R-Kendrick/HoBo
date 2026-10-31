@@ -51,9 +51,16 @@ function signal(child: ChildProcess, name: NodeJS.Signals): void {
 	}
 }
 
+/**
+ * The longest stop grace a timer holds: Node runs a `setTimeout` longer than
+ * 2147483647 ms after 1 ms (`TimeoutOverflowWarning`), so a longer grace
+ * would SIGKILL at once.
+ */
+export const MAX_STOP_GRACE_MS = 2_147_483_647;
+
 /** How a `LaneChildren` stops what it started. */
 export interface LaneChildrenOptions {
-	/** How long a stop waits after SIGTERM before it sends SIGKILL; 5000 by default. */
+	/** How long a stop waits after SIGTERM before it sends SIGKILL, at most `MAX_STOP_GRACE_MS`; 5000 by default. */
 	readonly graceMs?: number;
 }
 

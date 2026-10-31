@@ -97,6 +97,24 @@ if (mode === "pre-442") {
 process.on("SIGTERM", () => { console.log("mirror fake: SIGTERM"); if (process.env.FAKE_MIRROR_IGNORE_TERM !== "1") process.exit(0); });
 `;
 
+/** What the runner or its stand-ins read: the lane's knobs, the pins override, and the CI markers `inCi` reads. */
+const LANE_KNOB =
+	/^(?:HOBO_MIRROR_|MIRROR_|FAKE_)|^(?:HOBO_PINS_ALLOW_OVERRIDE|CI|GITHUB_ACTIONS|TF_BUILD)$/u;
+
+/**
+ * The environment a runner or a stand-in mirror under test gets: this
+ * process's, without any variable the lane or its stand-ins read, so a knob
+ * set in the shell that runs the tests reaches no test that did not set it;
+ * `NODE_OPTIONS` emptied; then `env`.
+ */
+export function laneEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+	const inherited: NodeJS.ProcessEnv = {};
+	for (const [name, value] of Object.entries(process.env)) {
+		if (!LANE_KNOB.test(name)) inherited[name] = value;
+	}
+	return { ...inherited, NODE_OPTIONS: "", ...env };
+}
+
 /** An executable stand-in mirror in a fresh scratch directory. */
 export function fakeMirror(): string {
 	const dir = scratch("mirror-lane");

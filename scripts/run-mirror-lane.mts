@@ -5,7 +5,8 @@
  *   node --import tsx scripts/run-mirror-lane.mts [--tls] [--package <name>]... [--pins-root <dir>]
  *
  * `HOBO_MIRROR_LANE_STOP_GRACE_MS` (default 5000) is how long a stop waits
- * after SIGTERM before SIGKILL.
+ * after SIGTERM before SIGKILL: 1 to 2147483647 ms, the longest delay a timer
+ * holds, else exit 2.
  *
  * Starts the mirror.cloud emulator (`mirror up vercel.api aws.dynamodb aws.s3
  * aws.secretsmanager aws.sns aws.sqs aws.ssm`, `--seed hobo-contract`,
@@ -47,7 +48,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 import { commandForPlatform, sanitizeNodeOptions } from "./lib/env.ts";
-import { LaneChildren } from "./lib/lane-children.ts";
+import { LaneChildren, MAX_STOP_GRACE_MS } from "./lib/lane-children.ts";
 import {
 	MIRROR_LANE_SEED,
 	MIRROR_LANE_SERVICES,
@@ -110,16 +111,17 @@ function readArgs(): LaneOptions {
 
 /**
  * `HOBO_MIRROR_LANE_STOP_GRACE_MS`: how long stopping a child waits after
- * SIGTERM before SIGKILL, 5000 when unset. Anything but a positive integer
- * is wrong usage.
+ * SIGTERM before SIGKILL, 5000 when unset. Anything but a whole number of
+ * milliseconds from 1 to `MAX_STOP_GRACE_MS` (the longest delay a timer
+ * holds; a longer one would fire after 1 ms) is wrong usage.
  */
 function readStopGrace(): number {
 	const text = process.env.HOBO_MIRROR_LANE_STOP_GRACE_MS;
 	if (text === undefined || text === "") return 5_000;
 	const graceMs = Number(text);
-	if (!/^[1-9][0-9]*$/u.test(text) || !Number.isSafeInteger(graceMs)) {
+	if (!/^[1-9][0-9]*$/u.test(text) || graceMs > MAX_STOP_GRACE_MS) {
 		console.error(
-			`mirror-lane: HOBO_MIRROR_LANE_STOP_GRACE_MS must be a positive integer (milliseconds), not ${JSON.stringify(text)}\n${USAGE}`,
+			`mirror-lane: HOBO_MIRROR_LANE_STOP_GRACE_MS must be a whole number of milliseconds from 1 to ${MAX_STOP_GRACE_MS}, not ${JSON.stringify(text)}\n${USAGE}`,
 		);
 		process.exit(2);
 	}

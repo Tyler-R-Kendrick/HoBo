@@ -37,7 +37,12 @@ import {
 } from "../lib/mirror-lane.ts";
 import { PinsError } from "../lib/pins.ts";
 import { cachedPath, currentTarget } from "../lib/pins-assets.ts";
-import { beacon, fakeMirror, TLS_FIXTURES } from "./support/mirror-fakes.ts";
+import {
+	beacon,
+	fakeMirror,
+	laneEnv,
+	TLS_FIXTURES,
+} from "./support/mirror-fakes.ts";
 import {
 	REPO_ROOT,
 	scratch,
@@ -261,7 +266,7 @@ function pinnedElsewhere(): PinnedElsewhere {
 
 describe("startMirror", () => {
 	it("starts the lane's services on a free loopback port with the seed, the controllable clock and the fault routes, and stops it", async () => {
-		const mirror = await startMirror({ bin: fakeMirror(), env: process.env });
+		const mirror = await startMirror({ bin: fakeMirror(), env: laneEnv({}) });
 		try {
 			assert.match(mirror.url, /^http:\/\/127\.0\.0\.1:\d+$/u);
 			const seen = await getJson(`${mirror.url}/argv`);
@@ -285,14 +290,13 @@ describe("startMirror", () => {
 	it("gives mirror no MIRROR_* variable but the two the lane sets", async () => {
 		const mirror = await startMirror({
 			bin: fakeMirror(),
-			env: {
-				...process.env,
+			env: laneEnv({
 				MIRROR_STRICT: "1",
 				MIRROR_PERSIST: "/tmp/hobo-mirror-lane-not-this",
 				MIRROR_CLOCK: "real",
 				MIRROR_VERCEL_FAULTS: "0",
 				MIRROR_BIND: "0.0.0.0:4566",
-			},
+			}),
 		});
 		try {
 			const seen = await getJson(`${mirror.url}/argv`);
@@ -316,7 +320,7 @@ describe("startMirror", () => {
 		process.chdir(outer);
 		let seen: Awaited<ReturnType<typeof getJson>>;
 		try {
-			const mirror = await startMirror({ bin: fakeMirror(), env: process.env });
+			const mirror = await startMirror({ bin: fakeMirror(), env: laneEnv({}) });
 			try {
 				seen = await getJson(`${mirror.url}/argv`);
 			} finally {
@@ -336,7 +340,7 @@ describe("startMirror", () => {
 		const tlsDir = scratch("mirror-lane");
 		const mirror = await startMirror({
 			bin: fakeMirror(),
-			env: { ...process.env, FAKE_MIRROR_TLS_FIXTURES: TLS_FIXTURES },
+			env: laneEnv({ FAKE_MIRROR_TLS_FIXTURES: TLS_FIXTURES }),
 			tlsDir,
 		});
 		try {
@@ -362,7 +366,7 @@ describe("startMirror", () => {
 			{
 				bin: fakeMirror(),
 				// The stand-in ignores the flag: it announces http:// and writes no ca.pem.
-				env: { ...process.env, FAKE_MIRROR_MODE: "plain" },
+				env: laneEnv({ FAKE_MIRROR_MODE: "plain" }),
 				tlsDir,
 				startTimeoutMs: 1_000,
 			},
@@ -374,7 +378,7 @@ describe("startMirror", () => {
 		await refusedStart(
 			{
 				bin: fakeMirror(),
-				env: { ...process.env, FAKE_MIRROR_MODE: "exit" },
+				env: laneEnv({ FAKE_MIRROR_MODE: "exit" }),
 			},
 			(error: Error) =>
 				error instanceof MirrorLaneError &&
@@ -387,11 +391,10 @@ describe("startMirror", () => {
 		const mark = join(scratch("mirror-lane"), "busy");
 		const mirror = await startMirror({
 			bin: fakeMirror(),
-			env: {
-				...process.env,
+			env: laneEnv({
 				FAKE_MIRROR_MODE: "busy-once",
 				FAKE_MIRROR_MARK: mark,
-			},
+			}),
 		});
 		await mirror.stop();
 		assert.equal(existsSync(mark), true);
@@ -401,7 +404,7 @@ describe("startMirror", () => {
 		await refusedStart(
 			{
 				bin: fakeMirror(),
-				env: { ...process.env, FAKE_MIRROR_MODE: "no-banner" },
+				env: laneEnv({ FAKE_MIRROR_MODE: "no-banner" }),
 				startTimeoutMs: 500,
 			},
 			(error: Error) =>
@@ -435,7 +438,7 @@ describe("startMirror", () => {
 				// SAFETY: a server listening on a TCP port reports an AddressInfo, never a pipe name.
 				const { port } = other.address() as AddressInfo;
 				await refusedStart(
-					{ bin: fakeMirror(), env: process.env, port },
+					{ bin: fakeMirror(), env: laneEnv({}), port },
 					(error: Error) =>
 						error instanceof MirrorLaneError &&
 						error.code === "MIRROR_START_FAILED" &&
@@ -463,11 +466,10 @@ describe("startMirror", () => {
 			const { port } = lane1.address() as AddressInfo;
 			const starting = startMirror({
 				bin: fakeMirror(),
-				env: {
-					...process.env,
+				env: laneEnv({
 					FAKE_MIRROR_MODE: "pre-442",
 					FAKE_BEACON: String(listener.port),
-				},
+				}),
 				port,
 			});
 			const child = await listener.next("mirror");
@@ -498,14 +500,14 @@ describe("startMirror", () => {
 			reads += 1;
 			return realNow() - reads * 3_600_000;
 		});
-		const mirror = await startMirror({ bin: fakeMirror(), env: process.env });
+		const mirror = await startMirror({ bin: fakeMirror(), env: laneEnv({}) });
 		t.mock.restoreAll();
 		await mirror.stop();
 		assert.match(mirror.url, /^http:\/\/127\.0\.0\.1:\d+$/u);
 	});
 
 	it("a stopped mirror is not reported lost", async () => {
-		const mirror = await startMirror({ bin: fakeMirror(), env: process.env });
+		const mirror = await startMirror({ bin: fakeMirror(), env: laneEnv({}) });
 		const lost = mirror.lost.then(() => "lost");
 		await mirror.stop();
 		assert.equal(
@@ -519,11 +521,10 @@ describe("startMirror", () => {
 		await refusedStart(
 			{
 				bin: fakeMirror(),
-				env: {
-					...process.env,
+				env: laneEnv({
 					FAKE_MIRROR_MODE: "unhealthy",
 					FAKE_MIRROR_PIDFILE: pidFile,
-				},
+				}),
 				startTimeoutMs: 1_000,
 			},
 			(error) => /MIRROR_UNHEALTHY/u.test(error.message),
@@ -703,7 +704,7 @@ describe("run-mirror-lane.mts", () => {
 				join(REPO_ROOT, "scripts/run-mirror-lane.mts"),
 				...args,
 			],
-			{ encoding: "utf8", env: { ...process.env, NODE_OPTIONS: "", ...env } },
+			{ encoding: "utf8", env: laneEnv(env) },
 		);
 	}
 
@@ -787,15 +788,30 @@ describe("run-mirror-lane.mts", () => {
 		assert.match(run.stderr, /no test:mirror in @hobo\/core/u);
 	});
 
-	it("exits 2 on a stop grace that is not a positive number of milliseconds", () => {
-		const run = lane([], {
-			MIRROR_BIN: fakeMirror(),
-			HOBO_MIRROR_LANE_STOP_GRACE_MS: "soon",
+	// Node runs a timer longer than 2147483647 ms after 1 ms (TimeoutOverflowWarning).
+	for (const grace of ["soon", "0", "1e3", "2147483648", "9007199254740993"]) {
+		it(`exits 2 on a stop grace of ${JSON.stringify(grace)}: it must be 1 to 2147483647 ms, what a timer holds`, () => {
+			const run = lane([], {
+				// The grace is read first; had it been taken, this would be MIRROR_BIN_UNUSABLE, exit 1.
+				MIRROR_BIN: join(scratch("mirror-lane"), "absent"),
+				HOBO_MIRROR_LANE_STOP_GRACE_MS: grace,
+			});
+			assert.equal(run.status, 2, `${run.stdout}${run.stderr}`);
+			assert.ok(
+				run.stderr.includes(
+					`HOBO_MIRROR_LANE_STOP_GRACE_MS must be a whole number of milliseconds from 1 to 2147483647, not ${JSON.stringify(grace)}`,
+				),
+				run.stderr,
+			);
 		});
-		assert.equal(run.status, 2, `${run.stdout}${run.stderr}`);
-		assert.match(
-			run.stderr,
-			/HOBO_MIRROR_LANE_STOP_GRACE_MS must be a positive integer \(milliseconds\), not "soon"/u,
-		);
+	}
+
+	it("takes a stop grace of 2147483647 ms, the longest a timer holds", () => {
+		const run = lane([], {
+			MIRROR_BIN: join(scratch("mirror-lane"), "absent"),
+			HOBO_MIRROR_LANE_STOP_GRACE_MS: "2147483647",
+		});
+		assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
+		assert.match(run.stderr, /fail {2}test:mirror — MIRROR_BIN_UNUSABLE/u);
 	});
 });

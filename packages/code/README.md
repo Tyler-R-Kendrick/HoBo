@@ -914,7 +914,9 @@ the forward, it closes it itself, and the Station's `pam.SessionEnded` says
 `session-serve-failed`. The interactive shell's `/sessions serve --host
 <machine>` runs the same forward behind its screen (ssh gets no terminal),
 and closes the authorization when the forward ends, when it cannot start, and
-when the shell quits.
+when the shell quits. Its `/sessions serve` without `--host` starts the
+loopback session browser as `hobo-code session serve` does, shows where it is,
+and closes it when the shell quits.
 
 ## Package layout
 

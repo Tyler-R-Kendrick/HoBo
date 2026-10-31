@@ -25,12 +25,17 @@ import { type DevBrowserSession, resolveHoboSpawn } from "./dev-browser.js";
 import { materializeExample } from "./example-catalog.js";
 import { linkGeneratedAppRuntime } from "./generated-app-runtime.js";
 import type { PendingApproval, ShellHost } from "./interactive-shell.js";
-import { isJsonObject } from "./json.js";
+import { isJsonNumber, isJsonObject, isJsonString } from "./json.js";
 import {
 	forwardBanner,
 	forwardResidentSessions,
 	type SessionForward,
 } from "./session-forward.js";
+import {
+	type ServedSessions,
+	type ServeSessionsAction,
+	serveSessionsLocally,
+} from "./session-serve-local.js";
 import { formatUsage, type ShellEngine } from "./shell-engine.js";
 import { endingSignalHold } from "./signal-hold.js";
 import {
@@ -156,6 +161,26 @@ async function runHoboCommand(
 /** A forward-sessions action the CLI handed over, with the authorization it holds. */
 interface HandedForward extends SessionForward {
 	readonly closeAuthorization?: () => Promise<void>;
+}
+
+/** The CLI's serve-sessions action, which the shell runs itself. */
+function servedAction(
+	result: HoboCodeCliResult,
+): ServeSessionsAction | undefined {
+	if (!result.ok || !result.data || !isJsonObject(result.data))
+		return undefined;
+	const action = result.data.terminalAction;
+	if (!isJsonObject(action) || action.kind !== "serve-sessions")
+		return undefined;
+	return {
+		...(isJsonString(action.hoboHome)
+			? { hoboHome: action.hoboHome }
+			: undefined),
+		...(isJsonString(action.projectRoot)
+			? { projectRoot: action.projectRoot }
+			: undefined),
+		...(isJsonNumber(action.port) ? { port: action.port } : undefined),
+	};
 }
 
 function handedForward(result: HoboCodeCliResult): HandedForward | undefined {
@@ -288,6 +313,7 @@ export function createDefaultShellHost(
 	let lastProjectDir: string | undefined;
 	const devSessions = new Set<DevBrowserSession>();
 	const forwards = new Set<ShellForward>();
+	const servedSessions = new Set<ServedSessions>();
 	let disposed = false;
 	const cliDeps: DefaultShellHostOptions = {
 		...deps,
@@ -354,6 +380,30 @@ export function createDefaultShellHost(
 				},
 			}
 		: {};
+	/**
+	 * `/sessions serve` without `--host`: start the session browser as
+	 * `hobo-code session serve` does, say where it is, and close it with the
+	 * shell (`dispose`), however the shell ends.
+	 */
+	const serveLocally = async (action: ServeSessionsAction): Promise<string> => {
+		if (disposed) return "not served: the shell is closing";
+		let served: ServedSessions;
+		try {
+			served = await serveSessionsLocally(
+				action,
+				deps.env ?? process.env,
+				workspaceRoot,
+			);
+		} catch (error) {
+			return `✕ the session browser did not start: ${error instanceof Error ? error.message : String(error)}`;
+		}
+		if (disposed) {
+			await served.close();
+			return "not served: the shell is closing";
+		}
+		servedSessions.add(served);
+		return served.banner.trimEnd();
+	};
 	const tryWorkspaceAction = async (prompt: string): Promise<string | null> => {
 		const action = matchWorkspaceAction(prompt);
 		if (!action) return null;
@@ -484,12 +534,16 @@ export function createDefaultShellHost(
 				forwards.add(running);
 				return `${text}\n${forwardBanner(forward).trimEnd()}`;
 			}
+			const local = servedAction(result);
+			if (local !== undefined) return `${text}\n${await serveLocally(local)}`;
 			await executeResidentTerminalAction(result, deps.env ?? process.env);
 			return text;
 		},
 		dispose: async () => {
 			disposed = true;
 			await Promise.all([...forwards].map((forward) => forward.stop()));
+			await Promise.all([...servedSessions].map((served) => served.close()));
+			servedSessions.clear();
 			await Promise.all([...devSessions].map((session) => session.close()));
 			devSessions.clear();
 		},

@@ -34,9 +34,8 @@ import {
 import { cleanupIsolation, createIsolationContext } from "../isolation.js";
 import { isJsonObject } from "../json.js";
 import { hangUpWhenLauncherGoes } from "../launcher-hangup.js";
-import { preferNamedEndpoint } from "../occupancy-endpoints.js";
-import { startSessionControlServer } from "../session-control-server.js";
 import { forwardResidentSessions } from "../session-forward.js";
+import { serveSessionsLocally } from "../session-serve-local.js";
 import type { ShellEngine } from "../shell-engine.js";
 import { createDefaultShellHost } from "../shell-host.js";
 import { endingSignalHold, signalStatus } from "../signal-hold.js";
@@ -301,28 +300,15 @@ if (argv[0] === "_station-agent") {
 			signals.release();
 		}
 	} else if (result.ok && action?.kind === "serve-sessions") {
-		const hoboHome =
-			action.hoboHome ??
-			(process.env.HOBO_HOME && process.env.HOBO_HOME.length > 0
-				? process.env.HOBO_HOME
-				: join(process.env.HOME ?? tmpdir(), ".hobo"));
-		const requestedPort =
-			action.port ??
-			Number.parseInt(process.env.HOBO_CODE_SESSION_PORT ?? "0", 10);
-		const server = await startSessionControlServer({
-			hoboHome,
-			projectRoot: action.projectRoot ?? process.cwd(),
-			port:
-				Number.isSafeInteger(requestedPort) && requestedPort > 0
-					? requestedPort
-					: 0,
+		const served = await serveSessionsLocally({
+			...(action.hoboHome !== undefined
+				? { hoboHome: action.hoboHome }
+				: undefined),
+			...(action.projectRoot !== undefined
+				? { projectRoot: action.projectRoot }
+				: undefined),
+			...(action.port !== undefined ? { port: action.port } : undefined),
 		});
-		const browser = preferNamedEndpoint(server.url, "evidence");
-		const report = preferNamedEndpoint(server.reportUrl, "evidence");
-		const controls = preferNamedEndpoint(
-			server.controlsUrlTemplate,
-			"evidence",
-		);
 		// Any signal that ends hobo-code stops the server the same way: the
 		// launcher passes SIGHUP (a closing terminal) and SIGQUIT on too, and
 		// either one, unhandled, ended the process with the server unclosed.
@@ -332,11 +318,9 @@ if (argv[0] === "_station-agent") {
 			for (const signal of ENDING_SIGNALS)
 				process.once(signal, () => resolve());
 		});
-		process.stdout.write(
-			`browser: ${browser}\nevidence report: ${report}\nevidence controls: ${controls}\nhobo dev: HOBO_CODE_EVIDENCE_CONTROLS_URL=${controls}?parentOrigin=<app-origin>\nremote: forward ${new URL(browser).host} through a declared Station machine; the server never binds publicly\n`,
-		);
+		process.stdout.write(served.banner);
 		await stopped;
-		await server.close();
+		await served.close();
 		process.exitCode = 0;
 	} else {
 		process.exitCode = result.exitCode;

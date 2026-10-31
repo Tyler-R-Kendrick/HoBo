@@ -127,7 +127,7 @@ as a live deployment. IaC selection lives in `src/compose.ts`:
 | Real Pulumi Automation/CLI | `HOBO_PULUMI_LIVE=1` (engine- and credential-gated); its programs and `file://` state go in `HOBO_PULUMI_WORKDIR`, which is kept, else in a `hobo-pulumi-live-*` directory removed when the process ends (one `hobo:` line on stderr names it), so set `HOBO_PULUMI_WORKDIR` to keep the state |
 | Direct-HTTP resolver plane | a cloud credential **plus** `HOBO_DEPLOY_RESOLVERS=1` (opt-in) |
 | Live Cloudflare Workers | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` |
-| Live Vercel | `VERCEL_TOKEN` |
+| Live Vercel | `VERCEL_TOKEN` (and `VERCEL_TEAM_ID` for a project in a team) |
 
 The live Vercel provider (`src/vercel-deploy-provider.ts`) deploys first, with
 one `POST /v13/deployments`. Only when Vercel refuses that because the project
@@ -150,8 +150,12 @@ when there is no `teamId`. Vercel answers "Project not found" for a project that
 lives only in another scope, so a missing `teamId`, or a wrong one the token can
 still deploy to, does not fail: it creates a second project of that name there
 and deploys to it. Set `teamId` (`createVercelDeployProvider({ token, teamId })`)
-for a project that lives in a team. `selectIacProvider` passes none, so
-`hobo up` with `VERCEL_TOKEN` deploys, and creates, in the token's own scope.
+for a project that lives in a team. `selectIacProvider`, and so `hobo up`, reads
+it from `VERCEL_TEAM_ID`, beside `VERCEL_TOKEN`; unset, empty or blank, the
+deploy and any create are in the token's own scope. Two paths do not read it:
+the resolver plane (`HOBO_DEPLOY_RESOLVERS=1`), and a run whose credentials come
+from OpenSesame (`HOBO_CREDENTIALS=opensesame`), whose relaunched `hobo` starts
+from an allowlisted environment that leaves `VERCEL_TEAM_ID` behind.
 The outputs say what happened: `projectCreated` is `"true"` when this deployment
 created the project and `"false"` otherwise, and `scope` is the `teamId`, or
 `"personal"` when there is none.

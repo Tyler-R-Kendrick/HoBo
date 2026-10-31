@@ -243,8 +243,8 @@ export interface SelectIacProviderDeps {
 	readonly providers: readonly CloudProvider[];
 	// Optional Pulumi adapter override (forces the Pulumi lane; see above).
 	readonly adapter?: PulumiAutomationAdapter;
-	// The environment consulted for `VERCEL_TOKEN` / `CLOUDFLARE_API_TOKEN` +
-	// `CLOUDFLARE_ACCOUNT_ID`. Defaults to `process.env`.
+	// The environment consulted for `VERCEL_TOKEN` (and `VERCEL_TEAM_ID`) /
+	// `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`. Defaults to `process.env`.
 	readonly env?: Record<string, string | undefined>;
 	// Optional injected transport for the Vercel client (tests mock the network).
 	readonly vercelFetch?: VercelFetch;
@@ -498,7 +498,10 @@ function resolverBackedProviderFor(
 //     resolver plane (`hobo.resource-resolver/v1`) behind the IacProvider port.
 //   - `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` present -> the REAL
 //     Cloudflare Workers deploy provider (cred-gated).
-//   - else `VERCEL_TOKEN` present -> the REAL Vercel deploy provider (cred-gated).
+//   - else `VERCEL_TOKEN` present -> the REAL Vercel deploy provider (cred-gated),
+//     in the team `VERCEL_TEAM_ID` names, or the token's own scope when it is
+//     unset or blank (the name and the trim `scripts/staging-cutover-demo.mts`
+//     already use).
 //
 // The resolver lane is OPT-IN and deliberately sits INSIDE the cred-gated
 // bracket: it can only replace the two bespoke deploy providers, never the
@@ -549,11 +552,15 @@ export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
 				: undefined),
 		});
 	}
+	const vercelTeamId = env.VERCEL_TEAM_ID?.trim();
 	return createVercelDeployProvider({
 		// SAFETY: assertion required at this I/O or test boundary.
 		token: vercelToken as string,
 		...(deps.vercelFetch !== undefined
 			? { fetch: deps.vercelFetch }
+			: undefined),
+		...(vercelTeamId !== undefined && vercelTeamId !== ""
+			? { teamId: vercelTeamId }
 			: undefined),
 	});
 }

@@ -1,9 +1,11 @@
 import { inspect } from "node:util";
 
 import type { IacProgram } from "@hobo/cloud";
+import type { EventStore } from "@hobo/core";
 import { at, first } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { selectIacProvider } from "../src/compose.js";
 import { type JsonObject, parseJsonObject } from "../src/json.js";
 import {
 	createVercelClient,
@@ -409,6 +411,62 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 		const provider = createVercelDeployProvider({ token: "tok", fetch });
 		await provider.preview(programFor("dep-1"));
 		expect(sent).toEqual([]);
+	});
+});
+
+describe("the composed provider's team (selectIacProvider, scripted transport, no network)", () => {
+	// selectIacProvider builds the Pulumi lane's provider lazily, so a stand-in
+	// store is never read on the Vercel path.
+	const deps = {
+		// SAFETY: assertion required at this I/O or test boundary.
+		store: {} as EventStore,
+		providers: [],
+	};
+
+	async function composedDeploy(env: NodeJS.ProcessEnv) {
+		const { fetch, sent, routes } = scripted({
+			[DEPLOY]: [PROJECT_NOT_FOUND, DEPLOYED],
+			[CREATE]: [CREATED],
+		});
+		const provider = selectIacProvider({ ...deps, env, vercelFetch: fetch });
+		const outputs = await provider.apply(programFor("dep-1"));
+		const queries = sent.map(({ url }) => new URL(url).search);
+		return { outputs, queries, routes: routes() };
+	}
+
+	it("creates and deploys in the team VERCEL_TEAM_ID names, and says so", async () => {
+		const { outputs, queries, routes } = await composedDeploy({
+			VERCEL_TOKEN: "tok",
+			VERCEL_TEAM_ID: "team_acme",
+		});
+
+		expect(routes).toEqual([DEPLOY, CREATE, DEPLOY]);
+		expect(queries).toEqual([
+			"?teamId=team_acme",
+			"?teamId=team_acme",
+			"?teamId=team_acme",
+		]);
+		expect(outputs).toMatchObject({
+			projectCreated: "true",
+			scope: "team_acme",
+		});
+	});
+
+	it.each([
+		["unset", {}],
+		["empty", { VERCEL_TEAM_ID: "" }],
+		["blank", { VERCEL_TEAM_ID: "  " }],
+	])("with VERCEL_TEAM_ID %s, stays in the token's own scope", async (_case, team) => {
+		const { outputs, queries } = await composedDeploy({
+			VERCEL_TOKEN: "tok",
+			...team,
+		});
+
+		expect(queries).toEqual(["", "", ""]);
+		expect(outputs).toMatchObject({
+			projectCreated: "true",
+			scope: "personal",
+		});
 	});
 });
 

@@ -89,6 +89,33 @@ export function linkWorkspacePackages(
 			};
 }
 
+/**
+ * The values of pnpm-workspace.yaml's `catalog` and `catalogs` entries, read
+ * as block-style YAML (a flow-style section is kept whole). Nothing under any
+ * other key, such as pnpm 10's `overrides`, is a catalog entry.
+ */
+export function catalogValues(text: string): string[] {
+	const values: string[] = [];
+	const unquote = (value: string) => value.replace(/^(["'])(.*)\1$/u, "$2");
+	let inCatalog = false;
+	for (const raw of text.split(/\r?\n/u)) {
+		const line = raw.replace(/(^|\s)#.*$/u, "").trimEnd();
+		if (line.trim() === "") continue;
+		const top = /^([^\s:#][^:]*):(.*)$/u.exec(line);
+		if (top !== null) {
+			inCatalog = top[1] === "catalog" || top[1] === "catalogs";
+			if (inCatalog && top[2]!.trim() !== "") values.push(top[2]!.trim());
+			continue;
+		}
+		if (!inCatalog) continue;
+		const value = /^\s+(?:"[^"]*"|'[^']*'|[^\s:][^:]*):\s*(.*)$/u.exec(
+			line,
+		)?.[1];
+		if (value !== undefined && value !== "") values.push(unquote(value));
+	}
+	return values;
+}
+
 /** How a dependency's specifier resolves to a workspace package. */
 export interface WorkspaceIndex {
 	/** The workspace package of that name. */
@@ -99,7 +126,7 @@ export interface WorkspaceIndex {
 	inside(path: string): boolean;
 	/** The `version` of the workspace package of that name, if it has one. */
 	versionOf(name: string): string | undefined;
-	/** Whether a pnpm catalog may name a workspace package (pnpm-workspace.yaml says `workspace:`). */
+	/** Whether a pnpm catalog may name a workspace package (a `catalog`/`catalogs` entry says `workspace:`). */
 	readonly catalogNamesWorkspace: boolean;
 }
 

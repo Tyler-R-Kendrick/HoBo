@@ -33,8 +33,14 @@
  * - A type-only import counts only in a file of the task's own package that
  *   its tsconfig compiles: anywhere else it is erased before the test runs.
  * - Imports are read from the syntax tree (lib/test-import-specifiers). A
- *   specifier computed at run time, and a `dist/` path built for a child
- *   process or a URL, cannot be read and are not checked.
+ *   specifier computed at run time cannot be read.
+ * - A path a loaded file assembles at run time that names another package's
+ *   `dist/`, or ends at its directory in a file that spawns, links or loads by
+ *   a computed path (lib/test-runtime-reaches), fails unless
+ *   `scripts/test-deps-runtime-reaches.json` declares what the file needs.
+ *   Every test task that loads a declared file must have those builds, and a
+ *   declaration no test task reaches, or that names no workspace package,
+ *   fails too.
  * - A declaration orders the sibling's build only with a `workspace:`
  *   specifier, unless pnpm's link-workspace-packages is on
  *   (lib/turbo-task-graph `orderedDependency`); a violation says how the
@@ -42,11 +48,13 @@
  *   default applies.
  * - What it does not model fails, naming the file and why, rather than
  *   passing unseen: a `catalog:` specifier that may name a workspace package;
- *   with link-workspace-packages on, a version range or tag on one; and a
- *   submodule inside a submodule.
+ *   with link-workspace-packages on, a version range or tag on one; a
+ *   submodule inside a submodule, or one git cannot list; and an undeclared
+ *   runtime reach (above).
  * - Files git tracks that the checkout leaves out (a sparse checkout, or a
- *   submodule never initialised) cannot be read. The check names how many it
- *   skipped and passes with a warning; under `--strict`, or in CI (`CI` set,
+ *   submodule never initialised) cannot be read: a manifest, a test file, or
+ *   any file the follow reaches. The check names how many it skipped and
+ *   passes with a warning; under `--strict`, or in CI (`CI` set,
  *   and not `0` or `false`), it fails instead.
  *
  * Fix one by declaring the sibling in `devDependencies` as `"workspace:*"`
@@ -54,7 +62,8 @@
  * declaration to resolve), by naming its build on the task:
  * `"@hobo/runtime#test": { "dependsOn": ["build", "@hobo/runtime-local#build"] }`.
  * A devDependency widens the package's own `build` and `typecheck`, and every
- * dependent's; a task override orders that task only.
+ * dependent's; a task override orders that task only. A runtime reach is fixed
+ * the same way, once its declaration says which builds it needs.
  *
  * Usage: node --import tsx scripts/check-test-workspace-deps.mts [--json] [--strict] [--root <dir>]
  */
@@ -66,11 +75,14 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 import { GIT_OUTPUT_MAX_BUFFER } from "./lib/git-output.ts";
+import { type ModuleFacts, readModule } from "./lib/test-import-specifiers.mts";
 import {
-	type ImportSpecifier,
-	importSpecifiersOf,
-} from "./lib/test-import-specifiers.mts";
+	parseRuntimeReaches,
+	RUNTIME_REACHES_FILE,
+	runtimeReaches,
+} from "./lib/test-runtime-reaches.mts";
 import {
+	catalogValues,
 	type GraphPackage,
 	type LinkWorkspacePackages,
 	linkWorkspacePackages,
@@ -116,6 +128,8 @@ export interface Unmodelled {
 export interface Report {
 	readonly violations: readonly Violation[];
 	readonly unmodelled: readonly Unmodelled[];
+	/** Declarations in the runtime-reach registry that no longer hold. */
+	readonly stale: readonly Unmodelled[];
 	readonly skipped: Skipped;
 }
 
@@ -308,8 +322,8 @@ export function readWorkspace(
 	}
 	const workspaceYaml = readText(join(root, "pnpm-workspace.yaml")) ?? "";
 	// A catalog entry with a workspace: specifier can order a build under any key.
-	const catalogNamesWorkspace = /^\s+[^#\s][^:]*:\s*["']?workspace:/mu.test(
-		workspaceYaml,
+	const catalogNamesWorkspace = catalogValues(workspaceYaml).some((value) =>
+		value.includes("workspace:"),
 	);
 	const link = linkWorkspacePackages({
 		packageManager: readJson<Manifest>(join(root, "package.json"))
@@ -418,16 +432,28 @@ const RESOLVE_SUFFIXES = [
 	"/index.js",
 ];
 
-/** The listed file a relative import of `path` loads: as written, its TypeScript source, or with an extension or `/index` added. */
+/** The TypeScript sources a compiled extension stands for, as vite and TypeScript map them. */
+const SOURCES_FOR: readonly (readonly [RegExp, readonly string[]])[] = [
+	[/\.js$/u, [".ts", ".tsx"]],
+	[/\.jsx$/u, [".tsx"]],
+	[/\.mjs$/u, [".mts"]],
+	[/\.cjs$/u, [".cts"]],
+];
+
+/** The listed file a relative import of `path` loads: its TypeScript source, as written, or with an extension or `/index` added. */
 function resolveLocal(
 	path: string,
 	files: ReadonlySet<string>,
 ): string | undefined {
-	const source = path.replace(/\.([cm]?)js(x?)$/u, ".$1ts$2");
-	for (const base of source === path ? [path] : [source, path])
-		for (const suffix of RESOLVE_SUFFIXES)
-			if (files.has(base + suffix)) return base + suffix;
-	return undefined;
+	const candidates = [
+		...SOURCES_FOR.flatMap(([extension, sources]) =>
+			extension.test(path)
+				? sources.map((source) => path.replace(extension, source))
+				: [],
+		),
+		...RESOLVE_SUFFIXES.map((suffix) => path + suffix),
+	];
+	return candidates.find((candidate) => files.has(candidate));
 }
 
 function isRelative(specifier: string): boolean {
@@ -513,12 +539,6 @@ export function scanTestWorkspaceDeps(
 	const tracked = options.files === undefined ? trackedFiles(root) : undefined;
 	const files = options.files ?? tracked?.files ?? walk(root);
 	const globs = workspaceGlobs(root);
-	const skipped: Skipped = {
-		files: missingFiles(root, files, (dir) =>
-			globs.some((glob) => matches(glob, dir)),
-		),
-		submodules: tracked?.submodules ?? [],
-	};
 	const workspace = readWorkspace(root, files);
 	const { packages, graph } = workspace;
 	const byName = new Map(packages.map((pkg) => [pkg.name, pkg]));
@@ -536,21 +556,24 @@ export function scanTestWorkspaceDeps(
 	const compiled = (pkg: WorkspacePackage, file: string) =>
 		compiledBy(root, pkg, tsconfigs, join(root, file));
 	const listed = new Set(files);
-	const sources = new Map<string, ImportSpecifier[]>();
-	const specifiersOf = (file: string): ImportSpecifier[] => {
-		let found = sources.get(file);
+	const modules = new Map<string, ModuleFacts>();
+	// Tracked files the follow reached and could not read: a sparse checkout.
+	const unread = new Set<string>();
+	const factsOf = (file: string): ModuleFacts => {
+		let found = modules.get(file);
 		if (found === undefined) {
 			let source = "";
 			try {
 				source = readFileSync(join(root, file), "utf8");
 			} catch {
-				// An unreadable file names nothing.
+				if (listed.has(file)) unread.add(file);
 			}
-			found = importSpecifiersOf(source, file);
-			sources.set(file, found);
+			found = readModule(source, file);
+			modules.set(file, found);
 		}
 		return found;
 	};
+	const specifiersOf = (file: string) => factsOf(file).imports;
 	/**
 	 * Where a relative specifier lands: a tracked source file, which runs as
 	 * written and is followed; or a path in a package that git does not track
@@ -655,15 +678,114 @@ export function scanTestWorkspaceDeps(
 			}
 		}
 	}
+	// Reaches made at run time by an assembled path: declared, or unmodelled.
+	const registry = parseRuntimeReaches(
+		readText(join(root, RUNTIME_REACHES_FILE)),
+	);
+	const declared = new Map(
+		registry.reaches.map((entry) => [entry.from, entry]),
+	);
+	const dirs = packages.map(({ name, dir }) => ({ name, dir }));
+	const reachedBy = new Map<string, Map<string, string>>();
+	const reachesOf = (file: string) => {
+		let reached = reachedBy.get(file);
+		if (reached === undefined) {
+			reached = runtimeReaches(factsOf(file), dirs);
+			reachedBy.set(file, reached);
+		}
+		return reached;
+	};
+	const neededBuild = (need: string) => /^(.+)#build$/u.exec(need)?.[1];
+	const undeclared = new Map<string, Map<string, string>>();
+	const reachesAnother = new Set<string>();
+	for (const [file, loading] of running) {
+		const reached = reachesOf(file);
+		if (reached.size === 0) continue;
+		const entry = declared.get(file);
+		for (const key of loading) {
+			const { pkg, task } = tasks.get(key)!;
+			const others = [...reached].filter(([name]) => name !== pkg.name);
+			if (others.length === 0) continue;
+			reachesAnother.add(file);
+			if (entry === undefined) {
+				const named = undeclared.get(file) ?? new Map<string, string>();
+				for (const [name, text] of others)
+					if (!named.has(name)) named.set(name, text);
+				undeclared.set(file, named);
+				continue;
+			}
+			const built = graph.buildsBefore(pkg.name, task);
+			for (const need of entry.needs) {
+				const name = neededBuild(need);
+				if (name === undefined || !byName.has(name) || name === pkg.name)
+					continue;
+				if (graph.needsBuilt(name).every((item) => built.has(item))) continue;
+				const unique = `${file}\0${key}\0${name}\0runtime`;
+				if (seen.has(unique)) continue;
+				seen.add(unique);
+				violations.push({
+					package: pkg.name,
+					file,
+					task,
+					imports: name,
+					specifier: `declared in ${RUNTIME_REACHES_FILE}`,
+					declared: undefined,
+				});
+			}
+		}
+	}
+	const stale: Unmodelled[] = registry.problems.map((reason) => ({
+		file: RUNTIME_REACHES_FILE,
+		reason,
+	}));
+	const staleness = (reason: string) =>
+		stale.push({ file: RUNTIME_REACHES_FILE, reason });
+	for (const { from, needs } of registry.reaches) {
+		if (!listed.has(from)) staleness(`"${from}" is not a tracked file`);
+		else if (!running.has(from))
+			staleness(`"${from}" is loaded by no test task`);
+		else if (!reachesAnother.has(from))
+			staleness(`"${from}" no longer reaches another package at run time`);
+		for (const need of needs) {
+			const name = neededBuild(need);
+			if (name === undefined)
+				staleness(`"${from}" needs "${need}", which is not "<package>#build"`);
+			else if (!byName.has(name))
+				staleness(
+					`"${from}" needs "${need}", and ${name} is not a workspace package`,
+				);
+		}
+	}
 	const order = (item: Violation) =>
 		`${item.file}\0${item.package}\0${item.task}\0${item.imports}\0${item.specifier}`;
 	violations.sort((a, b) =>
 		order(a) < order(b) ? -1 : order(a) > order(b) ? 1 : 0,
 	);
-	const unmodelled = [...workspace.unmodelled, ...(tracked?.nested ?? [])].sort(
-		(a, b) => (`${a.file}\0${a.reason}` < `${b.file}\0${b.reason}` ? -1 : 1),
-	);
-	return { violations, unmodelled, skipped };
+	const byFile = (a: Unmodelled, b: Unmodelled) =>
+		`${a.file}\0${a.reason}` < `${b.file}\0${b.reason}` ? -1 : 1;
+	const unmodelled = [
+		...workspace.unmodelled,
+		...(tracked?.nested ?? []),
+		...[...undeclared].map(([file, named]) => {
+			const names = [...named.keys()].sort();
+			return {
+				file,
+				reason: `reaches ${names.join(", ")} at run time through a path it assembles ("${named.get(names[0]!)}"), which this check cannot follow; declare what it needs in ${RUNTIME_REACHES_FILE}`,
+			};
+		}),
+	].sort(byFile);
+	const skipped: Skipped = {
+		files: [
+			...new Set([
+				...missingFiles(root, files, (dir) =>
+					globs.some((glob) => matches(glob, dir)),
+				),
+				...unread,
+			]),
+		].sort(),
+		submodules: tracked?.submodules ?? [],
+	};
+	return { violations, unmodelled, stale: stale.sort(byFile), skipped };
 }
 
 /** Whether `CI` names a CI run: set, and not empty, `0` or `false`. */
@@ -709,25 +831,29 @@ if (
 			? resolve(args[rootArg + 1]!)
 			: join(dirname(fileURLToPath(import.meta.url)), "..");
 	const strict = args.includes("--strict") || inCi(process.env.CI);
-	const { violations, unmodelled, skipped } = scanTestWorkspaceDeps(root);
+	const { violations, unmodelled, stale, skipped } =
+		scanTestWorkspaceDeps(root);
 	if (args.includes("--json"))
 		process.stdout.write(
-			`${JSON.stringify({ violations, unmodelled, skipped }, null, "\t")}\n`,
+			`${JSON.stringify({ violations, unmodelled, stale, skipped }, null, "\t")}\n`,
 		);
 	else
 		for (const item of violations)
 			process.stderr.write(
-				item.declared === undefined
-					? `${item.file}: ${item.package}#${item.task} loads ${item.imports} (${item.specifier}), and turbo builds it after; declare it in devDependencies with "workspace:*" where ${item.package}'s own file imports it by name, else add "${item.imports}#build" to "${item.package}#${item.task}".dependsOn in turbo.json\n`
-					: `${item.file}: ${item.package}#${item.task} loads ${item.imports} (${item.specifier}), and turbo builds it after: ${item.package} declares it as ${item.declared}; write "workspace:*"\n`,
+				item.specifier === `declared in ${RUNTIME_REACHES_FILE}`
+					? `${item.file}: ${item.package}#${item.task} reaches ${item.imports} at run time (declared in ${RUNTIME_REACHES_FILE}), and turbo builds it after; add "${item.imports}#build" to "${item.package}#${item.task}".dependsOn in turbo.json\n`
+					: item.declared === undefined
+						? `${item.file}: ${item.package}#${item.task} loads ${item.imports} (${item.specifier}), and turbo builds it after; declare it in devDependencies with "workspace:*" where ${item.package}'s own file imports it by name, else add "${item.imports}#build" to "${item.package}#${item.task}".dependsOn in turbo.json\n`
+						: `${item.file}: ${item.package}#${item.task} loads ${item.imports} (${item.specifier}), and turbo builds it after: ${item.package} declares it as ${item.declared}; write "workspace:*"\n`,
 			);
-	for (const item of unmodelled)
+	for (const item of [...unmodelled, ...stale])
 		process.stderr.write(`error: ${item.file}: ${item.reason}\n`);
 	const lines = skippedLines(skipped, strict ? "error" : "warning");
 	for (const line of lines) process.stderr.write(`${line}\n`);
 	process.exitCode =
 		violations.length === 0 &&
 		unmodelled.length === 0 &&
+		stale.length === 0 &&
 		(!strict || lines.length === 0)
 			? 0
 			: 1;

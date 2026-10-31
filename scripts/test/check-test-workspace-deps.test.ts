@@ -79,6 +79,46 @@ const base = {
 	"packages/lib/src/index.ts": "export const x = 1;\n",
 };
 
+/** git in `cwd`, unsigned, as a throwaway identity; its trimmed output. */
+function git(cwd: string, ...args: string[]): string {
+	return execFileSync(
+		"git",
+		[
+			"-c",
+			"commit.gpgsign=false",
+			"-c",
+			"user.name=t",
+			"-c",
+			"user.email=t@t",
+			...args,
+		],
+		{ cwd, stdio: "pipe" },
+	)
+		.toString()
+		.trim();
+}
+
+/** The check's CLI on `dir`, with `CI` unset unless given. */
+function cli(dir: string, args: readonly string[], ci?: string) {
+	const env = { ...process.env };
+	delete env.CI;
+	if (ci !== undefined) env.CI = ci;
+	return spawnSync(
+		process.execPath,
+		[
+			"--import",
+			"tsx",
+			join(root, "scripts/check-test-workspace-deps.mts"),
+			"--root",
+			dir,
+			...args,
+		],
+		{ cwd: root, encoding: "utf8", env },
+	);
+}
+
+const REGISTRY = "scripts/test-deps-runtime-reaches.json";
+
 const found = (dir: string) =>
 	checkTestWorkspaceDeps(dir).map(
 		(item) => `${item.file} [${item.task}] -> ${item.imports}`,
@@ -756,6 +796,281 @@ describe("checkTestWorkspaceDeps", () => {
 		);
 	});
 
+	it("resolves a .js specifier to a .tsx source, and .jsx to .tsx, as vite and TypeScript do", () => {
+		within(
+			{
+				...base,
+				"packages/app/package.json": manifest("@s/app"),
+				"packages/app/test/a.test.ts":
+					'import "../src/view.js";\nimport "../src/widget.jsx";\n',
+				"packages/app/src/view.tsx":
+					'export { x } from "../../lib/dist/index.js";\n',
+				"packages/app/src/widget.tsx":
+					'export { x } from "../../lib/dist/widget.js";\n',
+			},
+			(dir) =>
+				assert.deepEqual(found(dir), [
+					"packages/app/src/view.tsx [test] -> @s/lib",
+					"packages/app/src/widget.tsx [test] -> @s/lib",
+				]),
+		);
+	});
+
+	it("refuses a path to a workspace package's dist/, or into its directory for a computed load, that no declaration covers", () => {
+		within(
+			{
+				...base,
+				"packages/app/package.json": manifest("@s/app"),
+				"packages/app/test/a.test.ts": [
+					'import "../src/run.js";',
+					'import "../src/link.js";',
+					'import "../src/quiet.js";',
+					"",
+				].join("\n"),
+				// Spawns lib's built CLI by a path it assembles.
+				"packages/app/src/run.ts": [
+					'import { spawn } from "node:child_process";',
+					'import { join } from "node:path";',
+					"export const run = (root: string) =>",
+					'\tspawn(process.execPath, [join(root, "packages", "lib", "dist", "cli.js")]);',
+					"",
+				].join("\n"),
+				// Links lib's directory into a generated app, which then loads it.
+				"packages/app/src/link.ts": [
+					'import { symlinkSync } from "node:fs";',
+					'import { join } from "node:path";',
+					"export const link = (root: string, to: string) =>",
+					'\tsymlinkSync(join(root, "packages", "lib"), to, "dir");',
+					"",
+				].join("\n"),
+				// Names lib's directory, its own dist/, and loads nothing by a computed path.
+				"packages/app/src/quiet.ts": [
+					'export const docs = "see packages/lib for the API";',
+					'export const own = "packages/app/dist/index.js";',
+					"",
+				].join("\n"),
+			},
+			(dir) => {
+				const report = scanTestWorkspaceDeps(dir);
+				assert.deepEqual(report.violations, []);
+				assert.deepEqual(
+					report.unmodelled.map((item) => `${item.file}: ${item.reason}`),
+					[
+						`packages/app/src/link.ts: reaches @s/lib at run time through a path it assembles ("*/packages/lib"), which this check cannot follow; declare what it needs in ${REGISTRY}`,
+						`packages/app/src/run.ts: reaches @s/lib at run time through a path it assembles ("*/packages/lib/dist/cli.js"), which this check cannot follow; declare what it needs in ${REGISTRY}`,
+					],
+				);
+			},
+		);
+	});
+
+	it("checks a declared runtime reach: each need must be ordered for every test task that loads it", () => {
+		const run = [
+			'import { spawn } from "node:child_process";',
+			'import { join } from "node:path";',
+			"export const run = (root: string) =>",
+			'\tspawn(process.execPath, [join(root, "packages", "lib", "dist", "cli.js")]);',
+			"",
+		].join("\n");
+		within(
+			{
+				...base,
+				"turbo.json": turbo({
+					"@s/ordered#test": { dependsOn: ["build", "@s/lib#build"] },
+				}),
+				[REGISTRY]: JSON.stringify({
+					reaches: [
+						{
+							from: "packages/ordered/src/run.ts",
+							needs: ["@s/lib#build"],
+							why: "spawns lib's CLI",
+						},
+						{
+							from: "packages/unordered/src/run.ts",
+							needs: ["@s/lib#build"],
+							why: "spawns lib's CLI",
+						},
+					],
+				}),
+				"packages/ordered/package.json": manifest("@s/ordered"),
+				"packages/ordered/test/a.test.ts": 'import "../src/run.js";\n',
+				"packages/ordered/src/run.ts": run,
+				"packages/unordered/package.json": manifest("@s/unordered"),
+				"packages/unordered/test/a.test.ts": 'import "../src/run.js";\n',
+				"packages/unordered/src/run.ts": run,
+			},
+			(dir) => {
+				const report = scanTestWorkspaceDeps(dir);
+				assert.deepEqual(
+					report.violations.map(
+						(item) =>
+							`${item.file} [${item.package}#${item.task}] -> ${item.imports} (${item.specifier})`,
+					),
+					[
+						`packages/unordered/src/run.ts [@s/unordered#test] -> @s/lib (declared in ${REGISTRY})`,
+					],
+				);
+				assert.deepEqual(report.unmodelled, []);
+				assert.deepEqual(report.stale, []);
+			},
+		);
+	});
+
+	it("refuses a declaration that no test task reaches any more, or that names no workspace package", () => {
+		const reaches = [
+			'import { spawn } from "node:child_process";',
+			'spawn(process.execPath, ["../../lib/dist/cli.js"]);',
+			"",
+		].join("\n");
+		within(
+			{
+				...base,
+				[REGISTRY]: JSON.stringify({
+					reaches: [
+						{ from: "packages/app/src/gone.ts", needs: [], why: "deleted" },
+						{
+							from: "packages/app/src/quiet.ts",
+							needs: ["@s/lib#build"],
+							why: "used to spawn lib",
+						},
+						{
+							from: "packages/app/src/unloaded.ts",
+							needs: ["@s/lib#build"],
+							why: "no test imports it",
+						},
+						{
+							from: "packages/app/src/run.ts",
+							needs: ["@s/nope#build", "@s/lib"],
+							why: "spawns lib",
+						},
+					],
+				}),
+				"packages/app/package.json": manifest("@s/app"),
+				"packages/app/test/a.test.ts":
+					'import "../src/quiet.js";\nimport "../src/run.js";\n',
+				"packages/app/src/quiet.ts": "export const q = 1;\n",
+				"packages/app/src/unloaded.ts": reaches,
+				"packages/app/src/run.ts": reaches,
+			},
+			(dir) =>
+				assert.deepEqual(
+					scanTestWorkspaceDeps(dir).stale.map(
+						(item) => `${item.file}: ${item.reason}`,
+					),
+					[
+						`${REGISTRY}: "packages/app/src/gone.ts" is not a tracked file`,
+						`${REGISTRY}: "packages/app/src/quiet.ts" no longer reaches another package at run time`,
+						`${REGISTRY}: "packages/app/src/run.ts" needs "@s/lib", which is not "<package>#build"`,
+						`${REGISTRY}: "packages/app/src/run.ts" needs "@s/nope#build", and @s/nope is not a workspace package`,
+						`${REGISTRY}: "packages/app/src/unloaded.ts" is loaded by no test task`,
+					],
+				),
+		);
+	});
+
+	it("does not take a pnpm-workspace.yaml override for a catalog entry", () => {
+		const unmodelled = (yaml: string, specifier: string) =>
+			within(
+				{
+					...base,
+					"pnpm-workspace.yaml": `${base["pnpm-workspace.yaml"]}${yaml}`,
+					"packages/app/package.json": manifest("@s/app", {
+						devDependencies: { "left-pad": specifier },
+					}),
+				},
+				(dir) => scanTestWorkspaceDeps(dir).unmodelled.map((item) => item.file),
+			);
+		// pnpm 10 reads overrides from pnpm-workspace.yaml; they are not a catalog.
+		assert.deepEqual(
+			unmodelled(
+				'catalog:\n  left-pad: 1.3.0\noverrides:\n  "@s/lib": "workspace:*"\n',
+				"catalog:",
+			),
+			[],
+		);
+		assert.deepEqual(
+			unmodelled(
+				'catalogs:\n  tools:\n    left-pad: "workspace:*" # a named catalog\n',
+				"catalog:tools",
+			),
+			["packages/app/package.json"],
+		);
+	});
+
+	it("refuses a submodule git cannot list", () => {
+		within(
+			{
+				...base,
+				"packages/app/package.json": manifest("@s/app"),
+				// A checkout whose .git points at nothing.
+				"external/sub/.git": "gitdir: /nonexistent/hobo-test-deps\n",
+			},
+			(dir) => {
+				git(dir, "init", "-q");
+				git(dir, "add", "pnpm-workspace.yaml", "turbo.json", "packages");
+				const head = git(dir, "hash-object", "-w", "turbo.json");
+				git(
+					dir,
+					"update-index",
+					"--add",
+					"--cacheinfo",
+					`160000,${head},external/sub`,
+				);
+				assert.deepEqual(
+					scanTestWorkspaceDeps(dir).unmodelled.map(
+						(item) => `${item.file}: ${item.reason}`,
+					),
+					[
+						"external/sub: a submodule git cannot list, so this check cannot tell what is inside it",
+					],
+				);
+			},
+		);
+	});
+
+	it("counts a followed source file a sparse checkout left out, and fails on it under --strict or in CI", () => {
+		within(
+			{
+				...base,
+				"packages/other/package.json": manifest("@s/other"),
+				"packages/sib/package.json": manifest("@s/sib", {
+					dependencies: { "@s/other": "workspace:*" },
+				}),
+				"packages/sib/src/x.ts": 'export * from "@s/other";\n',
+				"packages/app/package.json": manifest("@s/app"),
+				"packages/app/test/a.test.ts": 'import "../../sib/src/x.js";\n',
+			},
+			(dir) => {
+				git(dir, "init", "-q");
+				git(dir, "add", ".");
+				git(dir, "commit", "-qm", "t");
+				git(
+					dir,
+					"sparse-checkout",
+					"set",
+					"--no-cone",
+					"/*",
+					"!/packages/sib/src/",
+				);
+				for (const [args, ci] of [
+					[["--strict"], undefined],
+					[[], "1"],
+				] as const) {
+					const run = cli(dir, args, ci);
+					assert.equal(
+						run.status,
+						1,
+						`${args.join(" ")} CI=${ci}: ${run.stderr}`,
+					);
+					assert.match(
+						run.stderr,
+						/error: 1 tracked file this check reads is not checked out, so it skipped it: packages\/sib\/src\/x\.ts/u,
+					);
+				}
+			},
+		);
+	});
+
 	it("warns about tracked files a sparse checkout left out, and fails on them under --strict or in CI", () => {
 		const reaches = 'import { x } from "@s/lib";\n';
 		within(
@@ -839,14 +1154,16 @@ describe("checkTestWorkspaceDeps", () => {
 	});
 
 	it("finds no such test in this repository", () => {
-		const { violations, unmodelled } = scanTestWorkspaceDeps(root);
+		const { violations, unmodelled, stale } = scanTestWorkspaceDeps(root);
 		assert.deepEqual(
 			[
 				...violations.map(
 					(item) =>
 						`${item.file} [${item.task}]: ${item.package} -> ${item.imports}`,
 				),
-				...unmodelled.map((item) => `${item.file}: ${item.reason}`),
+				...[...unmodelled, ...stale].map(
+					(item) => `${item.file}: ${item.reason}`,
+				),
 			],
 			[],
 		);

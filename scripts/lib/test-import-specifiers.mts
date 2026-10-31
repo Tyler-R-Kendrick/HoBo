@@ -153,11 +153,57 @@ function calledSpecifier(
 	return undefined;
 }
 
-/** Every module specifier `source` names, in source order. */
-export function importSpecifiersOf(
-	source: string,
-	fileName: string,
-): ImportSpecifier[] {
+/** What a file names, read from one parse. */
+export interface ModuleFacts {
+	/** Every module specifier, in source order. */
+	readonly imports: ImportSpecifier[];
+	/**
+	 * The path text it assembles: each string or template literal that is not an
+	 * import specifier (a substitution reads `*`), and each `join(…)`/`resolve(…)`
+	 * call's arguments joined with `/`, a non-literal argument read as `*`.
+	 */
+	readonly paths: string[];
+	/**
+	 * Whether it runs or loads something by a path it computes: a child process
+	 * (`spawn`, `exec`, `execFile`, `fork`, sync forms included), `import()` or
+	 * `require` of a non-literal, `createRequire`, `symlink`, or `new Worker`.
+	 */
+	readonly loadsComputed: boolean;
+}
+
+const COMPUTED_LOADERS = new Set([
+	"spawn",
+	"spawnSync",
+	"exec",
+	"execSync",
+	"execFile",
+	"execFileSync",
+	"fork",
+	"createRequire",
+	"symlink",
+	"symlinkSync",
+]);
+const PATH_BUILDERS = new Set(["join", "resolve"]);
+
+function calleeName(node: ts.Expression): string | undefined {
+	if (ts.isIdentifier(node)) return node.text;
+	if (ts.isPropertyAccessExpression(node)) return node.name.text;
+	return undefined;
+}
+
+function templateText(node: ts.Node): string | undefined {
+	if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))
+		return node.text;
+	if (ts.isTemplateExpression(node))
+		return [
+			node.head.text,
+			...node.templateSpans.map((span) => `*${span.literal.text}`),
+		].join("");
+	return undefined;
+}
+
+/** What `source` names: its imports, the path text it assembles, and whether it loads by a computed path. */
+export function readModule(source: string, fileName: string): ModuleFacts {
 	const file = ts.createSourceFile(
 		fileName,
 		source,
@@ -166,29 +212,78 @@ export function importSpecifiersOf(
 		scriptKind(fileName),
 	);
 	const loaders = loaderNames(file);
-	const out: ImportSpecifier[] = [];
-	const add = (specifier: string | undefined, typeOnly: boolean) => {
-		if (specifier !== undefined) out.push({ specifier, typeOnly });
+	const imports: ImportSpecifier[] = [];
+	const paths: string[] = [];
+	const specifiers = new Set<ts.Node>();
+	let loadsComputed = false;
+	const add = (node: ts.Node | undefined, typeOnly: boolean) => {
+		const specifier = literal(node);
+		if (node === undefined || specifier === undefined) return;
+		specifiers.add(node);
+		imports.push({ specifier, typeOnly });
 	};
 	const visit = (node: ts.Node): void => {
 		if (ts.isImportDeclaration(node))
-			add(
-				literal(node.moduleSpecifier),
-				importClauseIsTypeOnly(node.importClause),
-			);
+			add(node.moduleSpecifier, importClauseIsTypeOnly(node.importClause));
 		else if (ts.isExportDeclaration(node))
-			add(literal(node.moduleSpecifier), exportIsTypeOnly(node));
+			add(node.moduleSpecifier, exportIsTypeOnly(node));
 		else if (
 			ts.isImportEqualsDeclaration(node) &&
 			ts.isExternalModuleReference(node.moduleReference)
 		)
-			add(literal(node.moduleReference.expression), node.isTypeOnly);
+			add(node.moduleReference.expression, node.isTypeOnly);
 		else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument))
-			add(literal(node.argument.literal), true);
-		else if (ts.isCallExpression(node))
-			add(calledSpecifier(node, loaders), false);
+			add(node.argument.literal, true);
+		else if (ts.isCallExpression(node)) {
+			if (calledSpecifier(node, loaders) !== undefined)
+				add(node.arguments[0], false);
+			const name = calleeName(node.expression);
+			// `exec` as a method is RegExp's far more often than child_process's.
+			const loader =
+				name !== undefined &&
+				COMPUTED_LOADERS.has(name) &&
+				(name !== "exec" || ts.isIdentifier(node.expression));
+			const first = node.arguments[0];
+			const computedArgument =
+				first !== undefined && literal(first) === undefined;
+			if (
+				loader ||
+				(computedArgument &&
+					(node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+						(ts.isIdentifier(node.expression) &&
+							loaders.requires.has(node.expression.text))))
+			)
+				loadsComputed = true;
+			if (
+				name !== undefined &&
+				PATH_BUILDERS.has(name) &&
+				node.arguments.length > 1 &&
+				node.arguments.some((argument) => templateText(argument) !== undefined)
+			)
+				paths.push(
+					node.arguments
+						.map((argument) => templateText(argument) ?? "*")
+						.join("/"),
+				);
+		} else if (
+			ts.isNewExpression(node) &&
+			calleeName(node.expression) === "Worker"
+		)
+			loadsComputed = true;
+		else if (!specifiers.has(node)) {
+			const text = templateText(node);
+			if (text !== undefined) paths.push(text);
+		}
 		ts.forEachChild(node, visit);
 	};
 	visit(file);
-	return out;
+	return { imports, paths, loadsComputed };
+}
+
+/** Every module specifier `source` names, in source order. */
+export function importSpecifiersOf(
+	source: string,
+	fileName: string,
+): ImportSpecifier[] {
+	return readModule(source, fileName).imports;
 }

@@ -333,13 +333,25 @@ if (argv[0] === "_station-agent") {
 			server.controlsUrlTemplate,
 			"evidence",
 		);
+		// Any signal that ends hobo-code stops the server the same way: the
+		// launcher passes SIGHUP (a closing terminal) and SIGQUIT on too, and
+		// either one, unhandled, ended the process with the server unclosed.
+		// Listen before saying where the server is, so a signal sent once the
+		// address is out reaches the close.
+		const stopped = new Promise<void>((resolve) => {
+			for (const signal of [
+				"SIGINT",
+				"SIGTERM",
+				"SIGHUP",
+				"SIGQUIT",
+			] as const) {
+				process.once(signal, () => resolve());
+			}
+		});
 		process.stdout.write(
 			`browser: ${browser}\nevidence report: ${report}\nevidence controls: ${controls}\nhobo dev: HOBO_CODE_EVIDENCE_CONTROLS_URL=${controls}?parentOrigin=<app-origin>\nremote: forward ${new URL(browser).host} through a declared Station machine; the server never binds publicly\n`,
 		);
-		await new Promise<void>((resolve) => {
-			process.once("SIGINT", resolve);
-			process.once("SIGTERM", resolve);
-		});
+		await stopped;
 		await server.close();
 		process.exitCode = 0;
 	} else {

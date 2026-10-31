@@ -66,6 +66,12 @@ gets Ctrl-C itself, and passing a signal on there is a forced kill
 listeners. The launcher only keeps the console's Ctrl-C and Ctrl-Break from
 ending it before its child, and waits.
 
+`nohup hobo-code …` does not keep hobo-code running after a hangup. The
+launcher listens for SIGHUP itself, which overrides the ignore `nohup` sets,
+and passes it on: a hangup is how hobo-code learns its terminal is gone, and
+the shell, or `session serve`, then stops and removes what it made rather
+than run on with no terminal. Run it under tmux or screen to keep it running.
+
 | Binary | Product |
 |---|---|
 | **`hobo-code`** | App-building coding agent plus local browser-debug deployment (this package) |

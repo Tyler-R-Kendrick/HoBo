@@ -45,6 +45,11 @@ export default defineConfig({
     //  - Playwright specs drive a real browser through `@playwright/test`, whose
     //    `test.describe` has no meaning under vitest. They run from their own
     //    Playwright configuration.
+    //  - `test/mirror/` holds the mirror lane's files (ADR-0174). Each needs the
+    //    emulator `pnpm run test:mirror` starts and fails at import with
+    //    MIRROR_URL_REQUIRED without it; they run under their package's
+    //    `vitest.mirror.config.ts`. `test/vitest-mirror-exclusion.test.ts`
+    //    holds every other config to this.
     //
     // The bare root run is still not the repo-wide gate — packages carry their
     // own vitest configs with their own environments and setup files, and running
@@ -57,6 +62,7 @@ export default defineConfig({
       "**/dist/**",
       "**/e2e/**",
       "**/*.spec.ts",
+      "**/test/mirror/**",
     ],
     testTimeout: Number(process.env.HOBO_TEST_TIMEOUT ?? 10_000),
     hookTimeout: Number(process.env.HOBO_TEST_TIMEOUT ?? 10_000),

@@ -136,6 +136,11 @@ export default defineConfig({
 			// absent, which is a deliberate "no silent skip" policy, not coverage.
 			"**/test/live-*.test.ts",
 			"**/*.integration.test.ts",
+			// The mirror lane (ADR-0174): each file needs the emulator
+			// `pnpm run test:mirror` starts and fails at import with
+			// MIRROR_URL_REQUIRED without it. It runs under its package's
+			// vitest.mirror.config.ts (test/vitest-mirror-exclusion.test.ts).
+			"**/test/mirror/**",
 			// Asserts that a bindle importing an *uninstalled* workspace package
 			// surfaces BindleImportError rather than a confusing "no bindle". Its
 			// premise is a module that cannot resolve, and this lane's alias map

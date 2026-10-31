@@ -363,6 +363,76 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 		expect(routes()).toEqual([DEPLOY, CREATE, DEPLOY]);
 	});
 
+	// The note the refusal of the second deployment carries after a 409 conflict.
+	const CONFLICT_NOTE =
+		"(after create project was answered HTTP 409 conflict: A project with the same name already exists.)";
+
+	// A 500 whose refusal message, before any note, is `length` characters.
+	function refusalOfLength(length: number): VercelFetchResponse {
+		const head =
+			'vercel-client: create deployment failed (HTTP 500): {"error":{"code":"internal_server_error","message":"';
+		const tail = '"}}';
+		return reply(500, {
+			error: {
+				code: "internal_server_error",
+				message: "x".repeat(length - head.length - tail.length),
+			},
+		});
+	}
+
+	it("keeps the whole 409 note after a long deployment refusal, cutting the refusal instead", async () => {
+		const plain = scripted({ [DEPLOY]: [refusalOfLength(490)] });
+		const alone = await createVercelDeployProvider({
+			token: "tok",
+			fetch: plain.fetch,
+		})
+			.apply(programFor("dep-1"))
+			.catch((error: Error) => error.message);
+		expect(alone).toHaveLength(490);
+
+		const { fetch } = scripted({
+			[DEPLOY]: [PROJECT_NOT_FOUND, refusalOfLength(490)],
+			[CREATE]: [CONFLICT],
+		});
+		const provider = createVercelDeployProvider({ token: "tok", fetch });
+
+		const pending = provider.apply(programFor("dep-1"));
+
+		await expect(pending).rejects.toBeInstanceOf(VercelApiError);
+		const message = await pending.catch((error: Error) => error.message);
+		expect(message.endsWith(`… ${CONFLICT_NOTE}`)).toBe(true);
+		expect(message.length).toBeLessThanOrEqual(501);
+		expect(message).toMatch(
+			/^vercel-client: create deployment failed \(HTTP 500\): /u,
+		);
+		await expect(pending).rejects.toMatchObject({
+			status: 500,
+			code: "internal_server_error",
+		});
+	});
+
+	it("cuts the 409 note only when it alone is longer than 500 characters", async () => {
+		const { fetch } = scripted({
+			[DEPLOY]: [PROJECT_NOT_FOUND, PROJECT_NOT_FOUND],
+			[CREATE]: [
+				reply(409, { error: { code: "conflict", message: "y".repeat(5000) } }),
+			],
+		});
+		const provider = createVercelDeployProvider({ token: "tok", fetch });
+
+		const message = await provider
+			.apply(programFor("dep-1"))
+			.catch((error: Error) => error.message);
+
+		expect(message).toHaveLength(501);
+		expect(
+			message.startsWith(
+				"(after create project was answered HTTP 409 conflict: yyy",
+			),
+		).toBe(true);
+		expect(message.endsWith("…")).toBe(true);
+	});
+
 	it("propagates a refused create as a VercelApiError, and deploys no more", async () => {
 		const { fetch, routes } = scripted({
 			[DEPLOY]: [PROJECT_NOT_FOUND],

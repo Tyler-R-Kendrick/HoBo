@@ -134,7 +134,8 @@ one `POST /v13/deployments`. Only when Vercel refuses that because the project
 does not exist (404 `not_found`, "Project not found") does it create the project
 with `POST /v9/projects` and deploy once more. A 409 there whose `error.code` is
 `conflict` means it was made meanwhile, and a refusal of the deployment after it
-names that 409's reason; any other 409 is a refusal like any other. So the
+names that 409's reason (the note is kept whole, and the refusal's own text is
+cut to leave it room); any other 409 is a refusal like any other. So the
 first `hobo up` from an account that has never seen the project deploys instead
 of failing, and a deploy to an existing project is one request. Any other
 refusal, or a second one, is a `VercelApiError` carrying Vercel's status,

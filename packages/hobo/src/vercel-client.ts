@@ -257,9 +257,18 @@ async function failure(
 	);
 }
 
+// `text` cut at `limit` characters, a `…` marking the cut, as
+// `redactProviderText` cuts.
+function cutText(text: string, limit: number): string {
+	return text.length > limit ? `${text.slice(0, limit)}…` : text;
+}
+
 // The refusal of a deployment sent again after its project's create was
-// answered 409 `conflict`: the same refusal, its message also naming that 409
-// and its reason, and cut at REFUSAL_TEXT_LIMIT like any refusal's.
+// answered 409 `conflict`: the same refusal, its message followed by a note
+// naming that 409 and its reason. The note is kept whole and the refusal's own
+// message is cut to make room, so the message stays within REFUSAL_TEXT_LIMIT
+// (plus a `…`); only a note longer than that on its own is cut, and is then the
+// whole message. Both parts are refusal text already.
 export function afterConflict(
 	error: VercelApiError,
 	conflict: VercelProjectResult,
@@ -268,11 +277,13 @@ export function afterConflict(
 		conflict.conflictMessage === undefined
 			? ""
 			: `: ${conflict.conflictMessage}`;
+	const note = cutText(
+		`(after create project was answered HTTP 409 conflict${reason})`,
+		REFUSAL_TEXT_LIMIT,
+	);
+	const room = REFUSAL_TEXT_LIMIT - note.length - 1;
 	return new VercelApiError(
-		redactProviderText(
-			`${error.message} (after create project was answered HTTP 409 conflict${reason})`,
-			REFUSAL_TEXT_LIMIT,
-		),
+		room > 0 ? `${cutText(error.message, room)} ${note}` : note,
 		error.status,
 		error.code,
 		error.apiMessage,

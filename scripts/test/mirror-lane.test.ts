@@ -508,6 +508,36 @@ describe("summarizeJournal", () => {
 	});
 });
 
+/** The two fields of turbo.json the test reads. */
+interface TurboConfig {
+	readonly globalPassThroughEnv?: readonly string[];
+	readonly tasks?: { readonly [task: string]: TurboTask };
+}
+
+/** A task's settings; only its name matters here. */
+interface TurboTask {
+	readonly dependsOn?: readonly string[];
+}
+
+describe("turbo.json", () => {
+	it("declares nothing for the mirror lane: the runner, not turbo, reads MIRROR_BIN and starts each test:mirror", () => {
+		// SAFETY: turbo.json is a JSON object; the passthrough list is read as strings and the tasks by name only.
+		const turbo = JSON.parse(
+			readFileSync(join(REPO_ROOT, "turbo.json"), "utf8"),
+		) as TurboConfig;
+		assert.equal(
+			(turbo.globalPassThroughEnv ?? []).includes("MIRROR_BIN"),
+			false,
+		);
+		assert.deepEqual(
+			Object.keys(turbo.tasks ?? {}).filter((task) =>
+				task.endsWith("test:mirror"),
+			),
+			[],
+		);
+	});
+});
+
 describe("run-mirror-lane.mts", () => {
 	function lane(args: readonly string[], env: NodeJS.ProcessEnv) {
 		return spawnSync(

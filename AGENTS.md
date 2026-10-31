@@ -715,9 +715,12 @@ subject is worse than one that stops.
 The mirror lane (`pnpm run test:mirror`, ADR-0174) follows the same rule once
 selected: no `MIRROR_BIN` and no fetched pin is `MIRROR_BIN_REQUIRED` and exit
 1, an emulator that never answers is `MIRROR_UNHEALTHY`, and a `test/mirror`
-file run with no `HOBO_MIRROR_URL` fails its global setup. `MIRROR_BIN` is
-listed in `globalPassThroughEnv` and `HOBO_MIRROR_URL`/`HOBO_MIRROR_CA` ride
-`HOBO_*`; in CI the lane refuses `MIRROR_BIN` as `pins:status` does.
+file run with no `HOBO_MIRROR_URL` fails its global setup. The runner reads
+`MIRROR_BIN` itself and starts each package's `test:mirror` with
+`pnpm --filter`, never through turbo, so `turbo.json` declares nothing for the
+lane, and `HOBO_MIRROR_URL`, `HOBO_MIRROR_CA` and `HOBO_MIRROR_REPORTS` reach
+the packages in the runner's own environment; in CI the lane refuses
+`MIRROR_BIN` as `pins:status` does.
 
 `turbo.json` runs `envMode: "strict"`, so a task sees only what
 `globalPassThroughEnv` lists. Two consequences worth knowing before diagnosing a

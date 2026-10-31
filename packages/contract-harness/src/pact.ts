@@ -64,7 +64,7 @@ export class PactParseError extends Error {
 	}
 }
 
-/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: from here to the matching oxlint-enable is origin/main's parser, the public parse boundary for untyped pact JSON, whose typeof checks and narrowing casts are its contract. The one addition inside it, parseInteraction's call to parseProviderStateList, raises none of these rules: without this disable oxlint reports the 44 findings origin/main's parser has, no more. New code goes after the enable and is linted. */
+/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: from here to the matching oxlint-enable is origin/main's parser, the public parse boundary for untyped pact JSON, whose typeof checks and narrowing casts are its contract. Its two additions, both in parseInteraction (the call to parseProviderStateList and the spread of its result into the interaction), raise none of these rules: without this disable oxlint reports the 44 findings origin/main's parser has, no more. New code goes after the enable and is linted. */
 export function parsePactDocument(
 	input: unknown,
 	source?: string,

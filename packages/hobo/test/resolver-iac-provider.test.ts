@@ -663,6 +663,69 @@ describe("resolver-backed IacProvider: refresh", () => {
 		}
 	});
 
+	// hobo.resolver.drift.notCompared lists the directives the comparison left
+	// out: only those declared AND unreported, never the resolver's whole list,
+	// and on every verdict that compared anything.
+	describe("hobo.resolver.drift.notCompared", () => {
+		const LISTED = ["purgeOnDelete", "retainOnDelete"];
+
+		it("lists only the declared directives left out, on a clean verdict", async () => {
+			const store = await storeWithPlan([
+				steeredNode({ title: "sessions", purgeOnDelete: true }),
+			]);
+
+			const report = await steeredDriver(store, LISTED).refresh(
+				program("sessions"),
+			);
+			expect(report.drift).toBe(false);
+			expect(report.observed["hobo.resolver.drift.notCompared"]).toBe(
+				'["purgeOnDelete"]',
+			);
+		});
+
+		it("carries them on a verdict of real differences", async () => {
+			const store = await storeWithPlan([
+				steeredNode({ title: "other", purgeOnDelete: true }),
+			]);
+
+			const report = await steeredDriver(store, LISTED).refresh(
+				program("sessions"),
+			);
+			expect(report.drift).toBe(true);
+			expect(report.observed["hobo.resolver.drift.determined"]).toBe("true");
+			expect(report.observed["hobo.resolver.drift.notCompared"]).toBe(
+				'["purgeOnDelete"]',
+			);
+		});
+
+		it("carries them on an UNDETERMINED verdict", async () => {
+			const store = await storeWithPlan([
+				steeredNode({ title: "sessions", ttlSeconds: 60, purgeOnDelete: true }),
+			]);
+
+			const report = await steeredDriver(store, LISTED).refresh(
+				program("sessions"),
+			);
+			expect(report.drift).toBe(true);
+			expect(report.observed["hobo.resolver.drift.determined"]).toBe("false");
+			expect(report.observed["hobo.resolver.drift.notCompared"]).toBe(
+				'["purgeOnDelete"]',
+			);
+		});
+
+		it("is absent when the plan declares none of the directives", async () => {
+			const store = await storeWithPlan([steeredNode({ title: "sessions" })]);
+
+			const report = await steeredDriver(store, LISTED).refresh(
+				program("sessions"),
+			);
+			expect(report.drift).toBe(false);
+			expect(report.observed).not.toHaveProperty(
+				"hobo.resolver.drift.notCompared",
+			);
+		});
+	});
+
 	it("reports drift when the resource the plan describes is gone", async () => {
 		const store = await storeWithPlan([kvNode("sessions")]);
 		const account = createFakeCloudflareAccount();

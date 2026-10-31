@@ -12,7 +12,7 @@
  * module. The last test holds the repository to zero.
  */
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -557,6 +557,88 @@ describe("checkTestWorkspaceDeps", () => {
 				assert.deepEqual(found(dir), [
 					"packages/app/test/tracked.test.ts [test] -> @s/lib",
 				]);
+			},
+		);
+	});
+
+	it("warns about tracked files a sparse checkout left out, and fails on them under --strict or in CI", () => {
+		const reaches = 'import { x } from "@s/lib";\n';
+		within(
+			{
+				...base,
+				"packages/app/package.json": manifest("@s/app", {
+					devDependencies: { "@s/lib": "workspace:*" },
+				}),
+				"packages/app/test/kept.test.ts": reaches,
+				"packages/app/test/left-out-1.test.ts": reaches,
+				"packages/app/test/left-out-2.test.ts": reaches,
+			},
+			(dir) => {
+				const git = (...args: string[]) =>
+					execFileSync("git", ["-c", "commit.gpgsign=false", ...args], {
+						cwd: dir,
+						stdio: "pipe",
+					});
+				git("init", "-q");
+				git("add", ".");
+				git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "t");
+				git(
+					"sparse-checkout",
+					"set",
+					"--no-cone",
+					"/*",
+					"!/packages/app/test/left-out-*",
+				);
+				// A gitlink with no checkout behind it: a submodule never initialised.
+				const head = git("rev-parse", "HEAD").toString().trim();
+				git(
+					"update-index",
+					"--add",
+					"--cacheinfo",
+					`160000,${head},external/sub`,
+				);
+				const run = (args: string[], ci: string | undefined) => {
+					const env = { ...process.env };
+					delete env.CI;
+					if (ci !== undefined) env.CI = ci;
+					return spawnSync(
+						process.execPath,
+						[
+							"--import",
+							"tsx",
+							join(root, "scripts/check-test-workspace-deps.mts"),
+							"--root",
+							dir,
+							...args,
+						],
+						{ cwd: root, encoding: "utf8", env },
+					);
+				};
+				const files =
+					/2 tracked files this check reads are not checked out, so it skipped them: packages\/app\/test\/left-out-1\.test\.ts, packages\/app\/test\/left-out-2\.test\.ts/u;
+				const submodule =
+					/1 submodule is not checked out, so none of its files were read: external\/sub/u;
+				const quiet = run([], undefined);
+				assert.equal(quiet.status, 0, quiet.stderr);
+				assert.match(quiet.stderr, new RegExp(`warning: ${files.source}`, "u"));
+				assert.match(
+					quiet.stderr,
+					new RegExp(`warning: ${submodule.source}`, "u"),
+				);
+				assert.equal(run([], "0").status, 0);
+				for (const [args, ci] of [
+					[["--strict"], undefined],
+					[[], "1"],
+					[[], "true"],
+				] as const) {
+					const loud = run([...args], ci);
+					assert.equal(loud.status, 1, `${args.join(" ")} CI=${ci}`);
+					assert.match(loud.stderr, new RegExp(`error: ${files.source}`, "u"));
+					assert.match(
+						loud.stderr,
+						new RegExp(`error: ${submodule.source}`, "u"),
+					);
+				}
 			},
 		);
 	});

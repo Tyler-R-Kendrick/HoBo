@@ -29,12 +29,15 @@
  * - Imports are read from the syntax tree (lib/test-import-specifiers). A
  *   specifier computed at run time, and a `dist/` path built for a child
  *   process or a URL, cannot be read and are not checked.
- *
  * - A declaration orders the sibling's build only with a `workspace:`
  *   specifier, unless pnpm's link-workspace-packages is on
  *   (lib/turbo-task-graph `orderedDependency`); a violation says how the
  *   package declared the sibling, and which file sets the setting or which
  *   default applies.
+ * - Files git tracks that the checkout leaves out (a sparse checkout, or a
+ *   submodule never initialised) cannot be read. The check names how many it
+ *   skipped and passes with a warning; under `--strict`, or in CI (`CI` set,
+ *   and not `0` or `false`), it fails instead.
  *
  * Fix one by declaring the sibling in `devDependencies` as `"workspace:*"`
  * where the test imports it by name, or, for a relative import (which needs no
@@ -43,10 +46,10 @@
  * A devDependency widens the package's own `build` and `typecheck`, and every
  * dependent's; a task override orders that task only.
  *
- * Usage: node --import tsx scripts/check-test-workspace-deps.mts [--json] [--root <dir>]
+ * Usage: node --import tsx scripts/check-test-workspace-deps.mts [--json] [--strict] [--root <dir>]
  */
 import { execFileSync } from "node:child_process";
-import { readdirSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -83,6 +86,19 @@ export interface Violation {
 	 * does not count the declaration: the specifier, and why. Else undefined.
 	 */
 	readonly declared: string | undefined;
+}
+
+/** What a checkout leaves out, which the check cannot read. */
+export interface Skipped {
+	/** Tracked files the check reads that are not on disk (a sparse checkout, or deleted). */
+	readonly files: readonly string[];
+	/** Submodules with no checkout, none of whose files git lists. */
+	readonly submodules: readonly string[];
+}
+
+export interface Report {
+	readonly violations: readonly Violation[];
+	readonly skipped: Skipped;
 }
 
 export interface CheckOptions {
@@ -156,8 +172,13 @@ function walk(root: string, dir = ""): string[] {
 	return out;
 }
 
-/** git's tracked files (submodules' included) when `root` is a work tree's top, else undefined. */
-function trackedFiles(root: string): string[] | undefined {
+/**
+ * git's tracked files (submodules' included) when `root` is a work tree's top,
+ * else undefined; and the submodules that are not checked out.
+ */
+function trackedFiles(
+	root: string,
+): { files: string[]; submodules: string[] } | undefined {
 	try {
 		const git = (args: string[]) =>
 			execFileSync("git", ["-C", root, ...args], {
@@ -170,9 +191,15 @@ function trackedFiles(root: string): string[] | undefined {
 			realpathSync(root)
 		)
 			return undefined;
-		return git(["ls-files", "-z", "--recurse-submodules"])
-			.split("\0")
-			.filter(Boolean);
+		const lines = (args: string[]) => git(args).split("\0").filter(Boolean);
+		return {
+			files: lines(["ls-files", "-z", "--recurse-submodules"]),
+			// `<mode> <object> <stage>\t<path>`; a gitlink is mode 160000.
+			submodules: lines(["ls-files", "-z", "--stage"])
+				.filter((line) => line.startsWith("160000 "))
+				.map((line) => line.slice(line.indexOf("\t") + 1))
+				.filter((path) => !existsSync(join(root, path, ".git"))),
+		};
 	} catch {
 		return undefined;
 	}
@@ -374,7 +401,54 @@ export function checkTestWorkspaceDeps(
 	root: string,
 	options: CheckOptions = {},
 ): Violation[] {
-	const files = options.files ?? trackedFiles(root) ?? walk(root);
+	return [...scanTestWorkspaceDeps(root, options).violations];
+}
+
+/** The tracked files under a workspace package that the check reads and that are not on disk. */
+function missingFiles(
+	root: string,
+	files: readonly string[],
+	isPackageDir: (dir: string) => boolean,
+): string[] {
+	const missing = files.filter(
+		(file) =>
+			(SOURCE.test(file) ||
+				file.endsWith("/package.json") ||
+				file.endsWith("/turbo.json")) &&
+			!existsSync(join(root, file)),
+	);
+	if (missing.length === 0) return [];
+	const dirs = files
+		.filter((file) => file.endsWith("/package.json"))
+		.map((file) => file.slice(0, -"/package.json".length))
+		.filter(isPackageDir)
+		.sort((a, b) => b.length - a.length);
+	return missing.filter((file) => {
+		const dir = dirs.find((item) => file.startsWith(`${item}/`));
+		if (dir === undefined) return false;
+		const path = file.slice(dir.length + 1);
+		return (
+			path === "package.json" ||
+			path === "turbo.json" ||
+			(SCOPES.some((scope) => dir.startsWith(scope)) && isTestFile(path))
+		);
+	});
+}
+
+/** The violations under `root`, and what the checkout left out (see the header). */
+export function scanTestWorkspaceDeps(
+	root: string,
+	options: CheckOptions = {},
+): Report {
+	const tracked = options.files === undefined ? trackedFiles(root) : undefined;
+	const files = options.files ?? tracked?.files ?? walk(root);
+	const globs = workspaceGlobs(root);
+	const skipped: Skipped = {
+		files: missingFiles(root, files, (dir) =>
+			globs.some((glob) => matches(glob, dir)),
+		),
+		submodules: tracked?.submodules ?? [],
+	};
 	const { packages, graph } = readWorkspace(root, files);
 	const byName = new Map(packages.map((pkg) => [pkg.name, pkg]));
 	const byDir = [...packages].sort((a, b) => b.dir.length - a.dir.length);
@@ -473,9 +547,42 @@ export function checkTestWorkspaceDeps(
 	}
 	const order = (item: Violation) =>
 		`${item.file}\0${item.task}\0${item.imports}\0${item.specifier}`;
-	return violations.sort((a, b) =>
+	violations.sort((a, b) =>
 		order(a) < order(b) ? -1 : order(a) > order(b) ? 1 : 0,
 	);
+	return { violations, skipped };
+}
+
+/** Whether `CI` names a CI run: set, and not empty, `0` or `false`. */
+export function inCi(ci: string | undefined): boolean {
+	return ci !== undefined && !["", "0", "false"].includes(ci.toLowerCase());
+}
+
+/** What the CLI says about a checkout's left-out files, as `warning` or, failing, `error`. */
+export function skippedLines(
+	skipped: Skipped,
+	level: "warning" | "error",
+): string[] {
+	const lines: string[] = [];
+	const { files, submodules } = skipped;
+	if (files.length > 0) {
+		const one = files.length === 1;
+		const more = files.length > 5 ? ` and ${files.length - 5} more` : "";
+		lines.push(
+			`${level}: ${files.length} tracked ${one ? "file this check reads is" : "files this check reads are"} not checked out, so it skipped ${one ? "it" : "them"}: ${files.slice(0, 5).join(", ")}${more} (git sparse-checkout disable checks ${one ? "it" : "them"} out)`,
+		);
+	}
+	if (submodules.length > 0) {
+		const one = submodules.length === 1;
+		lines.push(
+			`${level}: ${submodules.length} ${one ? "submodule is" : "submodules are"} not checked out, so none of ${one ? "its" : "their"} files were read: ${submodules.join(", ")} (pnpm run pins:fetch checks ${one ? "it" : "them"} out)`,
+		);
+	}
+	if (lines.length > 0 && level === "warning")
+		lines.push(
+			"warning: this pass covers only what is checked out; --strict, or CI=1, fails instead",
+		);
+	return lines;
 }
 
 if (
@@ -488,9 +595,12 @@ if (
 		rootArg >= 0 && args[rootArg + 1]
 			? resolve(args[rootArg + 1]!)
 			: join(dirname(fileURLToPath(import.meta.url)), "..");
-	const violations = checkTestWorkspaceDeps(root);
+	const strict = args.includes("--strict") || inCi(process.env.CI);
+	const { violations, skipped } = scanTestWorkspaceDeps(root);
 	if (args.includes("--json"))
-		process.stdout.write(`${JSON.stringify({ violations }, null, "\t")}\n`);
+		process.stdout.write(
+			`${JSON.stringify({ violations, skipped }, null, "\t")}\n`,
+		);
 	else
 		for (const item of violations)
 			process.stderr.write(
@@ -498,5 +608,8 @@ if (
 					? `${item.file}: ${item.package}#${item.task} loads ${item.imports} (${item.specifier}), and turbo builds it after; declare it in devDependencies with "workspace:*" if the test imports it by name, else add "${item.imports}#build" to "${item.package}#${item.task}".dependsOn in turbo.json\n`
 					: `${item.file}: ${item.package}#${item.task} loads ${item.imports} (${item.specifier}), and turbo builds it after: ${item.package} declares it as ${item.declared}; write "workspace:*"\n`,
 			);
-	process.exitCode = violations.length === 0 ? 0 : 1;
+	const lines = skippedLines(skipped, strict ? "error" : "warning");
+	for (const line of lines) process.stderr.write(`${line}\n`);
+	process.exitCode =
+		violations.length === 0 && (!strict || lines.length === 0) ? 0 : 1;
 }

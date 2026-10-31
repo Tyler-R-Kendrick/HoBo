@@ -9,6 +9,14 @@ export default mergeConfig(
 			isolate: true,
 			include: ["test/**/*.test.ts"],
 			exclude: ["e2e/**"],
+			// The compile-time tests run under tsc in the same run, with the
+			// tsconfig that includes them (src's tsconfig leaves test/ out), so
+			// `pnpm test` fails on one that does not compile.
+			typecheck: {
+				enabled: true,
+				include: ["test/**/*.test-d.ts"],
+				tsconfig: "./tsconfig.types.json",
+			},
 		},
 	}),
 );

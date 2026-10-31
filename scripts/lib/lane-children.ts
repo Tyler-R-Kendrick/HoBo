@@ -6,11 +6,13 @@
  *
  * Each child leads a process group of its own (`detached` on POSIX), so a stop
  * reaches what it started in turn: pnpm's shell, vitest and vitest's workers.
- * A stop is SIGTERM to the group, SIGKILL to the group if the child has not
- * exited after the grace period, and SIGKILL to whatever of the group is left
- * once the child has exited. It resolves on the child's `exit` event; nothing
- * is polled. On Windows, where there are no process groups, the child alone
- * is signalled.
+ * A stop is SIGTERM to the group, and SIGKILL to the group if the child has
+ * not exited after the grace period. Whatever of the group outlives its
+ * leader is sent SIGKILL from the leader's own `exit` handler, however the
+ * leader ended, and never later: once the leader is reaped and its group
+ * empty, the id can belong to an unrelated process. A stop resolves on the
+ * child's `exit` event; nothing is polled. On Windows, where there are no
+ * process groups, the child alone is signalled.
  *
  * Erasable TypeScript with node builtins only, like the rest of scripts/lib.
  */
@@ -38,12 +40,6 @@ function running(child: ChildProcess): boolean {
 	return child.exitCode === null && child.signalCode === null;
 }
 
-function exited(child: ChildProcess): Promise<void> {
-	return running(child)
-		? new Promise((resolveExit) => child.once("exit", () => resolveExit()))
-		: Promise.resolve();
-}
-
 /** Signal `child`'s process group, or the child alone where there are none; a group already gone is no error. */
 function signal(child: ChildProcess, name: NodeJS.Signals): void {
 	if (child.pid === undefined) return;
@@ -57,9 +53,17 @@ function signal(child: ChildProcess, name: NodeJS.Signals): void {
 
 export class LaneChildren {
 	readonly #live = new Set<ChildProcess>();
+	/** The stop in progress for a child, so a second stop waits on it rather than signalling again. */
+	readonly #stopping = new Map<ChildProcess, Promise<void>>();
 	#closed = false;
 
-	/** Spawn `command` as the leader of its own process group and track it until it exits. */
+	/**
+	 * Spawn `command` as the leader of its own process group and track it
+	 * until it exits. The leader's `exit` handler, the first one registered,
+	 * sends what is left of its group a SIGKILL, whether a stop or something
+	 * else ended it: at that moment the group still holds its id, so the
+	 * signal reaches no one else. Nothing signals the group after that.
+	 */
 	spawn(
 		command: string,
 		args: readonly string[],
@@ -68,25 +72,38 @@ export class LaneChildren {
 		if (this.#closed) throw new LaneChildrenClosedError(command);
 		const child = spawn(command, [...args], { ...options, detached: GROUPS });
 		this.#live.add(child);
-		child.once("exit", () => this.#live.delete(child));
+		child.once("exit", () => {
+			signal(child, "SIGKILL");
+			this.#live.delete(child);
+		});
 		child.once("error", () => {
 			if (child.pid === undefined) this.#live.delete(child);
 		});
 		return child;
 	}
 
-	/** Stop one child and its group; resolves once the child has exited. */
-	async stop(child: ChildProcess, graceMs = 5_000): Promise<void> {
-		if (child.pid === undefined) return;
-		if (running(child)) {
+	/**
+	 * Stop one child and its group: SIGTERM to the group, SIGKILL to it after
+	 * `graceMs` if the child is still running, and the exit handler's sweep.
+	 * Resolves once the child has exited. A child that has already exited is
+	 * not signalled at all, and a second stop waits on the first.
+	 */
+	stop(child: ChildProcess, graceMs = 5_000): Promise<void> {
+		const inProgress = this.#stopping.get(child);
+		if (inProgress !== undefined) return inProgress;
+		if (child.pid === undefined || !running(child)) return Promise.resolve();
+		const stopped = new Promise<void>((resolveStop) => {
+			const killer = setTimeout(() => {
+				if (running(child)) signal(child, "SIGKILL");
+			}, graceMs);
+			child.once("exit", () => {
+				clearTimeout(killer);
+				resolveStop();
+			});
 			signal(child, "SIGTERM");
-			const killer = setTimeout(() => signal(child, "SIGKILL"), graceMs);
-			await exited(child);
-			clearTimeout(killer);
-		}
-		// What the child started may outlive it: nothing of the group stays.
-		signal(child, "SIGKILL");
-		this.#live.delete(child);
+		});
+		this.#stopping.set(child, stopped);
+		return stopped;
 	}
 
 	/** Start nothing more and stop every child; resolves once each has exited. */
@@ -97,9 +114,11 @@ export class LaneChildren {
 		);
 	}
 
-	/** For the runner's `exit` event, which cannot wait: SIGKILL every group still tracked. */
+	/** For the runner's last moment, which cannot wait: SIGKILL every group whose leader still runs. */
 	killAllNow(): void {
 		this.#closed = true;
-		for (const child of this.#live) signal(child, "SIGKILL");
+		for (const child of this.#live) {
+			if (running(child)) signal(child, "SIGKILL");
+		}
 	}
 }

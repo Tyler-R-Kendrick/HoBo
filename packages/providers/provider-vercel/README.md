@@ -23,6 +23,14 @@ Vercel CloudProvider for HoBo Examples OOB yards.
 pnpm --filter @hobo/provider-vercel test
 ```
 
+The resolvers also run against the mirror.cloud emulator in the opt-in mirror
+lane (ADR-0174): `test/mirror/resolvers.mirror.test.ts` creates, adopts,
+patches and deletes a project, takes an Edge Config through create, rename and
+delete, surfaces an armed 429 as `RESOLVER_PROVIDER_REJECTED`, and checks that
+a request the guard refuses never reaches the emulator, each against the
+emulator's journal. Run it from the repository root with `MIRROR_BIN=<mirror>
+pnpm run test:mirror`; the default `test` leaves `test/mirror/` out.
+
 ## `vercel.sponsored-project-transfer/v1`
 
 ### This is not an anonymous deployment
@@ -253,9 +261,11 @@ setting is a deployment that does not match what was asked for.
 
 ## HONEST SCOPE
 
-- **Nothing here proves a live deploy.** The resolvers are exercised only
-  against an injected fake transport in `test/resolvers.test.ts`. No test in this
-  repo has contacted `api.vercel.com`. A live deploy additionally needs real
+- **Nothing here proves a live deploy.** The resolvers are exercised against an
+  injected fake transport in `test/resolvers.test.ts` and, in the opt-in mirror
+  lane, against mirror.cloud's emulation of the Vercel API, which follows
+  Vercel's OpenAPI document and has never been compared with the real API. No
+  test in this repo has contacted `api.vercel.com`. A live deploy additionally needs real
   credentials, network egress, and a Vercel account, and none of that is
   demonstrated by a green suite. Treat the endpoint tables above as "written
   against the documented contract", not as "verified against the running API".

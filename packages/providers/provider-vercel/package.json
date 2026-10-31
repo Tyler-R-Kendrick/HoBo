@@ -18,7 +18,9 @@
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
 		"pretest": "node --experimental-strip-types ../../../scripts/ensure-built.mts",
-		"test": "vitest run"
+		"test": "vitest run",
+		"pretest:mirror": "node --experimental-strip-types ../../../scripts/ensure-built.mts",
+		"test:mirror": "vitest run --config vitest.mirror.config.ts"
 	},
 	"dependencies": {
 		"@hobo/bindings": "workspace:*",
@@ -27,6 +29,7 @@
 		"@hobo/core": "workspace:*"
 	},
 	"devDependencies": {
+		"@hobo/contract-harness": "workspace:*",
 		"@types/node": "^22.15.29",
 		"vitest": "^4.1.9"
 	},

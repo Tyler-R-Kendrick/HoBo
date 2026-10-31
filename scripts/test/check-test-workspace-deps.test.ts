@@ -124,6 +124,28 @@ const found = (dir: string) =>
 		(item) => `${item.file} [${item.task}] -> ${item.imports}`,
 	);
 
+/** The report's unmodelled entries, as `<file>: <reason>`. */
+const unmodelledIn = (dir: string) =>
+	scanTestWorkspaceDeps(dir).unmodelled.map(
+		(item) => `${item.file}: ${item.reason}`,
+	);
+
+/** The unmodelled entry for an undeclared runtime reach. */
+const reaching = (file: string, names: string, text: string) =>
+	`${file}: reaches ${names} at run time through a path it assembles ("${text}"), which this check cannot follow; declare what it needs in ${REGISTRY}`;
+
+/** A workspace with `packages/runtimes/*`, `@s/rt` in it, and `@s/app` holding `files`. */
+const grouped = (files: Record<string, string>) => ({
+	...base,
+	"pnpm-workspace.yaml": `${base["pnpm-workspace.yaml"]}  - "packages/runtimes/*"\n`,
+	"packages/runtimes/rt/package.json": manifest("@s/rt"),
+	"packages/app/package.json": manifest("@s/app"),
+	...files,
+});
+
+const SPAWN = 'import { spawn } from "node:child_process";\n';
+const JOIN = 'import { join } from "node:path";\n';
+
 describe("importSpecifiersOf", () => {
 	it("reads every literal way a file names a module", () => {
 		const source = [
@@ -861,6 +883,33 @@ describe("checkTestWorkspaceDeps", () => {
 					],
 				);
 			},
+		);
+	});
+
+	it("names a grouped package after `..` or a computed root by its directory's trailing segments", () => {
+		within(
+			grouped({
+				"packages/app/test/url.test.ts": `${SPAWN}spawn(process.execPath, [new URL("../../runtimes/rt/dist/x.js", import.meta.url).pathname]);\n`,
+				"packages/app/test/join.test.ts": `${SPAWN}${JOIN}const packagesDir = join(process.cwd(), "packages");\nspawn(process.execPath, [join(packagesDir, "runtimes", "rt", "dist", "x.js")]);\n`,
+				// Its directory's last segment alone still names it.
+				"packages/app/test/last.test.ts": `${SPAWN}${JOIN}spawn(process.execPath, [join(process.cwd(), "rt", "dist", "x.js")]);\n`,
+				// A segment between the anchor and the package is not part of its directory.
+				"packages/app/test/other.test.ts": `${SPAWN}spawn(process.execPath, ["../../vendor/runtimes/rt/dist/x.js"]);\n`,
+			}),
+			(dir) =>
+				assert.deepEqual(unmodelledIn(dir), [
+					reaching(
+						"packages/app/test/join.test.ts",
+						"@s/rt",
+						"*/runtimes/rt/dist/x.js",
+					),
+					reaching("packages/app/test/last.test.ts", "@s/rt", "*/rt/dist/x.js"),
+					reaching(
+						"packages/app/test/url.test.ts",
+						"@s/rt",
+						"../../runtimes/rt/dist/x.js",
+					),
+				]),
 		);
 	});
 

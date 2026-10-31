@@ -5,8 +5,10 @@
  *
  * A path the file assembles (lib/test-import-specifiers `ModuleFacts.paths`)
  * names package P where, from its start, a computed root (`*`), `..` or
- * `node_modules`, it continues with P's directory, P's package name, or the
- * last segment of P's directory. The file reaches P at run time when the path:
+ * `node_modules`, it continues with P's directory, P's package name, or a run
+ * of P's directory's trailing segments: `packages/runtimes/runtime-local` is
+ * named by `../../runtimes/runtime-local` and `*`/`runtime-local` alike. The
+ * file reaches P at run time when the path:
  * - goes on into `dist/` (`join(dir, "packages", "hobo", "dist", "bin",
  *   "hobo.js")`, `"../../bindles/dist/index.js"`); or
  * - ends at P's directory or name, in a file that runs or loads something by a
@@ -45,13 +47,22 @@ export function runtimeReaches(
 	packages: readonly PackageDir[],
 ): Map<string, string> {
 	const reached = new Map<string, string>();
-	// Each way a path can name a package, and whether it may end there.
+	// Each way a path can name a package, and whether it may end there: its
+	// directory, its name, and each run of its directory's trailing segments
+	// (`runtimes/runtime-local`, `runtime-local`), as a path relative to a
+	// sibling or to the packages directory reads it.
 	const names = packages.flatMap((pkg) => {
 		const dir = pkg.dir.split("/");
 		return [
 			{ name: pkg.name, parts: dir, whole: dir.length > 1 },
 			{ name: pkg.name, parts: pkg.name.split("/"), whole: true },
-			{ name: pkg.name, parts: dir.slice(-1), whole: false },
+			...dir
+				.slice(1)
+				.map((_, k) => ({
+					name: pkg.name,
+					parts: dir.slice(k + 1),
+					whole: false,
+				})),
 		];
 	});
 	for (const text of facts.paths) {

@@ -30,7 +30,7 @@ import {
 	memberDigest,
 } from "../lib/pins-archive.ts";
 import { scratch, sha256Hex } from "./support/pins-support.ts";
-import { tarGz, tarStream } from "./support/tar-support.ts";
+import { type TarEntry, tarGz, tarStream } from "./support/tar-support.ts";
 
 const BINARY = Buffer.from("#!/bin/sh\necho mirror from an archive\n");
 const SMUGGLED = Buffer.from("#!/bin/sh\necho smuggled\n");
@@ -228,6 +228,97 @@ describe("member names", () => {
 				name,
 			);
 		}
+	});
+});
+
+describe("names that are one file on macOS or Windows", () => {
+	const utf8 = (name: string): string =>
+		Buffer.from(name, "utf8").toString("latin1");
+
+	it("refuses two entries whose names are equal once case-folded and put in NFC", async () => {
+		const cases: [string, string, readonly TarEntry[]][] = [
+			[
+				"mirror and MIRROR",
+				"mirror",
+				[
+					{ name: "mirror", body: BINARY },
+					{ name: "MIRROR", body: SMUGGLED },
+				],
+			],
+			[
+				"bin/mirror and BIN/mirror",
+				"bin/mirror",
+				[
+					{ name: "bin/mirror", body: BINARY },
+					{ name: "BIN/mirror", body: SMUGGLED },
+				],
+			],
+			[
+				"café in NFC and in NFD",
+				"mirror",
+				[
+					{ name: "mirror", body: BINARY },
+					{ name: utf8("caf\u00e9"), body: "a" },
+					{ name: utf8("cafe\u0301"), body: "b" },
+				],
+			],
+			[
+				"Straße and STRASSE",
+				"mirror",
+				[
+					{ name: "mirror", body: BINARY },
+					{ name: utf8("Stra\u00dfe"), body: "a" },
+					{ name: "STRASSE", body: "b" },
+				],
+			],
+			[
+				"LICENSE twice",
+				"mirror",
+				[
+					{ name: "LICENSE", body: "MIT" },
+					{ name: "mirror", body: BINARY },
+					{ name: "LICENSE", body: "MIT" },
+				],
+			],
+		];
+		for (const [what, member, entries] of cases) {
+			const bytes = tarGz(entries);
+			const { dir, path } = archiveFile(bytes);
+			const dest = join(dir, "out");
+			await assert.rejects(
+				extractMember(path, member, dest, sha256Hex(bytes)),
+				refusal("ARCHIVE_UNSAFE"),
+				what,
+			);
+			assert.equal(existsSync(dest), false, what);
+		}
+	});
+
+	it("reads at most 10000 entries: each name is kept to compare", async () => {
+		const many = (count: number): TarEntry[] => [
+			{ name: "mirror", body: BINARY },
+			...Array.from({ length: count - 1 }, (_, i) => ({
+				name: `d/${i}`,
+				type: "5",
+			})),
+		];
+		const atLimit = tarGz(many(10_000));
+		const ok = archiveFile(atLimit);
+		await extractMember(
+			ok.path,
+			"mirror",
+			join(ok.dir, "out"),
+			sha256Hex(atLimit),
+		);
+		assert.deepEqual(readFileSync(join(ok.dir, "out")), BINARY);
+
+		const over = tarGz(many(10_001));
+		const { dir, path } = archiveFile(over);
+		await assert.rejects(
+			extractMember(path, "mirror", join(dir, "out"), sha256Hex(over)),
+			refusal("ARCHIVE_UNSUPPORTED"),
+		);
+		assert.deepEqual(readdirSync(dir), ["a.tar.gz"]);
 	});
 });
 

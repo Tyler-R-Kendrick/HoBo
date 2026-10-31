@@ -22,6 +22,9 @@ const GOOD = Buffer.from("#!/bin/sh\necho GOOD\n");
 const EVIL = Buffer.from("#!/bin/sh\necho EVIL\n");
 /** GNU tar's magic and version, `ustar  \0`. */
 const GNU = "ustar  ";
+/** A name as UTF-8 bytes, in the latin1 string the builder writes byte for byte. */
+const utf8 = (name: string): string =>
+	Buffer.from(name, "utf8").toString("latin1");
 const NAMES = new Map([
 	[sha256Hex(GOOD), "GOOD"],
 	[sha256Hex(EVIL), "EVIL"],
@@ -280,6 +283,59 @@ const CASES: readonly Case[] = [
 			{ name: "bin/mirror", body: GOOD },
 		],
 		member: "bin/mirror",
+		reader: "ARCHIVE_UNSAFE",
+	},
+	// Names one file to a case-insensitive file system (macOS, Windows).
+	{
+		what: "mirror, then MIRROR",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{ name: "MIRROR", body: EVIL },
+		],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "bin/mirror, then BIN/mirror",
+		entries: [
+			{ name: "bin/mirror", body: GOOD },
+			{ name: "BIN/mirror", body: EVIL },
+		],
+		member: "bin/mirror",
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "mirror, and café in NFC and in NFD",
+		entries: [
+			{ name: "mirror", body: GOOD },
+			{ name: utf8("caf\u00e9"), body: "a" },
+			{ name: utf8("cafe\u0301"), body: "b" },
+		],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "MIRROR/x, then mirror",
+		entries: [
+			{ name: "MIRROR/x", body: EVIL },
+			{ name: "mirror", body: GOOD },
+		],
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "a regular file BIN, then bin/mirror",
+		entries: [
+			{ name: "BIN", body: EVIL },
+			{ name: "bin/mirror", body: GOOD },
+		],
+		member: "bin/mirror",
+		reader: "ARCHIVE_UNSAFE",
+	},
+	{
+		what: "mirror, and LICENSE twice",
+		entries: [
+			{ name: "LICENSE", body: "MIT\n" },
+			{ name: "mirror", body: GOOD },
+			{ name: "LICENSE", body: "MIT\n" },
+		],
 		reader: "ARCHIVE_UNSAFE",
 	},
 	{

@@ -256,6 +256,32 @@ describe("session serve --host, when closing the authorization fails too", () =>
 	});
 });
 
+describe("session serve --host, its close retried once the audit is writable again", () => {
+	it("writes the session's end, then the gateway's stop", async () => {
+		let opened: OpenedGateway | undefined;
+		let restore = (): void => {};
+		const served = await serve((gateway, _context, hoboHome) => {
+			opened = gateway;
+			return {
+				...gateway,
+				auditTypes: () => {
+					restore = breakAudit(hoboHome);
+					throw new Error("the gateway's audit could not be read");
+				},
+			};
+		});
+		expect(served.result.code).toBe("HOBO_CODE_SESSION_FAILED");
+		restore();
+		await opened?.close("retried");
+		expect(audit(served.hoboHome)).toEqual([
+			"pam.GatewayStarted",
+			"pam.SessionStarted",
+			"pam.SessionEnded(retried)",
+			"pam.GatewayStopped",
+		]);
+	});
+});
+
 describe("the Station gateway's close", () => {
 	it("is done only once every step is: retried, it writes what it could not", async () => {
 		const root = mkdtempSync(join(tmpdir(), "a"));

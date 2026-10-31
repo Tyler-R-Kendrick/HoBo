@@ -24,8 +24,8 @@ export {
 } from "./http-provider.js";
 export { checkPactInventory } from "./inventory.js";
 export {
-	type PactJsonValue,
 	MatchingRuleError,
+	type PactJsonValue,
 	parseMatchingPath,
 	parseResponseMatchingRules,
 	type ResponseMatchingRule,

@@ -7,7 +7,7 @@ import {
 	parseResponseMatchingRules,
 	withResponseMatchingRules,
 } from "../src/matching.js";
-import { parsePactDocument, type PactResponse } from "../src/pact.js";
+import { type PactResponse, parsePactDocument } from "../src/pact.js";
 import { type ProviderStub, verifyPact } from "../src/verify.js";
 
 function document(matchingRules: PactJsonValue | undefined): PactJsonValue {

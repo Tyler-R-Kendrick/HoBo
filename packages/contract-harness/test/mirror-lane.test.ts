@@ -1,3 +1,4 @@
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import {
 	createServer,
 	type IncomingMessage,
@@ -5,8 +6,6 @@ import {
 	type ServerResponse,
 } from "node:http";
 import type { AddressInfo } from "node:net";
-
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 

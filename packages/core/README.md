@@ -99,6 +99,17 @@ neither variable and the account has no home (a uid with no passwd entry, where
 (`code: "HOBO_HOME_UNAVAILABLE"`), whose message says to set `HOBO_HOME` or
 `HOME`; CLI project discovery catches it and skips its home exclusion.
 
+`prepareHoboHome()` is what the `hobo` and `hobo-code` entry points call before
+they write. It creates the home (mode 0700), and a home that cannot be created
+(the account `nobody`, whose home is `/nonexistent`) fails with
+`HoboHomeUnavailable` naming the path and telling the user to set `HOBO_HOME`.
+Earlier versions kept state in `/tmp/.hobo` or `$(os.tmpdir())/.hobo` when HOME
+was unset. That state is never read now. When such a directory exists, is
+owned by the current uid, is not a symlink, is not the resolved home, and
+`HOBO_HOME` is unset, the entry point prints a one-time stderr notice saying
+where state lives now and how to move it or point `HOBO_HOME` at it. The
+dotfile `.legacy-home-notice` in the new home records that it was shown.
+
 ## Position in the event architecture
 
 `@hobo/core` defines the vocabulary of the event architecture — envelopes, principal

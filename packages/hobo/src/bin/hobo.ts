@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { join } from "node:path";
+import { HoboHomeUnavailable, prepareHoboHome } from "@hobo/core/hobo-home";
 // Register TypeScript bindle sources before composing the CLI so `hobo dev`
 // runs the flagship src/bindle.ts authoring path without a separate build.
 import { register } from "tsx/esm/api";
-import { defaultHoboHome } from "../bare-metal-yard.js";
 
 register();
 
@@ -63,8 +63,19 @@ async function runComposed(
 	// The live Pulumi lane's temporary workspace is removed on exit; as the entry
 	// point, this process has owned temporary directories removed on a signal too.
 	removeOwnedDirsOnSignals();
+	// The home is made here, before any write: a home that cannot be made
+	// (`nobody`'s /nonexistent/.hobo) is reported by name with what to set, and
+	// a user whose state an earlier HoBo kept in /tmp/.hobo hears where it went.
+	let hoboHome: string;
+	try {
+		hoboHome = prepareHoboHome();
+	} catch (error) {
+		if (!(error instanceof HoboHomeUnavailable)) throw error;
+		process.stderr.write(`hobo: ${error.message}\n`);
+		return 1;
+	}
 	const runtime = createDefaultYardRuntime({
-		dataDir: join(defaultHoboHome(), "runtime"),
+		dataDir: join(hoboHome, "runtime"),
 		...options,
 	});
 	await bootstrapDefaultProviders(runtime, [

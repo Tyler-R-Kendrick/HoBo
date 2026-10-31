@@ -16,7 +16,11 @@
 import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolveHoboHome } from "@hobo/core/hobo-home";
+import {
+	HoboHomeUnavailable,
+	prepareHoboHome,
+	resolveHoboHome,
+} from "@hobo/core/hobo-home";
 import { formatHoboCodeResult, runHoboCodeCli } from "../cli.js";
 import { removeComposedDirsOnSignals } from "../composed-hobo.js";
 import type { DevMachine } from "../dev-machines.js";
@@ -45,6 +49,23 @@ import { runResidentSshAgentProxy } from "../ssh-agent-proxy.js";
 // This is the process's entry point: when a `/hobo` verb composes HoBo here,
 // its `hobo-yard-*` store is removed on a signal too, not only on exit.
 removeComposedDirsOnSignals();
+
+// Every verb but help writes the HoBo home, so it is made here, first: a home
+// that cannot be made (`nobody`'s /nonexistent/.hobo) is reported by name with
+// what to set, rather than as EACCES from whichever write came first, and a
+// user whose state an earlier HoBo kept in /tmp/.hobo hears where it went.
+const asksForHelp = process.argv
+	.slice(2)
+	.some((arg) => arg === "--help" || arg === "-h" || arg === "help");
+if (!asksForHelp) {
+	try {
+		prepareHoboHome();
+	} catch (error) {
+		if (!(error instanceof HoboHomeUnavailable)) throw error;
+		process.stderr.write(`hobo-code: ${error.message}\n`);
+		process.exit(1);
+	}
+}
 
 // The launcher (bin/hobo-code.mjs) runs this process in a session of its own
 // and passes on the signals that end hobo-code. Killed outright, it passes on

@@ -176,6 +176,10 @@ describe("createVercelClient against the emulator", () => {
 		expect(ready.body).toMatchObject({ readyState: "READY" });
 	});
 
+	// Pins today's behaviour: the deploy provider does not create the project it
+	// deploys to. HoBo claude/ecstatic-mayer-wbm2c3-vercel-deploy-project, which
+	// lands after this lane, flips this to GetProject 200, CreateDeployment 200
+	// and adds a case for a missing project (ADR-0174, consequences).
 	it("a deployment to a project nobody created is refused with Vercel's 404, as on Vercel", async () => {
 		await vercel("DELETE", "/v9/projects/hobo-lane-nobody");
 

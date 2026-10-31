@@ -49,10 +49,11 @@ model's names (`Attribute.1.Name`, `Attribute.1.Value`): mirror `0158e361`
 drops the attributes, so a FIFO `CreateQueue` and `SetQueueAttributes` fail
 there. The Secrets Manager case declares a description, so it needs a mirror
 that keeps one (mirror.cloud `claude/ecstatic-mayer-wbm2c3-secrets-manager-gaps`).
-It still deletes with `forceDelete`: that mirror answers a secret scheduled for
-deletion as AWS does, and this resolver does not handle such a secret yet (a
-second unforced delete is an `InvalidRequestException`); ADR-0174 lists the
-fix it waits for.
+It still deletes with `forceDelete`: against that mirror a second unforced
+delete is an `InvalidRequestException`, because this resolver does not yet
+handle a secret scheduled for deletion. The branch that changes that
+(ADR-0174, residuals) drops `forceDelete` from the case and asserts what a read
+of the scheduled secret answers.
 
 ## Default Yard catalog (what AWS *can* allocate)
 

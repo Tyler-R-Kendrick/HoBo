@@ -58,4 +58,6 @@ before it.
 `createVercelDeployProvider` against the same emulator: a deployment it accepts
 and records once, its `READY` state after the emulator's clock moves, and the
 404 for a project nobody created. The deploy provider does not create the
-project it deploys to.
+project it deploys to; the branch that changes that (ADR-0174, consequences)
+flips the test to `GetProject 200, CreateDeployment 200` and adds a case for a
+missing project.

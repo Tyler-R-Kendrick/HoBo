@@ -13,10 +13,19 @@
  * outright. What the reader accepts and refuses, and why, is `pins-tar.ts`;
  * here:
  *
- * - inflating stops at the archive's end blocks (the file is still read to
- *   its end, to hash it), so bytes past the end are never decompressed;
+ * - the whole gzip stream is inflated and checked, every member's CRC and
+ *   length included, as `gzip -d` checks it under `tar -xzf`: a bad CRC, a
+ *   missing trailer, or any byte after the last gzip member (trailing zeros,
+ *   which gzip ignores, among them) is ARCHIVE_MALFORMED, however far past
+ *   the tar end blocks it is;
+ * - the data inflated only to be skipped (other entries' data and padding,
+ *   and whatever follows the end blocks) may be at most `INFLATE_RATIO`
+ *   times the archive's size plus `INFLATE_SLACK`; past that the archive is
+ *   ARCHIVE_UNSUPPORTED, so a small archive cannot make the reader inflate
+ *   gigabytes it then throws away. Headers are bounded apart, by the entry
+ *   count (`pins-tar.ts`), and the member by its size cap;
  * - a file that cannot be read (absent, a directory, unreadable) is
- *   ARCHIVE_UNREADABLE, a corrupt or truncated gzip ARCHIVE_MALFORMED;
+ *   ARCHIVE_UNREADABLE;
  * - the extracted file is written to a private partial file, made 0755
  *   through its own descriptor and renamed into place only when the archive's
  *   digest matched; any failure leaves nothing behind;
@@ -39,6 +48,7 @@ import {
 	rmSync,
 	writeSync,
 } from "node:fs";
+import { stat } from "node:fs/promises";
 import { createGunzip } from "node:zlib";
 
 import { PinsError } from "./pins.ts";
@@ -46,6 +56,11 @@ import { armGuard, partialPath } from "./pins-partial.ts";
 import { TarScan } from "./pins-tar.ts";
 
 export { MAX_MEMBER_BYTES } from "./pins-tar.ts";
+
+/** What may be inflated only to be skipped: this many times the archive's size… */
+export const INFLATE_RATIO = 32;
+/** …plus this many bytes, for the headers and end blocks of a small archive. */
+export const INFLATE_SLACK = 1024 ** 2;
 
 /** What one read of an archive established. */
 export interface MemberRead {
@@ -77,40 +92,63 @@ function first(
 	});
 }
 
+/** The archive's size, for the inflate budget; a file that is not there is unreadable. */
+async function archiveBytes(archive: string): Promise<number> {
+	try {
+		return (await stat(archive)).size;
+	} catch (error) {
+		throw unreadable(
+			archive,
+			error instanceof Error ? error : new Error(String(error)),
+		);
+	}
+}
+
 /**
- * Read `archive` to its end, hashing every byte, and hand the bytes of
- * `member` to `sink`. Every refusal is a PinsError.
+ * Read `archive` to its end, hashing every byte and inflating all of it, and
+ * hand the bytes of `member` to `sink`. Every refusal is a PinsError.
  */
 async function readMember(
 	archive: string,
 	member: string,
 	sink: (chunk: Buffer) => void,
 ): Promise<MemberRead> {
+	const budget = INFLATE_RATIO * (await archiveBytes(archive)) + INFLATE_SLACK;
 	const hash = createHash("sha256");
 	const scan = new TarScan(archive, member, sink);
 	const gunzip = createGunzip();
 	let refusal: PinsError | undefined;
 	let inflateError: Error | undefined;
+	let inflated = 0;
+	let read = 0;
 	gunzip.on("data", (chunk: Buffer) => {
-		if (refusal !== undefined || scan.ended) return;
+		if (refusal !== undefined) return;
+		inflated += chunk.length;
 		try {
+			// Past the end blocks the scan reads nothing; the stream is still checked.
 			scan.push(chunk);
+			if (scan.skipped + (inflated - scan.consumed) > budget) {
+				throw new PinsError(
+					"ARCHIVE_UNSUPPORTED",
+					`${archive} inflates more than ${budget} bytes that are not ${member} or a header (${INFLATE_RATIO} times its size, plus ${INFLATE_SLACK}); refusing to inflate the rest`,
+				);
+			}
 		} catch (error) {
 			refusal =
 				error instanceof PinsError
 					? error
 					: new PinsError("ARCHIVE_MALFORMED", `${archive}: ${String(error)}`);
+			gunzip.destroy();
 		}
-		// Past the end blocks, or refused: stop inflating. The file is still read.
-		if (refusal !== undefined || scan.ended) gunzip.destroy();
 	});
 	gunzip.on("error", (error) => {
 		inflateError = error;
 	});
-	const inflated = first(gunzip, ["close"]);
+	const closed = first(gunzip, ["close"]);
 	try {
 		for await (const chunk of createReadStream(archive)) {
 			hash.update(chunk);
+			read += chunk.length;
 			if (gunzip.destroyed) continue;
 			if (!gunzip.write(chunk)) {
 				await first(gunzip, ["drain", "close"]);
@@ -126,12 +164,18 @@ async function readMember(
 				);
 	}
 	if (!gunzip.destroyed) gunzip.end();
-	await inflated;
+	await closed;
 	if (refusal !== undefined) throw refusal;
-	if (inflateError !== undefined && !scan.ended) {
+	if (inflateError !== undefined) {
 		throw new PinsError(
 			"ARCHIVE_MALFORMED",
 			`${archive} could not be read as gzip: ${inflateError.message}`,
+		);
+	}
+	if (gunzip.bytesWritten !== read) {
+		throw new PinsError(
+			"ARCHIVE_MALFORMED",
+			`${archive} has ${read - gunzip.bytesWritten} bytes after the end of its gzip stream, which gzip either ignores (zeros) or fails on; refusing it`,
 		);
 	}
 	return { size: scan.finish(), archive: hash.digest("hex") };

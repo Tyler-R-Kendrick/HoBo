@@ -285,6 +285,8 @@ export class TarScan {
 	#size = 0;
 	#zeros = 0;
 	#ended = false;
+	#consumed = 0;
+	#skipped = 0;
 
 	constructor(archive: string, member: string, sink: (chunk: Buffer) => void) {
 		this.#archive = archive;
@@ -296,6 +298,16 @@ export class TarScan {
 	/** True once the two end-of-archive blocks have been read. */
 	get ended(): boolean {
 		return this.#ended;
+	}
+
+	/** Every byte read so far: headers, data, padding and zero blocks. */
+	get consumed(): number {
+		return this.#consumed;
+	}
+
+	/** The data and padding read so far that was not the member's: what was skipped. */
+	get skipped(): number {
+		return this.#skipped;
 	}
 
 	push(chunk: Buffer): void {
@@ -332,18 +344,21 @@ export class TarScan {
 			const want = this.#left > 0 ? this.#left : this.#pad;
 			const n = Math.min(want, this.#pending.length);
 			if (n === 0) return false;
-			if (this.#left > 0) {
-				if (this.#taking) this.#sink(this.#pending.subarray(0, n));
-				this.#left -= n;
+			if (this.#left > 0 && this.#taking) {
+				this.#sink(this.#pending.subarray(0, n));
 			} else {
-				this.#pad -= n;
+				this.#skipped += n;
 			}
+			if (this.#left > 0) this.#left -= n;
+			else this.#pad -= n;
+			this.#consumed += n;
 			this.#pending = this.#pending.subarray(n);
 			return true;
 		}
 		if (this.#pending.length < BLOCK) return false;
 		const block = this.#pending.subarray(0, BLOCK);
 		this.#pending = this.#pending.subarray(BLOCK);
+		this.#consumed += BLOCK;
 		if (block.every((byte) => byte === 0)) {
 			this.#zeros += 1;
 			this.#ended = this.#zeros === 2;

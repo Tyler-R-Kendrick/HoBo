@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
+import { gzipSync } from "node:zlib";
 
 import { scratch } from "./support/pins-support.ts";
 import {
@@ -22,7 +23,7 @@ import {
 	noTar,
 	readerSays,
 } from "./support/tar-diff.ts";
-import { type TarEntry, tarGz } from "./support/tar-support.ts";
+import { type TarEntry, tarGz, tarStream } from "./support/tar-support.ts";
 
 /** GNU tar's magic and version, `ustar  \0`. */
 const GNU = "ustar  ";
@@ -41,6 +42,8 @@ interface Case {
 	readonly after?: readonly TarEntry[];
 	/** The member the pin names; `mirror` unless given. */
 	readonly member?: string;
+	/** What is done to the gzip bytes `entries` make, when the case is about gzip. */
+	readonly gzip?: (archive: Buffer) => Buffer;
 	/** `GOOD` when the reader names GOOD's bytes, else the code it refuses with. */
 	readonly reader: string;
 }
@@ -351,6 +354,50 @@ const CASES: readonly Case[] = [
 		],
 		reader: "ARCHIVE_MALFORMED",
 	},
+	// The gzip stream: read to its end and checked, as gzip under tar checks it.
+	{
+		what: "two gzip members, LICENSE in the first and mirror in the second",
+		entries: [],
+		gzip: () =>
+			Buffer.concat([
+				gzipSync(tarStream([{ name: "LICENSE", body: "MIT\n" }])),
+				gzipSync(
+					Buffer.concat([
+						tarStream([{ name: "mirror", body: GOOD }]),
+						Buffer.alloc(1024),
+					]),
+				),
+			]),
+		reader: "GOOD",
+	},
+	{
+		what: "a gzip stream with no trailer",
+		entries: [{ name: "mirror", body: GOOD }],
+		gzip: (archive) => archive.subarray(0, archive.length - 8),
+		reader: "ARCHIVE_MALFORMED",
+	},
+	{
+		what: "a gzip stream whose CRC is wrong",
+		entries: [{ name: "mirror", body: GOOD }],
+		gzip: (archive) => {
+			const bytes = Buffer.from(archive);
+			bytes[bytes.length - 8] = (bytes[bytes.length - 8] ?? 0) ^ 0xff;
+			return bytes;
+		},
+		reader: "ARCHIVE_MALFORMED",
+	},
+	{
+		what: "garbage after the gzip stream",
+		entries: [{ name: "mirror", body: GOOD }],
+		gzip: (archive) => Buffer.concat([archive, Buffer.from("garbage!")]),
+		reader: "ARCHIVE_MALFORMED",
+	},
+	{
+		what: "zeros after the gzip stream, which gzip ignores",
+		entries: [{ name: "mirror", body: GOOD }],
+		gzip: (archive) => Buffer.concat([archive, Buffer.alloc(8)]),
+		reader: "ARCHIVE_MALFORMED",
+	},
 	// Names one file to a case-insensitive file system (macOS, Windows).
 	{
 		what: "mirror, then MIRROR",
@@ -426,7 +473,8 @@ const CASES: readonly Case[] = [
 
 function archiveOf(crafted: Case): string {
 	const path = join(scratch("tar-diff"), "a.tar.gz");
-	writeFileSync(path, tarGz(crafted.entries, crafted.after));
+	const archive = tarGz(crafted.entries, crafted.after);
+	writeFileSync(path, crafted.gzip?.(archive) ?? archive);
 	return path;
 }
 

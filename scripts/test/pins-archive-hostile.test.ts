@@ -333,25 +333,22 @@ describe("the end of the archive", () => {
 		assert.deepEqual(readFileSync(join(dir, "out")), BINARY);
 	});
 
-	it("stops inflating at the end blocks: a corrupt gzip trailer far past them is hashed, never reached", async () => {
-		// A megabyte of incompressible bytes after the end blocks, then a gzip
-		// trailer whose CRC is wrong. Only an inflater that read past the end of
-		// the archive would see the CRC; the digest still covers every byte.
+	/** A megabyte that does not compress. */
+	function incompressible(): Buffer {
 		const filler: Buffer[] = [];
 		let seed = Buffer.from("filler");
 		for (let i = 0; i < 1024 * 32; i += 1) {
 			seed = createHash("sha256").update(seed).digest();
 			filler.push(seed);
 		}
-		const bytes = Buffer.from(
-			tarGz(
-				[{ name: "mirror", body: BINARY }],
-				[{ name: "after", body: Buffer.concat(filler) }],
-			),
+		return Buffer.concat(filler);
+	}
+
+	it("reads the gzip stream to its end: a megabyte past the end blocks is inflated, checked and hashed", async () => {
+		const bytes = tarGz(
+			[{ name: "mirror", body: BINARY }],
+			[{ name: "after", body: incompressible() }],
 		);
-		const crc = bytes.length - 8;
-		bytes[crc] = (bytes[crc] ?? 0) ^ 0xff;
-		assert.throws(() => gunzipSync(bytes), /incorrect data check/u);
 		const { dir, path } = archiveFile(bytes);
 		await extractMember(path, "mirror", join(dir, "out"), sha256Hex(bytes));
 		assert.deepEqual(readFileSync(join(dir, "out")), BINARY);
@@ -359,6 +356,67 @@ describe("the end of the archive", () => {
 			archive: sha256Hex(bytes),
 			member: sha256Hex(BINARY),
 		});
+	});
+
+	it("refuses a corrupt gzip trailer however far past the end blocks it is, as gzip under tar exits 2 on it", async () => {
+		for (const after of [[], [{ name: "after", body: incompressible() }]]) {
+			const bytes = Buffer.from(
+				tarGz([{ name: "mirror", body: BINARY }], after),
+			);
+			const crc = bytes.length - 8;
+			bytes[crc] = (bytes[crc] ?? 0) ^ 0xff;
+			assert.throws(() => gunzipSync(bytes), /incorrect data check/u);
+			const { dir, path } = archiveFile(bytes);
+			await assert.rejects(
+				extractMember(path, "mirror", join(dir, "out"), sha256Hex(bytes)),
+				refusal("ARCHIVE_MALFORMED"),
+				`${after.length} entries after the end blocks`,
+			);
+			assert.deepEqual(readdirSync(dir), ["a.tar.gz"]);
+		}
+	});
+
+	it("refuses bytes after the gzip stream, zeros included, and a stream with no trailer", async () => {
+		const good = tarGz([{ name: "mirror", body: BINARY }]);
+		for (const [what, bytes] of [
+			["garbage", Buffer.concat([good, Buffer.from("garbage!")])],
+			["zeros", Buffer.concat([good, Buffer.alloc(8)])],
+			[
+				"zeros, then a second member",
+				Buffer.concat([good, Buffer.alloc(8), good]),
+			],
+			["no trailer", good.subarray(0, good.length - 8)],
+		] as const) {
+			const { dir, path } = archiveFile(bytes);
+			await assert.rejects(
+				extractMember(path, "mirror", join(dir, "out"), sha256Hex(bytes)),
+				refusal("ARCHIVE_MALFORMED"),
+				what,
+			);
+		}
+	});
+
+	it("refuses an archive that inflates more skipped data than 32 times its size plus 1 MiB", async () => {
+		// Eight MiB of zeros compress to a few KiB: as another entry's data, and after the end blocks.
+		const zeros = Buffer.alloc(8 * 1024 ** 2);
+		for (const bytes of [
+			tarGz([
+				{ name: "padding", body: zeros },
+				{ name: "mirror", body: BINARY },
+			]),
+			tarGz(
+				[{ name: "mirror", body: BINARY }],
+				[{ name: "after", body: zeros }],
+			),
+		]) {
+			assert.ok(bytes.length * 32 + 1024 ** 2 < zeros.length);
+			const { dir, path } = archiveFile(bytes);
+			await assert.rejects(
+				extractMember(path, "mirror", join(dir, "out"), sha256Hex(bytes)),
+				refusal("ARCHIVE_UNSUPPORTED"),
+			);
+			assert.deepEqual(readdirSync(dir), ["a.tar.gz"]);
+		}
 	});
 });
 

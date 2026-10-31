@@ -3,7 +3,7 @@
  * Watch + interact paint ANSI captures inside the product TV bezel; keys
  * forward to the focused leaf pane. Multi-pane tabs = tmux splits in one window.
  */
-import { join } from "node:path";
+import { resolveHoboHome } from "@hobo/core/hobo-home";
 import { first } from "@hobo/core/total-access";
 import { loadHarnessCatalog, seatingOrder } from "./agent-harness-catalog.js";
 import { defaultProbes, detectAgents } from "./agent-registry.js";
@@ -241,13 +241,14 @@ export async function ensureInSessionPanes(options: {
 		);
 	}
 	const cwd = options.cwd ?? process.cwd();
-	const homeValue = (options.env ?? process.env).HOME;
+	const env = options.env ?? process.env;
+	const homeValue = env.HOME;
 	const userHome =
 		homeValue && homeValue.length > 0 ? homeValue : (process.env.HOME ?? "");
 	const hoboHome =
 		options.hoboHome && options.hoboHome.length > 0
 			? options.hoboHome
-			: joinHoboHome(userHome);
+			: resolveHoboHome(env);
 	const targets: MuxTarget[] = placeable.map((agent) => {
 		const seated = seatShellCommand({
 			agentId: agent.id,
@@ -336,10 +337,6 @@ function pickFocusedLeafIndex(window: InSessionWindow | undefined): number {
 	if (!window?.panes || window.panes.length === 0) return 0;
 	const active = window.panes.findIndex((row) => row.active);
 	return active >= 0 ? active : 0;
-}
-
-function joinHoboHome(userHome: string): string {
-	return userHome.length > 0 ? join(userHome, ".hobo") : ".hobo";
 }
 
 /**

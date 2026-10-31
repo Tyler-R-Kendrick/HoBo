@@ -149,7 +149,7 @@ export function createAddCommand(deps: AddCommandDeps = {}): CommandModule {
 					installRuntime(
 						// SAFETY: assertion required at this I/O or test boundary.
 						id as RuntimeInstallId,
-						process.env.HOBO_HOME ?? defaultHoboHome(),
+						defaultHoboHome(),
 					);
 				}
 				return {
@@ -207,7 +207,7 @@ export function createAddCommand(deps: AddCommandDeps = {}): CommandModule {
 				const installed = installRuntime(
 					// SAFETY: assertion required at this I/O or test boundary.
 					id as RuntimeInstallId,
-					process.env.HOBO_HOME ?? defaultHoboHome(),
+					defaultHoboHome(),
 				);
 				runtimeHost = runtimeInstallIdToHost(id);
 				emitProgress(

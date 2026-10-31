@@ -85,6 +85,16 @@ frozen `RoutingPlan` with branded plan/backend/Station identifiers, while
 generated protobuf record/JSON enums with that frozen domain view; protobuf's
 absent scalar/list defaults normalize optional `degraded`/`notes` to `false`/`[]`.
 
+## Where a user's HoBo state lives (`@hobo/core/hobo-home`)
+
+`resolveHoboHome(env)` is the one rule every package uses for the user-level
+state directory (auth sessions, evidence, chats, stations, downloaded tools):
+`HOBO_HOME` when it is set and non-empty, else `.hobo` under `HOME` from the
+given environment, else under `os.homedir()`. It never falls back to a temp
+directory: `/tmp` is world-writable, so another local user could create
+`/tmp/.hobo` first and receive what HoBo writes there. It is a Node-only
+subpath (it reads `os.homedir()`) and touches no file.
+
 ## Position in the event architecture
 
 `@hobo/core` defines the vocabulary of the event architecture — envelopes, principal

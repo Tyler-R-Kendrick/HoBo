@@ -14,9 +14,9 @@
  * not this coding harness.
  */
 import { spawn } from "node:child_process";
-import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveHoboHome } from "@hobo/core/hobo-home";
 import { formatHoboCodeResult, runHoboCodeCli } from "../cli.js";
 import { removeComposedDirsOnSignals } from "../composed-hobo.js";
 import type { DevMachine } from "../dev-machines.js";
@@ -85,10 +85,7 @@ async function launchProductShell(options: {
 	readonly messages?: readonly ShellMessage[];
 	readonly journal?: readonly ShellMessage[];
 }): Promise<number> {
-	const hoboHome =
-		process.env.HOBO_HOME && process.env.HOBO_HOME.length > 0
-			? process.env.HOBO_HOME
-			: join(process.env.HOME ?? tmpdir(), ".hobo");
+	const hoboHome = resolveHoboHome();
 	let engine: ShellEngine | null = null;
 	const isolation = await createIsolationContext({
 		projectRoot: options.cwd ?? process.cwd(),
@@ -257,11 +254,7 @@ if (argv[0] === "_station-agent") {
 	} else if (result.ok && action?.kind === "git-pane" && action.sessionId) {
 		process.exitCode = await runGitTerminalPane({
 			sessionId: action.sessionId,
-			hoboHome:
-				action.hoboHome ??
-				(process.env.HOBO_HOME && process.env.HOBO_HOME.length > 0
-					? process.env.HOBO_HOME
-					: join(process.env.HOME ?? tmpdir(), ".hobo")),
+			hoboHome: action.hoboHome ?? resolveHoboHome(),
 		});
 	} else if (
 		result.ok &&
@@ -316,11 +309,7 @@ if (argv[0] === "_station-agent") {
 			await action.closeAuthorization?.();
 		}
 	} else if (result.ok && action?.kind === "serve-sessions") {
-		const hoboHome =
-			action.hoboHome ??
-			(process.env.HOBO_HOME && process.env.HOBO_HOME.length > 0
-				? process.env.HOBO_HOME
-				: join(process.env.HOME ?? tmpdir(), ".hobo"));
+		const hoboHome = action.hoboHome ?? resolveHoboHome();
 		const requestedPort =
 			action.port ??
 			Number.parseInt(process.env.HOBO_CODE_SESSION_PORT ?? "0", 10);

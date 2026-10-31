@@ -1,10 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import type { BindleDefinition } from "@hobo/bindles";
 import { bindleScope, descriptorFromHandle } from "@hobo/bindles/topology";
 import { camp } from "@hobo/camps";
 import type { YardRuntime } from "@hobo/cli";
+import { resolveHoboHome } from "@hobo/core/hobo-home";
 import { type Yard, yard } from "@hobo/yards";
 import { createDefaultYardRuntime } from "./compose.js";
 import {
@@ -104,12 +104,9 @@ export interface BareMetalYard {
 	readonly close: () => void;
 }
 
+/** `@hobo/core/hobo-home`'s rule, under the name this package exports it as. */
 export function defaultHoboHome(env: NodeJS.ProcessEnv = process.env): string {
-	const fromEnv = env.HOBO_HOME;
-	if (isJsonString(fromEnv) && fromEnv.length > 0) {
-		return fromEnv;
-	}
-	return join(homedir(), ".hobo");
+	return resolveHoboHome(env);
 }
 
 export function yardConfigPath(hoboHome: string): string {

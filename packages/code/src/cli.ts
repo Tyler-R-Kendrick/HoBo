@@ -12,6 +12,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveHoboHome } from "@hobo/core/hobo-home";
 import * as totalAccess from "@hobo/core/total-access";
 import { initStation, persistStationCapabilityManifest } from "@hobo/stations";
 import { runAgentsCli } from "./agent-harness-init.js";
@@ -408,13 +409,6 @@ export type FormatHoboCodeOptions = {
 	readonly json?: boolean;
 	readonly dense?: boolean;
 };
-
-function defaultHoboHome(env: NodeJS.ProcessEnv): string {
-	if (isJsonString(env.HOBO_HOME) && env.HOBO_HOME.length > 0) {
-		return env.HOBO_HOME;
-	}
-	return join(env.HOME ?? tmpdir(), ".hobo");
-}
 
 // SAFETY: parsed or fixture value is the named domain type after this assertion.
 /** Flags that consume the next token as their value (strict parsing). */
@@ -1741,7 +1735,7 @@ export async function runHoboCodeCli(
 	const hoboHome =
 		(isJsonString(flags.home) && flags.home) ||
 		deps.hoboHome ||
-		defaultHoboHome(env);
+		resolveHoboHome(env);
 	const projectDir =
 		(isJsonString(flags.cwd) && flags.cwd) || deps.cwd || process.cwd();
 	const tenant =

@@ -4,6 +4,7 @@
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { resolveHoboHome } from "@hobo/core/hobo-home";
 import type { HarnessSpecKind } from "./harness-spec.js";
 import {
 	cloneAsJson,
@@ -354,7 +355,7 @@ function eveVfsHunks(ctx: AdapterContext): readonly HarnessHunk[] {
 
 function sdkEnvHunk(ctx: AdapterContext): readonly HarnessHunk[] {
 	const path = join(
-		ctx.hoboHome ?? join(ctx.home, ".hobo"),
+		ctx.hoboHome ?? resolveHoboHome({ HOME: ctx.home }),
 		"durable",
 		"code",
 		"agents",

@@ -488,7 +488,7 @@ export function createAuthMdIdentityCommand(
 			const home =
 				isJsonString(input.flags.home) && input.flags.home.length > 0
 					? input.flags.home
-					: (env.HOBO_HOME ?? defaultHoboHome(env));
+					: defaultHoboHome(env);
 			const port: HttpPort = { fetchImpl: deps.fetchImpl ?? fetch };
 			const ownedStore = deps.store === undefined;
 			const store =

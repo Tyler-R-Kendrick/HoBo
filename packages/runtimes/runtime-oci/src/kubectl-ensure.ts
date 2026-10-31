@@ -15,6 +15,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { resolveHoboHome } from "@hobo/core/hobo-home";
 import { isJsonString } from "./json.js";
 
 // public-contract: pinned kubectl client for oci host ensure.
@@ -79,7 +80,7 @@ export async function ensureKubectlBinary(
 	} = { hoboHome: "" },
 ): Promise<KubectlBinary> {
 	const env = options.env ?? process.env;
-	const hoboHome = options.hoboHome || env.HOBO_HOME || join(tmpdir(), "hobo");
+	const hoboHome = options.hoboHome || resolveHoboHome(env);
 	const download = options.download ?? true;
 	const emit = options.emitProgress ?? (() => {});
 

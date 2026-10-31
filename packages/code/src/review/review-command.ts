@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { resolveHoboHome } from "@hobo/core/hobo-home";
 import {
 	cloneAsJson,
 	isJsonString,
@@ -12,9 +12,7 @@ import { REVIEW_COMMAND_SCHEMA } from "./review-contract.js";
 import { createReviewRuntime } from "./review-runtime.js";
 
 function reviewHome(): string {
-	return process.env.HOBO_HOME
-		? join(process.env.HOBO_HOME, "durable", "code", "reviews")
-		: join(homedir(), ".hobo", "durable", "code", "reviews");
+	return join(resolveHoboHome(), "durable", "code", "reviews");
 }
 
 export async function runReviewCommand(input: {

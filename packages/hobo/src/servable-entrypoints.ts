@@ -17,6 +17,7 @@ import {
 	renderEvidenceOverlayBridge,
 	renderEvidenceOverlayWrapper,
 } from "@hobo/code";
+import { resolveHoboHome } from "@hobo/core/hobo-home";
 import {
 	applySessionReplayToEntrypoints,
 	type BindleSessionReplayPlan,
@@ -291,10 +292,12 @@ function applyEvidenceOverlay(
 function discoveredEvidenceControlsUrl(
 	env: NodeJS.ProcessEnv,
 ): string | undefined {
-	const hoboHome =
-		env.HOBO_HOME ?? (env.HOME ? join(env.HOME, ".hobo") : undefined);
-	if (!hoboHome) return undefined;
-	const path = join(hoboHome, "runtime", "code", "evidence-controls-url");
+	const path = join(
+		resolveHoboHome(env),
+		"runtime",
+		"code",
+		"evidence-controls-url",
+	);
 	if (!existsSync(path)) return undefined;
 	const value = readFileSync(path, "utf8").trim();
 	return value || undefined;

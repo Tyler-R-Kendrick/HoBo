@@ -14,6 +14,7 @@
 
 import type { Readable, Writable } from "node:stream";
 import { type Component, matchesKey, TUI } from "@earendil-works/pi-tui";
+import { resolveHoboHome } from "@hobo/core/hobo-home";
 import { must } from "@hobo/core/total-access";
 import { HOBO_LOGO_TUI } from "./_generated-art/hobo-logo-tui.js";
 import {
@@ -97,7 +98,6 @@ import {
 	refreshInSessionPanes,
 	sendKeysRawToInSessionPane,
 } from "./in-session-panes.js";
-import { isJsonString } from "./json.js";
 import { createLocalSessionControl } from "./local-session-control.js";
 import { tmuxRunner } from "./mux.js";
 import { preferNamedEndpoint } from "./occupancy-endpoints.js";
@@ -712,11 +712,7 @@ export function createInitialShellState(
 		env.HOBO_CODE_REDUCED_MOTION === "1" ||
 		env.HOBO_CODE_REDUCED_MOTION === "true";
 
-	const hoboHome =
-		options.hoboHome ??
-		(isJsonString(env.HOBO_HOME) && env.HOBO_HOME
-			? env.HOBO_HOME
-			: `${env.HOME ?? "/tmp"}/.hobo`);
+	const hoboHome = options.hoboHome ?? resolveHoboHome(env);
 	const hermetic = inspectHermeticEnv({
 		projectRoot: options.cwd ?? process.cwd(),
 		hoboHome,
@@ -2713,11 +2709,7 @@ export async function runInteractiveShell(
 		(stdout as NodeJS.WriteStream).isTTY === true;
 
 	const shellEnv = options.env ?? process.env;
-	const shellHome =
-		options.hoboHome ??
-		(isJsonString(shellEnv.HOBO_HOME) && shellEnv.HOBO_HOME
-			? shellEnv.HOBO_HOME
-			: `${shellEnv.HOME ?? "/tmp"}/.hobo`);
+	const shellHome = options.hoboHome ?? resolveHoboHome(shellEnv);
 	describeAuthedStationSession({
 		hoboHome: shellHome,
 		env: shellEnv,

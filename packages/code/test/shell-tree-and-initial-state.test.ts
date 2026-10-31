@@ -24,7 +24,10 @@
  * from a terminal that has not reported yet, and every layout calculation
  * downstream divides or subtracts by it.
  */
-import { describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import {
 	buildShellTree,
@@ -33,6 +36,35 @@ import {
 	type PendingApproval,
 	type ShellMessage,
 } from "../src/interactive-shell.js";
+
+/**
+ * Real directories for the cases that hand the shell an environment of their
+ * own. Building the initial state writes under its home (the evidence store
+ * makes `durable/code/evidence`), so an environment with no `HOBO_HOME` must
+ * still be pointed somewhere this file made and removes afterwards.
+ */
+let fixtureRoot = "";
+
+beforeAll(() => {
+	fixtureRoot = mkdtempSync(join(tmpdir(), "hobo-shell-initial-state-"));
+	mkdirSync(join(fixtureRoot, "home"));
+	mkdirSync(join(fixtureRoot, "user"));
+	mkdirSync(join(fixtureRoot, "project"));
+});
+
+afterAll(() => {
+	rmSync(fixtureRoot, { recursive: true, force: true });
+});
+
+/** An unset root would make both paths relative, and the shell would write into the working directory. */
+const fixtureDirs = () => {
+	if (fixtureRoot === "")
+		throw new Error("the fixture root is made in beforeAll");
+	return {
+		hoboHome: join(fixtureRoot, "home"),
+		cwd: join(fixtureRoot, "project"),
+	};
+};
 
 const base = (overrides: Partial<InteractiveShellState> = {}) =>
 	// SAFETY: the fixture is the state shape the builders are declared over.
@@ -201,6 +233,26 @@ describe("what the first frame starts with", () => {
 		expect(
 			createInitialShellState({ reducedMotion: true, env: {} }).reducedMotion,
 		).toBe(true);
+	});
+});
+
+describe("where the first frame keeps its state", () => {
+	it("is .hobo under the user's home, never /tmp, when the environment names no home", () => {
+		// `env: {}` used to resolve to the literal `/tmp/.hobo`. That directory
+		// is world-writable: another local user can create it first and then
+		// read every auth session and evidence file the shell writes there.
+		const user = join(fixtureRoot, "user");
+		vi.stubEnv("HOME", user);
+		try {
+			const state = createInitialShellState({
+				env: {},
+				welcome: false,
+				cwd: fixtureDirs().cwd,
+			});
+			expect(state.hoboHome).toBe(join(user, ".hobo"));
+		} finally {
+			vi.unstubAllEnvs();
+		}
 	});
 });
 

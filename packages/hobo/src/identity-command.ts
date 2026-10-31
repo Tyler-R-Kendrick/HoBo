@@ -81,11 +81,7 @@ export function createIdentityCommand(
 	return {
 		run: async ({ args, flags, emitProgress }) => {
 			const env = deps.env ?? process.env;
-			const hoboHome =
-				deps.hoboHome ??
-				(isJsonString(env.HOBO_HOME) && env.HOBO_HOME.length > 0
-					? env.HOBO_HOME
-					: defaultHoboHome());
+			const hoboHome = deps.hoboHome ?? defaultHoboHome(env);
 			// SAFETY: assertion required at this I/O or test boundary.
 			const sub = (args[0] ?? "status") as string;
 			// SAFETY: assertion required at this I/O or test boundary.

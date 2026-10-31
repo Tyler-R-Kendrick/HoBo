@@ -22,6 +22,11 @@ Rift is experimental and **never vendored** into the monorepo. Worktree is first
 
 ## Layout under `HOBO_HOME`
 
+`HOBO_HOME` resolves to the variable when it is set and non-empty, else
+`$HOME/.hobo`, else `.hobo` under `os.homedir()` when the environment names no
+`HOME` (`resolveHoboHome` in `@hobo/core/hobo-home`). There is no temp-directory
+fallback: `/tmp/.hobo` is a path another local user can create first.
+
 ```text
 $HOBO_HOME/
   sandboxes/<runId>/     # ephemeral mediated view (cleaned always)

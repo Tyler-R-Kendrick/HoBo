@@ -25,9 +25,10 @@ import {
 } from "node:fs";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveHoboHome } from "@hobo/core/hobo-home";
 import { isJsonString } from "./json.js";
 
 /** Fetch handler shape shared with Camp mesh. */
@@ -53,10 +54,9 @@ export function applyHoboMeshEnvHeaders(
 	return next;
 }
 
+/** `@hobo/core/hobo-home`'s rule, under the name this package exports it as. */
 export function defaultHoboHome(env: NodeJS.ProcessEnv = process.env): string {
-	const fromEnv = env.HOBO_HOME;
-	if (isJsonString(fromEnv) && fromEnv.length > 0) return fromEnv;
-	return join(homedir(), ".hobo");
+	return resolveHoboHome(env);
 }
 
 export interface WasmtimeBinary {

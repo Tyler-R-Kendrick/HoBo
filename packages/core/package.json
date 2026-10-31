@@ -19,6 +19,10 @@
 		"./total-access": {
 			"types": "./dist/total-access.d.ts",
 			"default": "./dist/total-access.js"
+		},
+		"./hobo-home": {
+			"types": "./dist/hobo-home.d.ts",
+			"default": "./dist/hobo-home.js"
 		}
 	},
 	"publishConfig": {

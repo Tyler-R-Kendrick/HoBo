@@ -67,10 +67,7 @@ export function createDoctorCommand(
 			const target = describeDeployTarget(env);
 			emitProgress(target.summary);
 
-			const hoboHome =
-				isJsonString(env.HOBO_HOME) && env.HOBO_HOME.length > 0
-					? env.HOBO_HOME
-					: defaultHoboHome();
+			const hoboHome = defaultHoboHome(env);
 			const profile = loadHoboProfile(hoboHome);
 			const stationId =
 				(isJsonString(env.HOBO_STATION) && env.HOBO_STATION) ||

@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { resolveHoboHome } from "@hobo/core/hobo-home";
 
 import { composeAtoms } from "./atom-compose.js";
 import {
@@ -138,11 +138,7 @@ export function defaultAtomIndexPath(): string {
 	if (process.env.HOBO_ATOM_INDEX && process.env.HOBO_ATOM_INDEX.length > 0) {
 		return process.env.HOBO_ATOM_INDEX;
 	}
-	const home =
-		process.env.HOBO_HOME && process.env.HOBO_HOME.length > 0
-			? process.env.HOBO_HOME
-			: join(homedir(), ".hobo");
-	return join(home, "durable", "code", "template-index.sqlite");
+	return join(resolveHoboHome(), "durable", "code", "template-index.sqlite");
 }
 
 function encodeEmbedding(vector: Float64Array): Buffer {

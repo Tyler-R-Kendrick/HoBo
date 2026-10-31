@@ -7,9 +7,9 @@
  * remains policy/PAM gated inside @hobo/replay.
  */
 
-import { homedir } from "node:os";
 import { join } from "node:path";
 import type { CommandModule } from "@hobo/cli";
+import { resolveHoboHome } from "@hobo/core/hobo-home";
 import { must } from "@hobo/core/total-access";
 import {
 	createContractAssertedReplayFixtures,
@@ -36,17 +36,8 @@ const SUBCOMMANDS = [
 ] as const;
 type Subcommand = (typeof SUBCOMMANDS)[number];
 
-/** Local HOBO_HOME resolution without pulling Yard/compose graph. */
-function defaultHoboHome(env: NodeJS.ProcessEnv = process.env): string {
-	if (isJsonString(env.HOBO_HOME) && env.HOBO_HOME.length > 0) {
-		return env.HOBO_HOME;
-	}
-	return join(homedir(), ".hobo");
-}
-
 function resolveHome(deps: ReplayCommandDeps): string {
-	const env = deps.env ?? process.env;
-	return deps.hoboHome ?? defaultHoboHome(env);
+	return deps.hoboHome ?? resolveHoboHome(deps.env ?? process.env);
 }
 
 function resolveStationId(

@@ -32,6 +32,7 @@ import {
 } from "../interactive-shell.js";
 import { cleanupIsolation, createIsolationContext } from "../isolation.js";
 import { isJsonObject } from "../json.js";
+import { hangUpWhenLauncherGoes } from "../launcher-hangup.js";
 import { preferNamedEndpoint } from "../occupancy-endpoints.js";
 import {
 	authorizationLeaseDelay,
@@ -46,15 +47,9 @@ import { runResidentSshAgentProxy } from "../ssh-agent-proxy.js";
 // its `hobo-yard-*` store is removed on a signal too, not only on exit.
 removeComposedDirsOnSignals();
 
-// The launcher (bin/hobo-code.mjs) runs this process in a session of its own
-// and passes on the signals that end hobo-code. Killed outright, it passes on
-// nothing: its end of the IPC channel closes, and this process takes that as
-// the hangup it is otherwise never sent, so the shell restores the terminal
-// and the composed store is removed.
-if (process.channel !== undefined && process.platform !== "win32") {
-	process.once("disconnect", () => process.kill(process.pid, "SIGHUP"));
-	process.channel.unref();
-}
+// The launcher (bin/hobo-code.mjs) runs this process in a session of its own,
+// with an IPC channel: a launcher killed outright is a hangup here.
+hangUpWhenLauncherGoes();
 
 const rawArgv = process.argv.slice(2);
 const json = rawArgv.includes("--json");

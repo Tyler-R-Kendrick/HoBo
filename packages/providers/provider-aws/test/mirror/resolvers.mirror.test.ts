@@ -94,11 +94,11 @@ const PRODUCTS: readonly ProductCase[] = [
 		// The description is declared and must read back with no drift: mirror
 		// keeps it (mirror.cloud claude/ecstatic-mayer-wbm2c3-secrets-manager-gaps,
 		// 7cd36e6f). The delete is still forced: against that mirror an unforced
-		// delete fails "The secret is scheduled for deletion" on the second
-		// delete, because this resolver does not yet handle a secret scheduled
-		// for deletion. HoBo claude/ecstatic-mayer-wbm2c3-secrets-pending-deletion,
-		// which lands after this lane, must drop forceDelete here and assert what
-		// a read of the scheduled secret answers (ADR-0174, residuals).
+		// delete failed "The secret is scheduled for deletion" on the second
+		// delete, because the resolver did not then handle a secret scheduled
+		// for deletion. It does since #1627 (ADR-0175), so dropping forceDelete
+		// here and asserting what a read of the scheduled secret answers is this
+		// lane's to do, and not done yet (ADR-0174, residuals).
 		desired: { description: "payment provider key", forceDelete: true },
 		create: "CreateSecret",
 	},

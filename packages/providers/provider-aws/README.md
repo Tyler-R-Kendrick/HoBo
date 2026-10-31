@@ -50,10 +50,11 @@ drops the attributes, so a FIFO `CreateQueue` and `SetQueueAttributes` fail
 there. The Secrets Manager case declares a description, so it needs a mirror
 that keeps one (mirror.cloud `claude/ecstatic-mayer-wbm2c3-secrets-manager-gaps`).
 It still deletes with `forceDelete`: against that mirror a second unforced
-delete is an `InvalidRequestException`, because this resolver does not yet
-handle a secret scheduled for deletion. The branch that changes that
-(ADR-0174, residuals) drops `forceDelete` from the case and asserts what a read
-of the scheduled secret answers.
+delete was an `InvalidRequestException`, because the resolver did not then
+handle a secret scheduled for deletion. It does now (ADR-0175, below), so
+dropping `forceDelete` from the case and asserting what a read of the scheduled
+secret answers is the mirror lane's to do (ADR-0174, residuals); it is not done
+yet.
 
 ## Default Yard catalog (what AWS *can* allocate)
 

@@ -448,17 +448,27 @@ function hostCredentialResolver(
 }
 
 // The Vercel team the environment names: `VERCEL_TEAM_ID` (the name
-// `scripts/staging-cutover-demo.mts` already uses), else `VERCEL_ORG_ID` (the
-// Vercel CLI's), each trimmed and taken as unset when blank, the rule
-// `createVercelDeployProvider` applies to its own `teamId`; `undefined` when
-// neither names one. Both Vercel lanes read it.
+// `scripts/staging-cutover-demo.mts` already uses) as the operator set it, else
+// `VERCEL_ORG_ID` (the Vercel CLI's) when it is a team id. Each is trimmed and
+// taken as unset when blank, the rule `createVercelDeployProvider` applies to
+// its own `teamId`; `undefined` when neither names a team. Both Vercel lanes
+// read it.
 function vercelTeamIdOf(
 	env: Record<string, string | undefined>,
 ): string | undefined {
 	return (
 		normalizeVercelTeamId(env.VERCEL_TEAM_ID) ??
-		normalizeVercelTeamId(env.VERCEL_ORG_ID)
+		vercelOrgTeamIdOf(env.VERCEL_ORG_ID)
 	);
+}
+
+// The Vercel CLI writes the id of the team or of the personal account a
+// directory is linked to into `VERCEL_ORG_ID`. A team's id always starts with
+// `team_`; anything else is an account's, and an account is not a team, so it
+// is no `teamId` at all.
+function vercelOrgTeamIdOf(orgId: string | undefined): string | undefined {
+	const id = normalizeVercelTeamId(orgId);
+	return id?.startsWith("team_") ? id : undefined;
 }
 
 // Build the OPT-IN resolver-backed deploy provider for whichever cloud the
@@ -521,8 +531,8 @@ function resolverBackedProviderFor(
 //   - else `VERCEL_TOKEN` present -> the REAL Vercel deploy provider (cred-gated).
 //
 // Both Vercel lanes (the deploy provider and the resolver plane) work in the
-// team `VERCEL_TEAM_ID`, else `VERCEL_ORG_ID`, names, or in the token's own
-// scope when neither does (`vercelTeamIdOf`).
+// team `VERCEL_TEAM_ID`, else a `team_` `VERCEL_ORG_ID`, names, or in the
+// token's own scope when neither does (`vercelTeamIdOf`).
 //
 // The resolver lane is OPT-IN and deliberately sits INSIDE the cred-gated
 // bracket: it can only replace the two bespoke deploy providers, never the

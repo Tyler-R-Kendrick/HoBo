@@ -104,9 +104,9 @@ What `runProxied` does before and around the run:
   would reach it. The run starts from an allowlist (`HOME`, `USER`, `LOGNAME`, `SHELL`, `LANG`, `TERM`, `TMPDIR`,
   `TZ`, `CI`, `LC_*`, `NODE_*`, `XDG_*`, `HOBO_*` minus credential-shaped names, the Windows trio on win32, the
   checked `OPENSESAME_ENV_PARSE`, and `VERCEL_TEAM_ID` and `VERCEL_ORG_ID`), plus the names you list in `passEnv`, plus
-  the run's own two variables, which win. `VERCEL_TEAM_ID` and `VERCEL_ORG_ID` (the Vercel CLI's name) name the Vercel
-  team a deploy is in: configuration, named nothing like a credential, and allowlisted by those exact names, so the
-  rest of `VERCEL_*` stays behind.
+  the run's own two variables, which win. `VERCEL_TEAM_ID` and `VERCEL_ORG_ID` (the Vercel CLI's name, which can hold a
+  personal account's id) name the Vercel team or account a deploy is in: configuration, named nothing like a
+  credential, and allowlisted by those exact names, so the rest of `VERCEL_*` stays behind.
   The allowlist is a heuristic by name: a variable that matches a prefix and does not look credential-shaped reaches the
   command whatever it holds.
   `OPENSESAME_STORE_PASSWORD`, `OPENSESAME_STORE_DIR` and the like are `passEnv` names. **Who supplies `passEnv`:** the code

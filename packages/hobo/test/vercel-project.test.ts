@@ -549,11 +549,7 @@ describe("the composed provider's team (selectIacProvider, scripted transport, n
 	});
 
 	it.each([
-		[
-			"VERCEL_ORG_ID alone, trimmed",
-			{ VERCEL_ORG_ID: " team_org " },
-			"team_org",
-		],
+		["VERCEL_ORG_ID alone, trimmed", { VERCEL_ORG_ID: " team_x " }, "team_x"],
 		[
 			"VERCEL_TEAM_ID over VERCEL_ORG_ID",
 			{ VERCEL_TEAM_ID: "team_acme", VERCEL_ORG_ID: "team_org" },
@@ -563,6 +559,18 @@ describe("the composed provider's team (selectIacProvider, scripted transport, n
 			"VERCEL_ORG_ID when VERCEL_TEAM_ID is blank",
 			{ VERCEL_TEAM_ID: "  ", VERCEL_ORG_ID: "team_org" },
 			"team_org",
+		],
+		// The operator set VERCEL_TEAM_ID on purpose: a slug or any id is taken
+		// as given, whatever VERCEL_ORG_ID holds.
+		[
+			"a VERCEL_TEAM_ID that is not a team_ id, over a personal VERCEL_ORG_ID",
+			{ VERCEL_TEAM_ID: "acme-slug", VERCEL_ORG_ID: "u_abc" },
+			"acme-slug",
+		],
+		[
+			"a VERCEL_TEAM_ID that is not a team_ id, over a team VERCEL_ORG_ID",
+			{ VERCEL_TEAM_ID: "acme-slug", VERCEL_ORG_ID: "team_org" },
+			"acme-slug",
 		],
 	])("takes the team from %s", async (_case, team, teamId) => {
 		const { outputs, queries } = await composedDeploy({
@@ -583,6 +591,21 @@ describe("the composed provider's team (selectIacProvider, scripted transport, n
 		["empty", { VERCEL_TEAM_ID: "" }],
 		["blank", { VERCEL_TEAM_ID: "  " }],
 		["blank, VERCEL_ORG_ID too", { VERCEL_TEAM_ID: "", VERCEL_ORG_ID: " " }],
+		// A VERCEL_ORG_ID that is not a team_ id is a personal account's, as the
+		// Vercel CLI writes it: no team.
+		[
+			"unset, VERCEL_ORG_ID a personal account (u_abc)",
+			{ VERCEL_ORG_ID: "u_abc" },
+		],
+		[
+			"unset, VERCEL_ORG_ID a user id",
+			{ VERCEL_ORG_ID: " 6Qn1jRzOd4H7mDmW5wB2kLpX " },
+		],
+		[
+			"blank, VERCEL_ORG_ID a personal account",
+			{ VERCEL_TEAM_ID: " ", VERCEL_ORG_ID: "u_abc" },
+		],
+		["unset, VERCEL_ORG_ID TEAM_X (case matters)", { VERCEL_ORG_ID: "TEAM_x" }],
 	])("with VERCEL_TEAM_ID %s, stays in the token's own scope", async (_case, team) => {
 		const { outputs, queries } = await composedDeploy({
 			VERCEL_TOKEN: "tok",

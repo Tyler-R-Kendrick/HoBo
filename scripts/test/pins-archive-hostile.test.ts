@@ -30,6 +30,7 @@ import {
 	memberDigest,
 } from "../lib/pins-archive.ts";
 import { scratch, sha256Hex } from "./support/pins-support.ts";
+import { noGnuTar } from "./support/tar-diff.ts";
 import { type TarEntry, tarGz, tarStream } from "./support/tar-support.ts";
 
 const BINARY = Buffer.from("#!/bin/sh\necho mirror from an archive\n");
@@ -45,18 +46,6 @@ function archiveFile(bytes: Buffer) {
 	writeFileSync(path, bytes);
 	return { dir, path };
 }
-
-/** GNU tar is the reference; without it, the tests that compare with it are skipped and say why. */
-const gnuTar = (() => {
-	const probe = spawnSync("tar", ["--version"], { encoding: "utf8" });
-	return probe.status === 0 && /GNU tar/u.test(probe.stdout)
-		? "tar"
-		: undefined;
-})();
-const gnuOnly =
-	gnuTar === undefined
-		? "needs GNU tar on PATH, and this machine's tar is another one or none"
-		: false;
 
 /** What GNU tar lists, and what it extracts into a fresh directory. */
 function asGnuTarSees(path: string) {
@@ -97,7 +86,7 @@ describe("entry types the reader does not model", () => {
 		});
 
 		it(`GNU tar reads a type ${type} (${kind}) entry's data as its own, never as headers`, {
-			skip: gnuOnly,
+			skip: noGnuTar,
 		}, () => {
 			const { path } = archiveFile(decoy(type));
 			const seen = asGnuTarSees(path);

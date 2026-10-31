@@ -27,7 +27,7 @@ import {
 	EVIL,
 	GOOD,
 	label,
-	noTar,
+	noGnuTar,
 	readerSays,
 } from "./support/tar-diff.ts";
 import { type TarEntry, tarGz } from "./support/tar-support.ts";
@@ -185,7 +185,7 @@ describe("every numeric field, every byte, three places", () => {
 	});
 
 	it("the reader refuses each, or names the bytes tar leaves at the member, extracting all or only the member", {
-		skip: noTar,
+		skip: noGnuTar,
 	}, async (t) => {
 		const read = await readOnce();
 		const compared = read.filter(({ answer }) => accepted(answer));

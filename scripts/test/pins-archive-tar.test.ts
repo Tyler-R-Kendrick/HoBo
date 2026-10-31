@@ -19,8 +19,9 @@ import {
 	allDisagreements,
 	EVIL,
 	GOOD,
+	gnuTarMissing,
 	label,
-	noTar,
+	noGnuTar,
 	readerSays,
 } from "./support/tar-diff.ts";
 import { type TarEntry, tarGz, tarStream } from "./support/tar-support.ts";
@@ -501,7 +502,7 @@ describe("crafted archives, as the reader reads them", () => {
 
 describe("crafted archives, against the system tar", () => {
 	it("the reader refuses each, or names the bytes tar leaves at the member, extracting all or only the member", {
-		skip: noTar,
+		skip: noGnuTar,
 	}, async () => {
 		const compared = [];
 		for (const crafted of CASES) {
@@ -513,5 +514,37 @@ describe("crafted archives, against the system tar", () => {
 			}
 		}
 		assert.deepEqual(await allDisagreements(compared), []);
+	});
+});
+
+describe("the tar the comparisons run against", () => {
+	/** A directory holding only a `tar` that prints `banner` for any arguments and exits 0. */
+	function fakeTar(banner: string): string {
+		const dir = scratch("fake-tar");
+		writeFileSync(join(dir, "tar"), `#!/bin/sh\necho '${banner}'\nexit 0\n`, {
+			mode: 0o755,
+		});
+		return dir;
+	}
+
+	it("is GNU tar only: a bsdtar on PATH skips the comparisons, naming its banner", () => {
+		const reason = gnuTarMissing({
+			PATH: fakeTar("bsdtar 3.7.2 - libarchive 3.7.2 zlib/1.2.13"),
+		});
+		assert.match(
+			String(reason),
+			/^the tar on PATH is not GNU tar \(it says "bsdtar 3\.7\.2 - libarchive/u,
+		);
+	});
+
+	it("says so when there is no tar at all", () => {
+		assert.match(
+			String(gnuTarMissing({ PATH: scratch("no-tar") })),
+			/^no `tar` on PATH/u,
+		);
+	});
+
+	it("runs the comparisons when the tar on PATH says it is GNU tar", () => {
+		assert.equal(gnuTarMissing({ PATH: fakeTar("tar (GNU tar) 1.35") }), false);
 	});
 });

@@ -39,11 +39,26 @@ export async function readerSays(
 	}
 }
 
-/** `false` when `tar` runs, else why the comparisons with it are skipped. */
-export const noTar =
-	spawnSync("tar", ["--version"]).status === 0
-		? false
-		: "no `tar` on PATH, so there is nothing to compare the reader with";
+/**
+ * Why the comparisons with GNU tar cannot run under `env`, or `false` when
+ * they can. GNU tar is the reference, so `tar --version` must run and say
+ * "GNU tar": any other tar on PATH (bsdtar among them) is named by its own
+ * banner and never compared against.
+ */
+export function gnuTarMissing(
+	env: NodeJS.ProcessEnv = process.env,
+): string | false {
+	const probe = spawnSync("tar", ["--version"], { encoding: "utf8", env });
+	if (probe.error !== undefined || probe.status !== 0) {
+		return "no `tar` on PATH, so there is nothing to compare the reader with";
+	}
+	if (/GNU tar/u.test(probe.stdout)) return false;
+	const banner = probe.stdout.split("\n")[0]?.trim() || "no version banner";
+	return `the tar on PATH is not GNU tar (it says ${JSON.stringify(banner)}), and GNU tar is the reference these comparisons hold the reader to`;
+}
+
+/** `false` when GNU tar is on PATH, else why every comparison with it is skipped. */
+export const noGnuTar = gnuTarMissing();
 
 /** What is at `at` after an extract: a regular file's sha256, or what is there instead. */
 function leftAt(at: string): string {

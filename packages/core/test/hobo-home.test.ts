@@ -10,7 +10,11 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { HOBO_HOME_DIRNAME, resolveHoboHome } from "../src/hobo-home.js";
+import {
+	HOBO_HOME_DIRNAME,
+	HoboHomeUnavailable,
+	resolveHoboHome,
+} from "../src/hobo-home.js";
 
 describe("resolveHoboHome", () => {
 	it("takes HOBO_HOME when it is set", () => {
@@ -31,6 +35,36 @@ describe("resolveHoboHome", () => {
 			"/home/a/.hobo",
 		);
 		expect(resolveHoboHome({ HOME: " \t" })).toBe(join(homedir(), ".hobo"));
+	});
+
+	it("trims HOBO_HOME", () => {
+		expect(resolveHoboHome({ HOBO_HOME: "  /srv/hobo\n" })).toBe("/srv/hobo");
+	});
+
+	it("expands a leading ~ in HOBO_HOME to HOME", () => {
+		// A shell expands `~` only at a word's start, so `HOBO_HOME="~/x"` in a
+		// systemd unit or a .env file arrives with the tilde intact.
+		expect(resolveHoboHome({ HOBO_HOME: "~", HOME: "/home/a" })).toBe(
+			"/home/a",
+		);
+		expect(
+			resolveHoboHome({ HOBO_HOME: "~/.local/state/hobo", HOME: "/home/a" }),
+		).toBe("/home/a/.local/state/hobo");
+		expect(resolveHoboHome({ HOBO_HOME: "~/x" }, () => "/home/b")).toBe(
+			"/home/b/x",
+		);
+	});
+
+	it("refuses a relative HOBO_HOME rather than resolving it against the cwd", () => {
+		// `HOBO_HOME=hobo` would put state wherever the command happens to run.
+		for (const relative of ["hobo", "./hobo", "~other/hobo"]) {
+			expect(() => resolveHoboHome({ HOBO_HOME: relative })).toThrow(
+				HoboHomeUnavailable,
+			);
+			expect(() => resolveHoboHome({ HOBO_HOME: relative })).toThrow(
+				/HOBO_HOME must be an absolute path/u,
+			);
+		}
 	});
 
 	it("uses HOME from the environment it is given, not the process's", () => {

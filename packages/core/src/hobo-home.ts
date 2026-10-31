@@ -29,7 +29,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 
 /** The directory name under the user's home that holds HoBo's state. */
 export const HOBO_HOME_DIRNAME = ".hobo";
@@ -100,16 +100,44 @@ export type AccountHome = () => string;
  * empty or blank (whitespace-only) value counts as unset: `HOBO_HOME= hobo …`
  * is how a shell unsets it for one command. `account` is how the account's
  * home is asked for when the environment names none.
+ *
+ * A set `HOBO_HOME` is trimmed, and a leading `~` or `~/` stands for HOME (a
+ * shell expands `~` only at a word's start, so `HOBO_HOME="~/x"` in a unit
+ * file or a `.env` arrives with the tilde intact). What is left must be an
+ * absolute path: a relative one would put state wherever a command runs.
  */
 export function resolveHoboHome(
 	env: HoboHomeEnv = process.env,
 	account: AccountHome = homedir,
 ): string {
-	const explicit = env.HOBO_HOME;
-	if (isSet(explicit)) return explicit;
+	const explicit = env.HOBO_HOME?.trim();
+	if (isSet(explicit)) return absoluteHoboHome(explicit, env, account);
 	const home = env.HOME;
 	if (isSet(home)) return join(home, HOBO_HOME_DIRNAME);
 	return join(accountHome(account), HOBO_HOME_DIRNAME);
+}
+
+function absoluteHoboHome(
+	value: string,
+	env: HoboHomeEnv,
+	account: AccountHome,
+): string {
+	const expanded =
+		value === "~" || value.startsWith("~/")
+			? join(userHome(env, account), value.slice(1))
+			: value;
+	if (!isAbsolute(expanded))
+		throw new HoboHomeUnavailable(
+			`HOBO_HOME must be an absolute path (got ${JSON.stringify(value)})`,
+			{ remedy: "set HOBO_HOME to an absolute path, or unset it" },
+		);
+	return expanded;
+}
+
+/** HOME from the environment, else the account's home. */
+function userHome(env: HoboHomeEnv, account: AccountHome): string {
+	const home = env.HOME;
+	return isSet(home) ? home : accountHome(account);
 }
 
 function isSet(value: string | undefined): value is string {

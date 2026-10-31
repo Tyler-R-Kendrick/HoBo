@@ -89,8 +89,9 @@ absent scalar/list defaults normalize optional `degraded`/`notes` to `false`/`[]
 
 `resolveHoboHome(env)` is the one rule every package uses for the user-level
 state directory (auth sessions, evidence, chats, stations, downloaded tools):
-`HOBO_HOME` when it is set and non-empty, else `.hobo` under `HOME` from the
-given environment, else under `os.homedir()`. It never falls back to a temp
+`HOBO_HOME` when it is set and non-empty (trimmed, with a leading `~` or `~/`
+standing for HOME; a relative path is refused with `HoboHomeUnavailable`), else
+`.hobo` under `HOME` from the given environment, else under `os.homedir()`. It never falls back to a temp
 directory: `/tmp` is world-writable, so another local user could create
 `/tmp/.hobo` first and receive what HoBo writes there. It is a Node-only
 subpath (it reads `os.homedir()`) and touches no file. When the environment sets

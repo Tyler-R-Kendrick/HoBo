@@ -149,7 +149,7 @@ function runUnderGuard(
 	prepare({ home, temp });
 	writeFileSync(
 		join(project, "probe.test.mjs"),
-		`import { mkdirSync, rmSync, writeFileSync } from "node:fs";\nimport { join } from "node:path";\nit("probes", () => {\n${probe}\n});\n`,
+		`import { mkdirSync, rmSync, writeFileSync } from "node:fs";\nimport { join } from "node:path";\nit("probes", () => {\n${probe.replaceAll("{home}", home)}\n});\n`,
 	);
 	// The guard watches this probe's own homes only: its HOME stands in for the
 	// account's, its TMPDIR for /tmp, so a process writing the machine's real
@@ -308,6 +308,44 @@ describe("the guard", () => {
 		);
 		const seen = readFileSync(join(run.temp, "seen-home"), "utf8");
 		expect(seen.startsWith(join(run.temp, "hobo-code-test-homes-"))).toBe(true);
+	});
+
+	it("runs against a throwaway home whatever HOBO_HOME the runner exported", () => {
+		// The reviewer's repro: HOBO_HOME=$HOME/.local/state/hobo was kept, and
+		// the suite wrote the user's real state there.
+		const run = runUnderGuard(
+			`mkdirSync(join(process.env.HOBO_HOME, "durable"), { recursive: true });
+			writeFileSync(join(process.env.HOBO_HOME, "durable", "leak.json"), "{}");`,
+			({ home }) => {
+				mkdirSync(join(home, ".local", "state", "hobo"), { recursive: true });
+			},
+			{
+				setupFiles: ISOLATION,
+				env: { HOBO_HOME: "{home}/.local/state/hobo" },
+			},
+		);
+		expect(run.output).not.toMatch(/wrote into a real HoBo home/u);
+		expect(run.status).toBe(0);
+		expect(
+			existsSync(join(run.home, ".local", "state", "hobo", "durable")),
+		).toBe(false);
+	});
+
+	it("watches the HOBO_HOME the run replaced, and names a write into it", () => {
+		const run = runUnderGuard(
+			`writeFileSync(join("{home}", ".local", "state", "hobo", "leak.json"), "{}");`,
+			({ home }) => {
+				mkdirSync(join(home, ".local", "state", "hobo"), { recursive: true });
+			},
+			{
+				setupFiles: ISOLATION,
+				env: { HOBO_HOME: "{home}/.local/state/hobo" },
+			},
+		);
+		expect(run.status).toBe(1);
+		expect(run.output).toContain(
+			join(run.home, ".local", "state", "hobo", "leak.json"),
+		);
 	});
 
 	it("still watches the real home when a run is pointed at it on purpose", () => {

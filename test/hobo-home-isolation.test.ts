@@ -214,16 +214,32 @@ describe("the throwaway HOBO_HOME", () => {
 		expect(left).toEqual([]);
 	}, 120_000);
 
-	it("is never one the runner set: that one is kept, and no root is made", () => {
-		const own = join(scratch, "own-home");
+	it("replaces any HOBO_HOME the runner exported, $HOME/.local/state/hobo included", () => {
+		// Any home the runner exported may be the user's real state, wherever it
+		// is: the reviewer's repro was HOBO_HOME=$HOME/.local/state/hobo.
+		const user = join(scratch, "state-user");
+		const state = join(user, ".local", "state", "hobo");
+		mkdirSync(state, { recursive: true });
+		const { status, seen, temp, left } = runProbes(
+			{ a: RECORDS, b: RECORDS },
+			{ HOME: user, HOBO_HOME: state, HOBO_TEST_REAL_HOME: "" },
+		);
+		expect(status).toBe(0);
+		expect(seen).toHaveLength(2);
+		for (const line of seen) expect(line).toMatch(inRoot("file", temp));
+		expect(readdirSync(state)).toEqual([]);
+		expect(left).toEqual([]);
+	}, 120_000);
+
+	it("keeps HOBO_TEST_HOBO_HOME, the one deliberate override", () => {
+		const own = join(scratch, "deliberate-home");
 		mkdirSync(own);
 		const { status, seen, left } = runProbes(
 			{ a: RECORDS, b: RECORDS },
-			{ HOBO_HOME: own },
+			{ HOBO_HOME: join(scratch, "ambient"), HOBO_TEST_HOBO_HOME: own },
 		);
 		expect(status).toBe(0);
 		expect(seen).toEqual([`file ${own} true`, `file ${own} true`]);
-		expect(existsSync(own)).toBe(true);
 		expect(left).toEqual([]);
 	}, 120_000);
 });

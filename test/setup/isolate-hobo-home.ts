@@ -27,54 +27,33 @@
  * wants its own directory still passes one explicitly; this only decides where
  * an *unset* home points.
  *
- * `HOBO_HOME` is deliberately left alone when the runner already set one, so a
- * developer debugging against a specific home keeps it, unless that home is a
- * real HoBo home or inside one (`$HOME/.hobo`, the account's `~/.hobo`): the
- * product's docs tell users to export exactly that, and a suite run with it
- * would write their real state. Such a home is replaced like an unset one.
- * `HOBO_TEST_HOBO_HOME` points a run at any home on purpose, a real one
- * included.
+ * A `HOBO_HOME` the runner exported is never kept, wherever it points: the
+ * product's docs tell users to export `$HOME/.hobo`, and `$HOME/.local/state/hobo`
+ * or any other is just as likely to be someone's real state. Each file gets a
+ * fresh home either way, and the real-home guard (`packages/code`) watches the
+ * one that was replaced. `HOBO_TEST_HOBO_HOME` is the one deliberate override:
+ * it points a run at any home, a real one included.
  *
  * Each file gets a home of its own inside the run's root, which the global
  * setup `test/setup/hobo-test-homes.ts` makes and removes when the run ends.
  * The variable is never unset: a write that outlives its file (a timer, a
  * child, a module that read the home when it loaded) still lands in a
- * directory that exists, inside that root. A home already inside the root is
- * the previous file's in this worker (`isolate: false`) and is replaced; one
- * outside it is the runner's and is kept. Under a config without that global
- * setup, an unset home gets one throwaway directory per worker, as before,
- * and nothing removes it.
+ * directory that exists, inside that root. Under a config without that global
+ * setup, each file gets a throwaway directory under the temp dir, and nothing
+ * removes it.
  */
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative } from "node:path";
-import {
-	DELIBERATE_HOME_ENV,
-	HOMES_ROOT_ENV,
-	isInRealHoboHome,
-} from "./hobo-test-homes.js";
+import { join } from "node:path";
+import { DELIBERATE_HOME_ENV, HOMES_ROOT_ENV } from "./hobo-test-homes.js";
 
 const root = process.env[HOMES_ROOT_ENV];
-const deliberate = process.env[DELIBERATE_HOME_ENV]?.trim()
-	? process.env[DELIBERATE_HOME_ENV]
-	: undefined;
-const runnerHome = process.env.HOBO_HOME?.trim()
-	? process.env.HOBO_HOME
-	: undefined;
-/** The runner's home, unless it is a real one; a real one counts as unset. */
-const current =
-	runnerHome && !isInRealHoboHome(runnerHome) ? runnerHome : undefined;
-
-/** Whether `dir` is inside the run's root. */
-function inRoot(dir: string, homes: string): boolean {
-	const path = relative(homes, dir);
-	return path !== "" && !path.startsWith("..") && !isAbsolute(path);
-}
+const deliberate = process.env[DELIBERATE_HOME_ENV]?.trim();
 
 if (deliberate) {
 	process.env.HOBO_HOME = deliberate;
-} else if (root && (!current || inRoot(current, root))) {
-	process.env.HOBO_HOME = mkdtempSync(join(root, "home-"));
-} else if (!current) {
-	process.env.HOBO_HOME = mkdtempSync(join(tmpdir(), "hobo-test-home-"));
+} else {
+	process.env.HOBO_HOME = mkdtempSync(
+		root ? join(root, "home-") : join(tmpdir(), "hobo-test-home-"),
+	);
 }

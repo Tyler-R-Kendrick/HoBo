@@ -13,7 +13,8 @@
  *  - `/tmp/.hobo` and `<os.tmpdir()>/.hobo`, the old fallbacks for an
  *    environment with no HOME;
  *  - `<HOME>/.hobo` for the HOME this run was started with, and
- *    `<account home>/.hobo` for a child whose environment names no HOME.
+ *    `<account home>/.hobo` for a child whose environment names no HOME;
+ *  - the HOBO_HOME the runner exported, which the isolation replaced.
  *
  * They may already hold a developer's own state, and on a shared machine they
  * may hold evidence of an earlier leak, so the guard compares against what was
@@ -32,11 +33,12 @@
  * the process that wrote them.
  *
  * The account's home and the runner's real HOME are watched whatever
- * HOBO_HOME says: a runner that exports `HOBO_HOME=$HOME/.hobo`, as the
- * product's docs suggest, gets a throwaway home per file anyway
- * (`test/setup/isolate-hobo-home.ts`), and a write into the real one still
- * fails the run. `HOBO_TEST_HOBO_HOME` is the deliberate way to run against a
- * real home, and the guard reports what that run wrote there.
+ * HOBO_HOME says, and so is the HOBO_HOME the runner exported: every test file
+ * gets a throwaway home in its place (`test/setup/isolate-hobo-home.ts`),
+ * whether it was `$HOME/.hobo`, as the product's docs suggest, or
+ * `$HOME/.local/state/hobo`, and a write into the replaced one still fails
+ * the run. `HOBO_TEST_HOBO_HOME` is the deliberate way to run against a real
+ * home, and the guard reports what that run wrote there.
  */
 import {
 	lstatSync,
@@ -49,6 +51,7 @@ import {
 import { tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import {
+	AMBIENT_HOME_ENV,
 	HOMES_ROOT_ENV,
 	REAL_HOME_ENV,
 	recordRealHome,
@@ -110,12 +113,31 @@ export function watchedHomes(
 	const account = accountHome(passwd);
 	const recorded = env[REAL_HOME_ENV]?.trim() ? env[REAL_HOME_ENV] : undefined;
 	const home = recorded ?? (env.HOME?.trim() ? env.HOME : account);
+	const ambient = ambientHome(env, home);
 	const candidates = [
 		...tempDirs.map((dir) => join(dir, ".hobo")),
 		...(home ? [join(home, ".hobo")] : []),
 		...(account ? [join(account, ".hobo")] : []),
+		...(ambient ? [ambient] : []),
 	].map(canonical);
 	return [...new Set(candidates)];
+}
+
+/**
+ * The HOBO_HOME the runner exported, which every test file's isolation
+ * replaced (`test/setup/isolate-hobo-home.ts`): a test writing it anyway wrote
+ * whatever state lives there. A leading `~` is the real HOME, as the resolver
+ * reads it.
+ */
+function ambientHome(
+	env: NodeJS.ProcessEnv,
+	home: string | undefined,
+): string | undefined {
+	const value = env[AMBIENT_HOME_ENV]?.trim();
+	if (!value) return undefined;
+	if (home && (value === "~" || value.startsWith("~/")))
+		return join(home, value.slice(1));
+	return resolve(value);
 }
 
 /** The errno code of a filesystem failure, or "" for anything else. */

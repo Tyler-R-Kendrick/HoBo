@@ -9,15 +9,16 @@
  * that exists, never in the developer's real `~/.hobo`, and is removed with the
  * rest.
  *
- * A `HOBO_HOME` the runner set is left alone, and then no root is made, unless
- * it is (or is inside) a real HoBo home: `$HOME/.hobo` or the account's
- * `~/.hobo`, which the product's own docs tell users to export. A test never
- * runs against one of those; `HOBO_TEST_HOBO_HOME` is the deliberate way to
- * point a run at a real home.
+ * A `HOBO_HOME` the runner exported is replaced for every file, wherever it
+ * points: `$HOME/.hobo`, which the product's docs tell users to export,
+ * `$HOME/.local/state/hobo`, or anything else, may be someone's real state.
+ * `HOBO_TEST_HOBO_HOME` is the one deliberate way to point a run at a home.
+ * The exported one is recorded (`HOBO_TEST_AMBIENT_HOBO_HOME`) so the
+ * real-home guard can watch it.
  */
-import { mkdtempSync, realpathSync, rmSync } from "node:fs";
-import { tmpdir, userInfo } from "node:os";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 /** Names the run's root for the setup file; workers inherit it from this process. */
 export const HOMES_ROOT_ENV = "HOBO_TEST_HOMES";
@@ -31,57 +32,25 @@ export const REAL_HOME_ENV = "HOBO_TEST_REAL_HOME";
 /** A HOBO_HOME a run is deliberately pointed at, real home or not. */
 export const DELIBERATE_HOME_ENV = "HOBO_TEST_HOBO_HOME";
 
-function canonical(path: string): string {
-	try {
-		return realpathSync(path);
-	} catch {
-		return resolve(path);
-	}
-}
+/**
+ * The HOBO_HOME the runner exported, recorded before any setup file replaces
+ * it, so the guard watches the home a test would otherwise have written.
+ */
+export const AMBIENT_HOME_ENV = "HOBO_TEST_AMBIENT_HOBO_HOME";
 
-function accountHome(): string | undefined {
-	try {
-		return userInfo().homedir || undefined;
-	} catch {
-		return undefined; // a uid with no passwd entry has no account home
-	}
-}
-
-/** Records the runner's HOME for workers, once, before anything moves it. */
+/**
+ * Records, once and before anything moves them, the runner's HOME and the
+ * HOBO_HOME it exported, for workers and the guard.
+ */
 export function recordRealHome(env: NodeJS.ProcessEnv = process.env): void {
 	if (!env[REAL_HOME_ENV]?.trim() && env.HOME?.trim())
 		env[REAL_HOME_ENV] = env.HOME;
+	if (env[AMBIENT_HOME_ENV] === undefined && env.HOBO_HOME?.trim())
+		env[AMBIENT_HOME_ENV] = env.HOBO_HOME.trim();
 }
 
-/** The real HoBo homes: the runner's `$HOME/.hobo` and the account's `~/.hobo`. */
-export function realHoboHomes(env: NodeJS.ProcessEnv = process.env): string[] {
-	const homes = [env[REAL_HOME_ENV]?.trim() ? env[REAL_HOME_ENV] : env.HOME];
-	homes.push(accountHome());
-	return [
-		...new Set(
-			homes
-				.filter((home): home is string => Boolean(home?.trim()))
-				.map((home) => canonical(join(home, ".hobo"))),
-		),
-	];
-}
-
-/** Whether `dir` is a real HoBo home or inside one. */
-export function isInRealHoboHome(
-	dir: string,
-	env: NodeJS.ProcessEnv = process.env,
-): boolean {
-	const target = canonical(dir);
-	return realHoboHomes(env).some((home) => {
-		const path = relative(home, target);
-		return path === "" || (!path.startsWith("..") && !isAbsolute(path));
-	});
-}
-
-export default function setup(): (() => void) | undefined {
+export default function setup(): () => void {
 	recordRealHome();
-	const runnerHome = process.env.HOBO_HOME;
-	if (runnerHome && !isInRealHoboHome(runnerHome)) return undefined;
 	const root = mkdtempSync(join(tmpdir(), "hobo-test-homes-"));
 	process.env[HOMES_ROOT_ENV] = root;
 	return () => {

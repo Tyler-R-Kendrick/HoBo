@@ -12,15 +12,18 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { join } from "node:path";
-import { Writable } from "node:stream";
+import { type Readable, Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
+import { sanitizeDisplay, stripAnsi } from "./ansi.js";
 import { emitFromAtoms } from "./atom-index.js";
 import {
 	formatHoboCodeResult,
 	type HoboCodeCliDeps,
 	type HoboCodeCliResult,
+	panel,
 	runHoboCodeCli,
 } from "./cli.js";
+import { redactOutput } from "./command-redaction.js";
 import { explicitHoboBinOverride, runComposedHobo } from "./composed-hobo.js";
 import { type DevBrowserSession, resolveHoboSpawn } from "./dev-browser.js";
 import { materializeExample } from "./example-catalog.js";
@@ -229,6 +232,75 @@ const SSH_WATCHDOG = fileURLToPath(
 	new URL("../bin/ssh-watchdog.mjs", import.meta.url),
 );
 
+/** The last line a stream wrote: `read` it, and `last` waits for its end. */
+interface LastLine {
+	read(stream: Readable | null): void;
+	last(): Promise<string | undefined>;
+}
+
+function lastLineOf(): LastLine {
+	let last: string | undefined;
+	let partial = "";
+	let closed: Promise<void> = Promise.resolve();
+	const take = (line: string): void => {
+		if (line.trim().length > 0) last = line;
+	};
+	return {
+		read(stream) {
+			if (stream === null) return;
+			stream.setEncoding("utf8");
+			stream.on("data", (chunk: string) => {
+				const lines = `${partial}${chunk}`.split(/\r?\n/u);
+				// A line with no end yet; bounded, as ssh's output is not ours.
+				partial = (lines.pop() ?? "").slice(-4096);
+				for (const line of lines) take(line);
+			});
+			closed = new Promise((resolve) => {
+				stream.once("close", () => resolve());
+			});
+		},
+		async last() {
+			await closed;
+			take(partial);
+			return last;
+		},
+	};
+}
+
+/**
+ * What the shell is told when its forward ends while it stays: why, ssh's
+ * last line (its escapes dropped, its control characters made printable, and
+ * passed through the package's redaction, never raw), and whether the
+ * authorization is closed.
+ */
+function forwardEndNotice(
+	forward: SessionForward,
+	status: number,
+	sshSaid: string | undefined,
+	closeFailure: Error | undefined,
+): string {
+	const leaseOver =
+		status === 124 ||
+		Date.parse(forward.authorizationExpiresAt ?? "") <= Date.now();
+	const why = leaseOver
+		? "the Station authorization's lease ran out"
+		: status === 0
+			? "ssh ended"
+			: `ssh exited with ${status}`;
+	const scrub = (text: string): string =>
+		redactOutput(sanitizeDisplay(stripAnsi(text)).trim(), 240).text;
+	return panel(
+		`${status === 0 && !leaseOver ? "◎" : "✕"} forward · ${forward.machine.id}`,
+		[
+			why,
+			...(sshSaid !== undefined ? [`ssh: ${scrub(sshSaid)}`] : []),
+			closeFailure !== undefined
+				? `closing the Station authorization failed: ${scrub(closeFailure.message)}`
+				: "the Station authorization is closed",
+		],
+	);
+}
+
 /** A forward the shell runs behind its screen; `stop` ends it and closes its authorization. */
 interface ShellForward {
 	stop(): Promise<void>;
@@ -259,6 +331,7 @@ function startShellForward(
 	forward: HandedForward,
 	env: NodeJS.ProcessEnv,
 	closingReason: () => string | undefined,
+	notice: (text: string) => void,
 	ended: () => void,
 ): ShellForward {
 	const own = new EventEmitter();
@@ -282,12 +355,16 @@ function startShellForward(
 		}
 	};
 	process.on("exit", stopSshOnExit);
+	const stderr = lastLineOf();
 	const done = forwardResidentSessions(forward, signals, {
 		stdout: new Writable({ write: (_chunk, _encoding, next) => next() }),
 		startSsh: (args) => {
 			ssh =
 				process.platform === "win32"
-					? spawn("ssh", [...args], { stdio: "ignore", env })
+					? spawn("ssh", [...args], {
+							stdio: ["ignore", "ignore", "pipe"],
+							env,
+						})
 					: spawn(
 							process.execPath,
 							[
@@ -297,20 +374,35 @@ function startShellForward(
 								...args,
 							],
 							// The watchdog's stdin: the pipe whose end is this process's.
-							{ stdio: ["pipe", "ignore", "ignore"], env, detached: true },
+							// Its stderr is ssh's, kept for the shell's notice.
+							{ stdio: ["pipe", "ignore", "pipe"], env, detached: true },
 						);
+			stderr.read(ssh.stderr);
 			return ssh;
 		},
 	})
 		.catch(() => 1)
-		.finally(async () => {
+		.then(async (status) => {
+			const reason = closingReason();
+			let closeFailure: Error | undefined;
 			try {
-				await forward.closeAuthorization?.(closingReason());
+				await forward.closeAuthorization?.(reason);
+			} catch (error) {
+				closeFailure =
+					error instanceof Error ? error : new Error(String(error));
 			} finally {
 				process.removeListener("exit", stopSshOnExit);
 				signals.release();
 				ended();
 			}
+			// Ended while the shell stays: ssh refused, ssh ended, or the lease
+			// ran out. The shell's quit, which stopped it, says nothing.
+			if (reason === undefined) {
+				notice(
+					forwardEndNotice(forward, status, await stderr.last(), closeFailure),
+				);
+			}
+			if (closeFailure !== undefined) throw closeFailure;
 		});
 	return {
 		async stop() {
@@ -370,6 +462,11 @@ export function createDefaultShellHost(
 	let lastProjectDir: string | undefined;
 	const devSessions = new Set<DevBrowserSession>();
 	const forwards = new Set<ShellForward>();
+	/** The shell, listening for what its forwards say when they end (onNotice). */
+	const noticeListeners = new Set<(text: string) => void>();
+	const notice = (text: string): void => {
+		for (const listener of noticeListeners) listener(text);
+	};
 	const servedSessions = new Set<ServedSessions>();
 	let disposed = false;
 	// The process's ending signals, held from just before a verb opens a
@@ -632,6 +729,7 @@ export function createDefaultShellHost(
 						forward,
 						deps.env ?? process.env,
 						closingReason,
+						notice,
 						() => forwards.delete(running),
 					);
 					forwards.add(running);
@@ -665,6 +763,12 @@ export function createDefaultShellHost(
 			if (authorizing.size === 0) releaseSignals();
 		},
 		exitSignal: () => endedBy,
+		onNotice(listener) {
+			noticeListeners.add(listener);
+			return () => {
+				noticeListeners.delete(listener);
+			};
+		},
 		// The terminal's hangup is taken as SIGHUP is (see whileHeld above).
 		hangUp: () => {
 			if (authorizing.size > 0 || forwards.size > 0) endedBy ??= "SIGHUP";

@@ -121,9 +121,16 @@ function closedWith(reason = "gateway-stop"): readonly string[] {
  * stand-in `ssh` on its PATH that runs until it is released or signalled.
  * With `holdOpening`, the gateway, once open, is handed to the verb only at
  * `letOpen()`: the verb is still opening the authorization until then.
+ * `sshScript` replaces the stand-in's body; `leaseMs` ends the
+ * authorization's lease that long after it is brokered.
  */
 async function shell(
-	options: { readonly ssh?: boolean; readonly holdOpening?: boolean } = {},
+	options: {
+		readonly ssh?: boolean;
+		readonly holdOpening?: boolean;
+		readonly sshScript?: string;
+		readonly leaseMs?: number;
+	} = {},
 ) {
 	const root = mkdtempSync(join(tmpdir(), "s"));
 	roots.push(root);
@@ -146,7 +153,7 @@ async function shell(
 	if (options.ssh !== false) {
 		writeFileSync(
 			join(bin, "ssh"),
-			`#!/bin/sh\necho $$ > '${pidFile}'\nwhile [ ! -e '${release}' ]; do sleep 0.1; done\nexit 0\n`,
+			`#!/bin/sh\necho $$ > '${pidFile}'\n${options.sshScript ?? `while [ ! -e '${release}' ]; do sleep 0.1; done\nexit 0`}\n`,
 		);
 		chmodSync(join(bin, "ssh"), 0o755);
 	}
@@ -178,8 +185,21 @@ async function shell(
 			});
 			opened = true;
 			await opening;
+			const leaseMs = options.leaseMs;
 			return {
 				...gateway,
+				...(leaseMs !== undefined
+					? {
+							broker: {
+								registerTarget: (target) =>
+									gateway.broker.registerTarget(target),
+								brokerSession: async (request) => ({
+									...(await gateway.broker.brokerSession(request)),
+									expiresAt: new Date(Date.now() + leaseMs).toISOString(),
+								}),
+							},
+						}
+					: undefined),
 				close: async (reason) => {
 					closes.push(reason);
 					await gateway.close(reason);
@@ -276,6 +296,52 @@ describe("the shell's /sessions serve --host", () => {
 		expect(await until(() => s.closes.length > 0, 30_000)).toBe(true);
 		expect(audit(s.hoboHome)).toEqual(closedWith());
 		expect(s.sockets()).toEqual([]);
+	}, 60_000);
+});
+
+describe("the shell's forward, ending while the shell stays", () => {
+	it("refused by ssh: tells the shell why, with ssh's last line scrubbed", async () => {
+		const s = await shell({
+			sshScript: [
+				"printf 'debug1: Connecting to box.ts.net\\n' >&2",
+				"printf 'Permission denied (publickey). password=hunter2 \\033[31mred\\033[0m\\n' >&2",
+				"exit 255",
+			].join("\n"),
+		});
+		const notices: string[] = [];
+		s.host.onNotice?.((text) => notices.push(text));
+		await serveInShell(s.host);
+		expect(await until(() => notices.length > 0, 30_000)).toBe(true);
+		const [notice = ""] = notices;
+		expect(notice).toMatch(/^✕ forward · box$/mu);
+		expect(notice).toContain("ssh exited with 255");
+		expect(notice).toContain(
+			"ssh: Permission denied (publickey). password=*** red",
+		);
+		expect(notice).not.toContain("hunter2");
+		expect(notice).not.toContain(String.fromCharCode(0x1b));
+		expect(notice).toContain("the Station authorization is closed");
+		expect(audit(s.hoboHome)).toEqual(closedWith());
+	}, 60_000);
+
+	it("at the lease: tells the shell the authorization ran out", async () => {
+		const s = await shell({ leaseMs: 2_000 });
+		const notices: string[] = [];
+		s.host.onNotice?.((text) => notices.push(text));
+		await serveInShell(s.host);
+		expect(await until(() => notices.length > 0, 30_000)).toBe(true);
+		expect(notices[0]).toContain("the Station authorization's lease ran out");
+		expect(audit(s.hoboHome)).toEqual(closedWith());
+	}, 60_000);
+
+	it("says nothing when the shell stops the forward itself", async () => {
+		const s = await shell();
+		const notices: string[] = [];
+		s.host.onNotice?.((text) => notices.push(text));
+		await serveInShell(s.host);
+		expect(await until(() => s.sshPid() !== undefined, 30_000)).toBe(true);
+		await s.host.dispose?.();
+		expect(notices).toEqual([]);
 	}, 60_000);
 });
 

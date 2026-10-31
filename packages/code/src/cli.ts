@@ -242,7 +242,7 @@ export const HOBO_CODE_VERBS = [
  * Single body row: soft band omitted (3-line panel).
  * Rule width tracks content (12–20) so short panels stay tight.
  */
-function panel(title: string, rows: readonly string[]): string {
+export function panel(title: string, rows: readonly string[]): string {
 	// Single-space body indent — denser than two-space columns.
 	const body = rows.map((row) =>
 		row.startsWith(" ") || row.startsWith("  ") ? row : ` ${row}`,

@@ -935,7 +935,11 @@ without writing to it again, so the authorization is closed with
 `shell-quit` and hobo-code ends with 129. If the shell's process ends without
 quitting (an uncaught error, or SIGKILL), ssh does not outlive it: an
 uncaught error's `exit` stops ssh at once, and the watchdog ends it either
-way. Nothing can close the authorization then, and its lease ends it. Its `/sessions serve` without `--host` starts the
+way. Nothing can close the authorization then, and its lease ends it. A
+forward that ends while the shell stays (ssh refused or ended, or the lease
+ran out) is told in the shell's transcript, as a verb's answer is: why,
+ssh's last line with its escapes dropped and passed through the package's
+redaction, and whether the authorization is closed. Its `/sessions serve` without `--host` starts the
 loopback session browser as `hobo-code session serve` does, shows where it is,
 and closes it when the shell quits.
 

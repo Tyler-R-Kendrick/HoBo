@@ -2667,6 +2667,12 @@ export interface ShellHost {
 	 */
 	readonly hangUp?: () => void;
 	/**
+	 * Listen for what the host tells the shell on its own, such as a forward
+	 * that ended while the shell stays (ssh refused, its lease ran out); the
+	 * shell shows each in its transcript. The result stops listening.
+	 */
+	readonly onNotice?: (listener: (text: string) => void) => () => void;
+	/**
 	 * The ending signal that came while one of this shell's verbs held a Station
 	 * authorization (opening it, or a forward over it), if any: the shell then
 	 * ends by that signal, once `dispose` has closed what was open.
@@ -3851,6 +3857,14 @@ export async function runInteractiveShell(
 	}, 200);
 	paneTick.unref?.();
 
+	// What the host tells the shell on its own (a forward that ended) is shown
+	// in the transcript, as a verb's answer is.
+	const stopNotices = options.host.onNotice?.((text) => {
+		if (quit) return;
+		state = appendProduct(state, text);
+		tui.requestRender();
+	});
+
 	let maxMsTimer: NodeJS.Timeout | undefined;
 	if (options.maxMs !== undefined) {
 		maxMsTimer = setTimeout(requestQuit, options.maxMs);
@@ -3887,6 +3901,7 @@ export async function runInteractiveShell(
 	} finally {
 		clearInterval(tick);
 		clearInterval(paneTick);
+		stopNotices?.();
 		if (maxMsTimer) clearTimeout(maxMsTimer);
 		for (const signal of ENDING_SIGNALS)
 			process.removeListener(signal, onSignal);

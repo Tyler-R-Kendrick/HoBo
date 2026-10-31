@@ -577,9 +577,12 @@ gitignored `.cache/hobo-test-tools`. `packages/code` also moves HOME per worker
 `packages/code/test/real-home-guard.ts` as global setup: it lists `/tmp/.hobo`,
 `$(os.tmpdir())/.hobo`, `$HOME/.hobo`, the account's `~/.hobo` and the
 HOBO_HOME the runner exported (the one the isolation replaced) before the
-run and fails the run naming every entry that appeared, every file that
-changed and every entry that was removed, against that snapshot (those
-directories may already exist). A child process given an environment
+run, watches them while it goes on, and fails the run naming every entry that
+appeared, changed (kind, inode, mode, symlink target, or a file's size, mtime
+or ctime) or was removed against that snapshot (those directories may already
+exist), and every path the watch heard written that the snapshot after cannot
+show, such as a file written and removed again. It walks a symlinked directory
+once, never back into the home. A child process given an environment
 with no HOME falls back to the account's home, which only the guard catches:
 pass the child the test's `HOME` or `HOBO_HOME`. The guard cannot tell who
 wrote an entry, so another checkout's suite or a HoBo session writing there at

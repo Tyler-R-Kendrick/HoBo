@@ -27,13 +27,13 @@ import { fileURLToPath } from "node:url";
 import { resolveHoboHome } from "@hobo/core/hobo-home";
 import { afterAll, describe, expect, it } from "vitest";
 
+import { watchedHomes } from "./real-home-guard.js";
 import {
 	changedEntries,
 	gainedEntries,
 	removedEntries,
 	snapshotHomes,
-	watchedHomes,
-} from "./real-home-guard.js";
+} from "./real-home-snapshot.js";
 
 describe("the homes a test in this package sees", () => {
 	it("HOME is a directory of the run's, not the account's", () => {
@@ -270,6 +270,23 @@ describe("the guard", () => {
 		expect(run.output).toMatch(/changed:/u);
 		expect(run.output).toContain(
 			join(run.home, ".hobo", "durable", "chat.json"),
+		);
+	});
+
+	it("fails a run that wrote a file into HOME's .hobo and removed it again, and names it", () => {
+		// The snapshot after the run cannot see it; the watch during it does.
+		const run = runUnderGuard(
+			`const leak = join(process.env.HOME, ".hobo", "durable", "brief.json");
+			writeFileSync(leak, "{}");
+			rmSync(leak);`,
+			({ home }) => {
+				mkdirSync(join(home, ".hobo", "durable"), { recursive: true });
+			},
+		);
+		expect(run.status).toBe(1);
+		expect(run.output).toMatch(/written, then removed or put back:/u);
+		expect(run.output).toContain(
+			join(run.home, ".hobo", "durable", "brief.json"),
 		);
 	});
 

@@ -381,4 +381,39 @@ describe("a member of a provider's answer of the wrong type", () => {
 
 		expect(observed?.outputs).toEqual({ name: NAME, arn: SECRET_ARN });
 	});
+
+	it("reads a null object member as absent", async () => {
+		const provider = answering({
+			DescribeTable: table({ TableStatus: "ACTIVE", BillingModeSummary: null }),
+		});
+		const resolver = resolverFor(AWS_DYNAMODB_PRODUCT_ID);
+
+		const observed = await resolver.read?.(
+			requestFor(AWS_DYNAMODB_PRODUCT_ID, {}),
+			provider.transport,
+		);
+
+		expect(observed?.outputs).toEqual({
+			tableName: NAME,
+			tableArn: TABLE_ARN,
+			tableStatus: "ACTIVE",
+		});
+	});
+
+	it.each([
+		["", "empty"],
+		["   ", "only spaces"],
+	])("reads a blank string member (%o, %s) as absent, as optionalString did", async (blank) => {
+		const provider = answering({
+			DescribeSecret: { ARN: SECRET_ARN, Name: NAME, Description: blank },
+		});
+		const resolver = resolverFor(AWS_SECRETS_MANAGER_PRODUCT_ID);
+
+		const observed = await resolver.read?.(
+			requestFor(AWS_SECRETS_MANAGER_PRODUCT_ID, {}),
+			provider.transport,
+		);
+
+		expect(observed?.outputs).toEqual({ name: NAME, arn: SECRET_ARN });
+	});
 });

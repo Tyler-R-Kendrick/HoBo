@@ -254,6 +254,95 @@ describe("checkTestWorkspaceDeps", () => {
 		);
 	});
 
+	it("counts a declaration only with a workspace: specifier, as pnpm 9 leaves link-workspace-packages off", () => {
+		// turbo 2.11.10 on a scratch workspace: `"a": "1.0.0"`, `"^1.0.0"`, `"*"`
+		// and `"link:../a"` schedule no a#build; `"workspace:*"`,
+		// `"workspace:^1.0.0"`, `"workspace:a@*"` and `"workspace:../a"` do.
+		const loads = 'import "../../lib/src/index.js";\n';
+		const declares = (
+			name: string,
+			devDependencies: Record<string, string>,
+		) => ({
+			[`packages/${name}/package.json`]: manifest(`@s/${name}`, {
+				devDependencies,
+			}),
+			[`packages/${name}/test/a.test.ts`]: loads,
+		});
+		within(
+			{
+				...base,
+				...declares("plain", { "@s/lib": "0.0.0" }),
+				...declares("star", { "@s/lib": "*" }),
+				...declares("ranged", { "@s/lib": "workspace:^0.0.0" }),
+				...declares("aliased", { "lib-alias": "workspace:@s/lib@*" }),
+				...declares("pathed", { anything: "workspace:../lib" }),
+			},
+			(dir) => {
+				const violations = checkTestWorkspaceDeps(dir);
+				assert.deepEqual(
+					violations.map((item) => `${item.file} -> ${item.imports}`),
+					[
+						"packages/plain/test/a.test.ts -> @s/lib",
+						"packages/star/test/a.test.ts -> @s/lib",
+					],
+				);
+				assert.deepEqual(
+					violations.map((item) => item.declared),
+					[
+						'"0.0.0", and turbo orders only a workspace: specifier: link-workspace-packages is off (the default from pnpm 9; neither pnpm-workspace.yaml nor .npmrc sets it)',
+						'"*", and turbo orders only a workspace: specifier: link-workspace-packages is off (the default from pnpm 9; neither pnpm-workspace.yaml nor .npmrc sets it)',
+					],
+				);
+			},
+		);
+	});
+
+	it("counts a plain version where link-workspace-packages is on, pnpm-workspace.yaml over .npmrc", () => {
+		const fixture = {
+			...base,
+			"packages/app/package.json": manifest("@s/app", {
+				devDependencies: { "@s/lib": "0.0.0" },
+			}),
+			"packages/app/test/a.test.ts": 'import "../../lib/src/index.js";\n',
+			"packages/git/package.json": manifest("@s/git", {
+				devDependencies: { "@s/lib": "github:s/lib" },
+			}),
+			"packages/git/test/a.test.ts": 'import "../../lib/src/index.js";\n',
+		};
+		const yaml = `${base["pnpm-workspace.yaml"]}linkWorkspacePackages: `;
+		const reported = (files: Record<string, string>) =>
+			within({ ...fixture, ...files }, (dir) =>
+				checkTestWorkspaceDeps(dir).map(
+					(item) => `${item.imports} <- ${item.package}: ${item.declared}`,
+				),
+			);
+		const git = (setting: string) =>
+			`@s/lib <- @s/git: "github:s/lib", and turbo orders no github: specifier although link-workspace-packages is on (${setting})`;
+		assert.deepEqual(reported({ ".npmrc": "link-workspace-packages=true\n" }), [
+			git(".npmrc sets it"),
+		]);
+		assert.deepEqual(reported({ "pnpm-workspace.yaml": `${yaml}deep\n` }), [
+			git("pnpm-workspace.yaml sets it"),
+		]);
+		assert.deepEqual(
+			reported({
+				".npmrc": "link-workspace-packages=true\n",
+				"pnpm-workspace.yaml": `${yaml}false\n`,
+			}),
+			[
+				'@s/lib <- @s/app: "0.0.0", and turbo orders only a workspace: specifier: link-workspace-packages is off (pnpm-workspace.yaml sets it)',
+				'@s/lib <- @s/git: "github:s/lib", and turbo orders only a workspace: specifier: link-workspace-packages is off (pnpm-workspace.yaml sets it)',
+			],
+		);
+		assert.deepEqual(
+			reported({
+				"package.json": JSON.stringify({ packageManager: "pnpm@8.15.0" }),
+				"pnpm-workspace.yaml": `${yaml}false\n`,
+			}),
+			[git("the default before pnpm 9, which reads it from .npmrc only")],
+		);
+	});
+
 	it("accepts a sibling the declared dependencies already build", () => {
 		within(
 			{

@@ -4,8 +4,9 @@
  * (`extends: ["//"]`), and the workspace dependencies in each `package.json`.
  *
  * - `"^build"` reaches the `build` of every workspace package named in
- *   `dependencies`, `devDependencies` or `optionalDependencies`. Not
- *   `peerDependencies`: turbo orders no task on one.
+ *   `dependencies`, `devDependencies` or `optionalDependencies` with a specifier
+ *   turbo orders (`orderedDependency`). Not `peerDependencies`: turbo orders no
+ *   task on one.
  * - `"build"` reaches the package's own `build`; `"@s/x#build"` reaches that
  *   package's.
  * - A root `"<pkg>#<task>"` entry replaces the generic `"<task>"` for that
@@ -18,13 +19,153 @@
  */
 const TURBO_EXTENDS = "$TURBO_EXTENDS$";
 
+/** pnpm's link-workspace-packages, as turbo reads it, and why. */
+export interface LinkWorkspacePackages {
+	readonly enabled: boolean;
+	/** Which file sets it, or which default applies. */
+	readonly source: string;
+}
+
+/** The root files turbo reads link-workspace-packages from; each absent where the file is. */
+export interface LinkInputs {
+	/** The root `package.json`'s `packageManager`. */
+	readonly packageManager?: string | undefined;
+	readonly npmrc?: string | undefined;
+	readonly workspaceYaml?: string | undefined;
+}
+
+function yamlSetting(text: string | undefined): boolean | undefined {
+	const match = /^linkWorkspacePackages:[ \t]*(.*?)[ \t]*(?:#.*)?$/mu.exec(
+		text ?? "",
+	);
+	const value = match?.[1];
+	if (value === undefined || /^(?:|~|null|Null|NULL)$/u.test(value))
+		return undefined;
+	if (/^(?:true|True|TRUE)$/u.test(value)) return true;
+	if (/^(?:false|False|FALSE)$/u.test(value)) return false;
+	// Any other value is a string, and only "deep" turns it on.
+	return value.replace(/^(["'])(.*)\1$/u, "$2") === "deep";
+}
+
+function npmrcSetting(text: string | undefined): boolean | undefined {
+	let setting: boolean | undefined;
+	for (const line of (text ?? "").split(/\r?\n/u)) {
+		if (/^\s*\[/u.test(line)) break;
+		const value = /^\s*link-workspace-packages\s*=\s*(.*?)\s*$/u.exec(
+			line,
+		)?.[1];
+		if (value === "true" || value === "deep") setting = true;
+		else if (value === "false") setting = false;
+	}
+	return setting;
+}
+
+/**
+ * Whether turbo links a workspace package for a specifier without the
+ * `workspace:` protocol, as it decides for pnpm: from pnpm 9,
+ * `linkWorkspacePackages` in pnpm-workspace.yaml, else
+ * `link-workspace-packages` in .npmrc, else off; before pnpm 9, .npmrc, else
+ * on. Read for pnpm only, the package manager this repository names.
+ */
+export function linkWorkspacePackages(
+	inputs: LinkInputs,
+): LinkWorkspacePackages {
+	const major = /^pnpm@(\d+)\./u.exec(inputs.packageManager ?? "")?.[1];
+	const pnpm9 = major === undefined || Number(major) >= 9;
+	const yaml = pnpm9 ? yamlSetting(inputs.workspaceYaml) : undefined;
+	if (yaml !== undefined)
+		return { enabled: yaml, source: "pnpm-workspace.yaml sets it" };
+	const npmrc = npmrcSetting(inputs.npmrc);
+	if (npmrc !== undefined) return { enabled: npmrc, source: ".npmrc sets it" };
+	return pnpm9
+		? {
+				enabled: false,
+				source:
+					"the default from pnpm 9; neither pnpm-workspace.yaml nor .npmrc sets it",
+			}
+		: {
+				enabled: true,
+				source: "the default before pnpm 9, which reads it from .npmrc only",
+			};
+}
+
+/** How a dependency's specifier resolves to a workspace package. */
+export interface WorkspaceIndex {
+	/** The workspace package of that name. */
+	byName(name: string): string | undefined;
+	/** The workspace package at a path relative to the dependent's directory. */
+	byPath(path: string): string | undefined;
+	/** Whether a path relative to the dependent's directory stays in the repository. */
+	inside(path: string): boolean;
+}
+
+/** The workspace package turbo orders a dependency on, or why it orders none. */
+export type Ordered =
+	| { readonly target: string }
+	| { readonly target?: undefined; readonly reason: string };
+
+/**
+ * Whether turbo's dependency splitter (2.11.10) counts `"<key>": "<specifier>"`
+ * as a workspace package, and which.
+ * - `workspace:` always counts: `workspace:<name>@*` (`^`, `~`) names
+ *   `<name>`, a specifier with a `/` is a path from the dependent, and
+ *   anything else names `<key>`. A path is read from the dependent's directory,
+ *   then from the repository root.
+ * - Anything else counts only where link-workspace-packages is on, and names
+ *   `<key>`: a version, `*`, `npm:<range>`, or a `file:`/`link:` path that
+ *   stays in the repository. Not an npm alias (`npm:<name>@<version>`) or
+ *   another protocol (`github:`, `git+https:`, `catalog:`, which is not
+ *   resolved here).
+ *
+ * Not modelled: with link-workspace-packages on, turbo leaves a version or
+ * range the workspace package's version does not satisfy external.
+ */
+export function orderedDependency(
+	key: string,
+	specifier: string,
+	link: LinkWorkspacePackages,
+	index: WorkspaceIndex,
+): Ordered {
+	const external = (reason: string): Ordered => ({
+		reason: `"${specifier}", and turbo ${reason}`,
+	});
+	const found = (target: string | undefined): Ordered =>
+		target === undefined
+			? external("finds no workspace package it names")
+			: { target };
+	if (specifier.startsWith("workspace:")) {
+		const rest = specifier.slice("workspace:".length);
+		const alias = /^(.+)@[*^~]$/u.exec(rest)?.[1];
+		if (alias !== undefined) return found(index.byName(alias));
+		return found(rest.includes("/") ? index.byPath(rest) : index.byName(key));
+	}
+	if (!link.enabled)
+		return external(
+			`orders only a workspace: specifier: link-workspace-packages is off (${link.source})`,
+		);
+	const colon = specifier.indexOf(":");
+	const protocol = colon < 0 ? undefined : specifier.slice(0, colon);
+	const version = specifier.slice(colon + 1);
+	if (protocol === "file" || protocol === "link") {
+		if (!index.inside(version))
+			return external(`orders no ${protocol}: path outside the repository`);
+	} else if (protocol === "npm") {
+		if (/^@?[^@]+@/u.test(version))
+			return external("orders no npm alias to another package");
+	} else if (protocol !== undefined)
+		return external(
+			`orders no ${protocol}: specifier although link-workspace-packages is on (${link.source})`,
+		);
+	return found(index.byName(key));
+}
+
 export interface TaskConfig {
 	readonly dependsOn?: readonly string[];
 }
 
 export interface GraphPackage {
 	readonly name: string;
-	/** Workspace packages it depends on through the fields turbo orders. */
+	/** Workspace packages it depends on through the fields and specifiers turbo orders. */
 	readonly dependencies: readonly string[];
 	readonly scripts: ReadonlySet<string>;
 	/** The `tasks` of the package's own turbo.json, if it has one. */

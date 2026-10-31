@@ -25,9 +25,15 @@
  *   specifier computed at run time, and a `dist/` path built for a child
  *   process or a URL, cannot be read and are not checked.
  *
- * Fix one by declaring the sibling in `devDependencies` where the test imports
- * it by name, or, for a relative import (which needs no declaration to
- * resolve), by naming its build on the task:
+ * - A declaration orders the sibling's build only with a `workspace:`
+ *   specifier, unless pnpm's link-workspace-packages is on
+ *   (lib/turbo-task-graph `orderedDependency`); a violation says how the
+ *   package declared the sibling, and which file sets the setting or which
+ *   default applies.
+ *
+ * Fix one by declaring the sibling in `devDependencies` as `"workspace:*"`
+ * where the test imports it by name, or, for a relative import (which needs no
+ * declaration to resolve), by naming its build on the task:
  * `"@hobo/runtime#test": { "dependsOn": ["build", "@hobo/runtime-local#build"] }`.
  * A devDependency widens the package's own `build` and `typecheck`, and every
  * dependent's; a task override orders that task only.
@@ -45,8 +51,12 @@ import { GIT_OUTPUT_MAX_BUFFER } from "./lib/git-output.ts";
 import { importSpecifiersOf } from "./lib/test-import-specifiers.mts";
 import {
 	type GraphPackage,
+	type LinkWorkspacePackages,
+	linkWorkspacePackages,
+	orderedDependency,
 	type TaskConfig,
 	TurboTaskGraph,
+	type WorkspaceIndex,
 } from "./lib/turbo-task-graph.mts";
 
 export interface Violation {
@@ -60,6 +70,11 @@ export interface Violation {
 	readonly imports: string;
 	/** The specifier as written. */
 	readonly specifier: string;
+	/**
+	 * Where the package declares the sibling in a field turbo orders and turbo
+	 * does not count the declaration: the specifier, and why. Else undefined.
+	 */
+	readonly declared: string | undefined;
 }
 
 export interface CheckOptions {
@@ -69,16 +84,32 @@ export interface CheckOptions {
 
 interface Manifest {
 	readonly name?: string;
+	readonly packageManager?: string;
 	readonly scripts?: Readonly<Record<string, string>>;
 	readonly dependencies?: Readonly<Record<string, string>>;
 	readonly devDependencies?: Readonly<Record<string, string>>;
 	readonly optionalDependencies?: Readonly<Record<string, string>>;
 }
 
-interface WorkspacePackage extends GraphPackage {
+export interface WorkspacePackage extends GraphPackage {
 	/** Repository-relative, `/`-separated. */
 	readonly dir: string;
+	/** Workspace packages it declares in an ordering field with a specifier turbo does not count, and why. */
+	readonly unordered: ReadonlyMap<string, string>;
 }
+
+/** The workspace as turbo sees it. */
+export interface Workspace {
+	readonly packages: readonly WorkspacePackage[];
+	readonly graph: TurboTaskGraph;
+	readonly link: LinkWorkspacePackages;
+}
+
+const ORDERING_FIELDS = [
+	"dependencies",
+	"devDependencies",
+	"optionalDependencies",
+] as const;
 
 const SCOPES = ["packages/", "examples/", "src/draft/"];
 const CONTRACT_TASKS = [
@@ -168,10 +199,19 @@ function matches(glob: readonly string[], dir: string): boolean {
 	);
 }
 
-function workspacePackages(
+function readText(path: string): string | undefined {
+	try {
+		return readFileSync(path, "utf8");
+	} catch {
+		return undefined;
+	}
+}
+
+/** The workspace packages among `files`, their dependencies as turbo orders them, and the graph over them. */
+export function readWorkspace(
 	root: string,
 	files: readonly string[],
-): WorkspacePackage[] {
+): Workspace {
 	const globs = workspaceGlobs(root);
 	const listed = new Set(files);
 	const found: { dir: string; manifest: Manifest }[] = [];
@@ -182,22 +222,57 @@ function workspacePackages(
 		const manifest = readJson<Manifest>(join(root, file));
 		if (manifest?.name) found.push({ dir, manifest });
 	}
-	const names = new Set(found.map((item) => item.manifest.name));
-	return found.map(({ dir, manifest }) => ({
-		name: manifest.name!,
-		dir,
-		scripts: new Set(Object.keys(manifest.scripts ?? {})),
-		dependencies: [
-			...Object.keys(manifest.dependencies ?? {}),
-			...Object.keys(manifest.devDependencies ?? {}),
-			...Object.keys(manifest.optionalDependencies ?? {}),
-		].filter((name) => names.has(name)),
-		tasks: listed.has(`${dir}/turbo.json`)
-			? readJson<{ tasks?: Record<string, TaskConfig> }>(
-					join(root, dir, "turbo.json"),
-				)?.tasks
-			: undefined,
-	}));
+	const link = linkWorkspacePackages({
+		packageManager: readJson<Manifest>(join(root, "package.json"))
+			?.packageManager,
+		npmrc: readText(join(root, ".npmrc")),
+		workspaceYaml: readText(join(root, "pnpm-workspace.yaml")),
+	});
+	const names = new Set(found.map((item) => item.manifest.name!));
+	const atDir = new Map(found.map((item) => [item.dir, item.manifest.name!]));
+	const packages = found.map(({ dir, manifest }): WorkspacePackage => {
+		const index: WorkspaceIndex = {
+			byName: (name) => (names.has(name) ? name : undefined),
+			// From the dependent's directory, else (as turbo also tries) from the root.
+			byPath: (path) =>
+				atDir.get(posix.normalize(posix.join(dir, path))) ??
+				atDir.get(posix.normalize(path)),
+			inside: (path) => {
+				const target = posix.normalize(posix.join(dir, path));
+				return (
+					posix.isAbsolute(path) ||
+					(target !== ".." && !target.startsWith("../"))
+				);
+			},
+		};
+		const dependencies: string[] = [];
+		const unordered = new Map<string, string>();
+		for (const field of ORDERING_FIELDS)
+			for (const [key, specifier] of Object.entries(manifest[field] ?? {})) {
+				if (!specifier.startsWith("workspace:") && !names.has(key)) continue;
+				const ordered = orderedDependency(key, specifier, link, index);
+				if (ordered.target !== undefined) dependencies.push(ordered.target);
+				else if (names.has(key)) unordered.set(key, ordered.reason);
+			}
+		return {
+			name: manifest.name!,
+			dir,
+			scripts: new Set(Object.keys(manifest.scripts ?? {})),
+			dependencies,
+			unordered,
+			tasks: listed.has(`${dir}/turbo.json`)
+				? readJson<{ tasks?: Record<string, TaskConfig> }>(
+						join(root, dir, "turbo.json"),
+					)?.tasks
+				: undefined,
+		};
+	});
+	const graph = new TurboTaskGraph(
+		new Map(packages.map((pkg) => [pkg.name, pkg])),
+		readJson<{ tasks?: Record<string, TaskConfig> }>(join(root, "turbo.json"))
+			?.tasks ?? {},
+	);
+	return { packages, graph, link };
 }
 
 /** The tasks that run `path` (relative to its package), or none for a file no test task loads. */
@@ -252,16 +327,11 @@ export function checkTestWorkspaceDeps(
 	options: CheckOptions = {},
 ): Violation[] {
 	const files = options.files ?? trackedFiles(root) ?? walk(root);
-	const packages = workspacePackages(root, files);
+	const { packages, graph } = readWorkspace(root, files);
 	const byName = new Map(packages.map((pkg) => [pkg.name, pkg]));
 	const byDir = [...packages].sort((a, b) => b.dir.length - a.dir.length);
 	const owner = (path: string) =>
 		byDir.find((pkg) => path === pkg.dir || path.startsWith(`${pkg.dir}/`));
-	const graph = new TurboTaskGraph(
-		byName,
-		readJson<{ tasks?: Record<string, TaskConfig> }>(join(root, "turbo.json"))
-			?.tasks ?? {},
-	);
 	const tsconfigs = new Map<string, Set<string>>();
 	const seen = new Set<string>();
 	const violations: Violation[] = [];
@@ -310,6 +380,7 @@ export function checkTestWorkspaceDeps(
 					task,
 					imports: target.name,
 					specifier,
+					declared: pkg.unordered.get(target.name),
 				});
 			}
 		}
@@ -337,7 +408,9 @@ if (
 	else
 		for (const item of violations)
 			process.stderr.write(
-				`${item.file}: ${item.package}#${item.task} loads ${item.imports} (${item.specifier}), and turbo builds it after; declare it in devDependencies if the test imports it by name, else add "${item.imports}#build" to "${item.package}#${item.task}".dependsOn in turbo.json\n`,
+				item.declared === undefined
+					? `${item.file}: ${item.package}#${item.task} loads ${item.imports} (${item.specifier}), and turbo builds it after; declare it in devDependencies with "workspace:*" if the test imports it by name, else add "${item.imports}#build" to "${item.package}#${item.task}".dependsOn in turbo.json\n`
+					: `${item.file}: ${item.package}#${item.task} loads ${item.imports} (${item.specifier}), and turbo builds it after: ${item.package} declares it as ${item.declared}; write "workspace:*"\n`,
 			);
 	process.exitCode = violations.length === 0 ? 0 : 1;
 }

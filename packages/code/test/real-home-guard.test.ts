@@ -15,6 +15,7 @@ import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	readFileSync,
 	realpathSync,
 	rmSync,
 	writeFileSync,
@@ -97,13 +98,26 @@ const VITEST = join(
 
 let runs = 0;
 
+/** This package's isolation setup files, for a probe run that asks for them. */
+const ISOLATION = [
+	fileURLToPath(
+		new URL("../../../test/setup/isolate-hobo-home.ts", import.meta.url),
+	),
+	fileURLToPath(new URL("./isolate-user-home.ts", import.meta.url)),
+];
+
 /**
- * Runs one probe test under the guard alone, with HOME and TMPDIR of its own.
- * `prepare` lays out what those homes hold before the run starts.
+ * Runs one probe test under the guard, with HOME and TMPDIR of its own.
+ * `prepare` lays out what those homes hold before the run starts; `options`
+ * adds setup files and environment (a value may name `{home}`).
  */
 function runUnderGuard(
 	probe: string,
 	prepare: (dirs: { home: string; temp: string }) => void = () => {},
+	options: {
+		readonly setupFiles?: readonly string[];
+		readonly env?: Readonly<Record<string, string>>;
+	} = {},
 ) {
 	runs += 1;
 	const project = join(scratch, `run-${runs}`);
@@ -118,23 +132,29 @@ function runUnderGuard(
 	);
 	writeFileSync(
 		join(project, "vitest.config.mjs"),
-		`export default { test: { globals: true, include: ["probe.test.mjs"], globalSetup: [${JSON.stringify(GUARD)}] } };\n`,
+		`export default { test: { globals: true, include: ["probe.test.mjs"], globalSetup: [${JSON.stringify(GUARD)}], setupFiles: ${JSON.stringify(options.setupFiles ?? [])} } };\n`,
 	);
 	// Another vitest run of its own: none of this run's VITEST_* settings or homes.
 	const inherited = Object.fromEntries(
 		Object.entries(process.env).filter(
 			([key]) =>
 				!key.startsWith("VITEST") &&
-				key !== "HOBO_HOME" &&
-				key !== "HOBO_TEST_HOMES",
+				!key.startsWith("HOBO_TEST_") &&
+				key !== "HOBO_HOME",
 		),
+	);
+	const extra = Object.fromEntries(
+		Object.entries(options.env ?? {}).map(([key, value]) => [
+			key,
+			value.replaceAll("{home}", home),
+		]),
 	);
 	const run = spawnSync(
 		process.execPath,
 		[VITEST, "run", "--root", project, "--config", "vitest.config.mjs"],
 		{
 			cwd: project,
-			env: { ...inherited, HOME: home, TMPDIR: temp },
+			env: { ...inherited, HOME: home, TMPDIR: temp, ...extra },
 			encoding: "utf8",
 		},
 	);
@@ -237,6 +257,42 @@ describe("the guard", () => {
 		expect(run.output).toMatch(/removed:/u);
 		expect(run.output).toContain(
 			join(run.home, ".hobo", "durable", "session.json"),
+		);
+	});
+
+	it("runs against a throwaway home when the runner exports HOBO_HOME=$HOME/.hobo", () => {
+		// The product's docs tell users to export exactly that. The isolation
+		// must not keep it as "the runner's own home", and the guard must still
+		// watch it.
+		const run = runUnderGuard(
+			`mkdirSync(join(process.env.HOBO_HOME, "durable"), { recursive: true });
+			writeFileSync(join(process.env.HOBO_HOME, "durable", "leak.json"), "{}");
+			writeFileSync(join(process.env.TMPDIR, "seen-home"), process.env.HOBO_HOME);`,
+			({ home }) => {
+				mkdirSync(join(home, ".hobo", "durable"), { recursive: true });
+			},
+			{ setupFiles: ISOLATION, env: { HOBO_HOME: "{home}/.hobo" } },
+		);
+		expect(run.output).not.toMatch(/wrote into a real HoBo home/u);
+		expect(run.status).toBe(0);
+		expect(existsSync(join(run.home, ".hobo", "durable", "leak.json"))).toBe(
+			false,
+		);
+		const seen = readFileSync(join(run.temp, "seen-home"), "utf8");
+		expect(seen.startsWith(join(run.temp, "hobo-code-test-homes-"))).toBe(true);
+	});
+
+	it("still watches the real home when a run is pointed at it on purpose", () => {
+		const run = runUnderGuard(
+			`writeFileSync(join(process.env.HOBO_HOME, "durable", "leak.json"), "{}");`,
+			({ home }) => {
+				mkdirSync(join(home, ".hobo", "durable"), { recursive: true });
+			},
+			{ setupFiles: ISOLATION, env: { HOBO_TEST_HOBO_HOME: "{home}/.hobo" } },
+		);
+		expect(run.status).toBe(1);
+		expect(run.output).toContain(
+			join(run.home, ".hobo", "durable", "leak.json"),
 		);
 	});
 

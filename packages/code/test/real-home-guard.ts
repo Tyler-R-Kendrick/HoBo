@@ -31,8 +31,12 @@
  * run fails it too; the chat and session files it names carry the `cwd` of
  * the process that wrote them.
  *
- * A HOBO_HOME the runner set on purpose is not watched: a developer debugging
- * against a real home has chosen to write there.
+ * The account's home and the runner's real HOME are watched whatever
+ * HOBO_HOME says: a runner that exports `HOBO_HOME=$HOME/.hobo`, as the
+ * product's docs suggest, gets a throwaway home per file anyway
+ * (`test/setup/isolate-hobo-home.ts`), and a write into the real one still
+ * fails the run. `HOBO_TEST_HOBO_HOME` is the deliberate way to run against a
+ * real home, and the guard reports what that run wrote there.
  */
 import {
 	lstatSync,
@@ -44,7 +48,11 @@ import {
 } from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
-import { HOMES_ROOT_ENV } from "../../../test/setup/hobo-test-homes.js";
+import {
+	HOMES_ROOT_ENV,
+	REAL_HOME_ENV,
+	recordRealHome,
+} from "../../../test/setup/hobo-test-homes.js";
 
 /** One path under a watched home, as the walk found it. */
 export interface HomeEntry {
@@ -86,18 +94,15 @@ function accountHome(): string | undefined {
 /** The real HoBo homes a stray write lands in, for this process's environment. */
 export function watchedHomes(env: NodeJS.ProcessEnv = process.env): string[] {
 	const account = accountHome();
-	const home = env.HOME?.trim() ? env.HOME : account;
+	const recorded = env[REAL_HOME_ENV]?.trim() ? env[REAL_HOME_ENV] : undefined;
+	const home = recorded ?? (env.HOME?.trim() ? env.HOME : account);
 	const candidates = [
 		"/tmp/.hobo",
 		join(tmpdir(), ".hobo"),
 		...(home ? [join(home, ".hobo")] : []),
 		...(account ? [join(account, ".hobo")] : []),
 	].map(canonical);
-	const chosen =
-		env.HOBO_HOME && env.HOBO_HOME.length > 0
-			? canonical(env.HOBO_HOME)
-			: undefined;
-	return [...new Set(candidates)].filter((dir) => dir !== chosen);
+	return [...new Set(candidates)];
 }
 
 function errorCode(error: unknown): string {
@@ -270,6 +275,7 @@ export function describeChanges(changes: {
 }
 
 export default function setup(): () => void {
+	recordRealHome();
 	const homes = watchedHomes();
 	const before = snapshotHomes(homes);
 	const root = mkdtempSync(join(tmpdir(), "hobo-code-test-homes-"));

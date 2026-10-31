@@ -566,10 +566,16 @@ such literal.
 `HOME`, else under `os.homedir()` — never a temp directory. A test that omits
 its home therefore writes wherever HOME and HOBO_HOME point, so a suite must
 point them at throwaway directories. The root config does it for HOBO_HOME
-(`test/setup/isolate-hobo-home.ts`). `packages/code` also moves HOME per worker
+(`test/setup/isolate-hobo-home.ts`). It keeps a HOBO_HOME the runner set,
+unless that is a real HoBo home or inside one (`$HOME/.hobo`, the account's
+`~/.hobo`, which the docs tell users to export): that one is replaced too. To
+run against a real home on purpose, set `HOBO_TEST_HOBO_HOME`. No global setup
+writes under the default home either: the wasmtime one caches in the
+gitignored `.cache/hobo-test-tools`. `packages/code` also moves HOME per worker
 (`packages/code/test/isolate-user-home.ts`, with a test git identity) and runs
 `packages/code/test/real-home-guard.ts` as global setup: it lists `/tmp/.hobo`,
-`$(os.tmpdir())/.hobo`, `$HOME/.hobo` and the account's `~/.hobo` before the
+`$(os.tmpdir())/.hobo`, `$HOME/.hobo` and the account's `~/.hobo` (whatever
+HOBO_HOME says) before the
 run and fails the run naming every entry that appeared, every file that
 changed and every entry that was removed, against that snapshot (those
 directories may already exist). A child process given an environment

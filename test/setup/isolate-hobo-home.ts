@@ -28,7 +28,12 @@
  * an *unset* home points.
  *
  * `HOBO_HOME` is deliberately left alone when the runner already set one, so a
- * developer debugging against a specific home keeps it.
+ * developer debugging against a specific home keeps it, unless that home is a
+ * real HoBo home or inside one (`$HOME/.hobo`, the account's `~/.hobo`): the
+ * product's docs tell users to export exactly that, and a suite run with it
+ * would write their real state. Such a home is replaced like an unset one.
+ * `HOBO_TEST_HOBO_HOME` points a run at any home on purpose, a real one
+ * included.
  *
  * Each file gets a home of its own inside the run's root, which the global
  * setup `test/setup/hobo-test-homes.ts` makes and removes when the run ends.
@@ -43,10 +48,22 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative } from "node:path";
-import { HOMES_ROOT_ENV } from "./hobo-test-homes.js";
+import {
+	DELIBERATE_HOME_ENV,
+	HOMES_ROOT_ENV,
+	isInRealHoboHome,
+} from "./hobo-test-homes.js";
 
 const root = process.env[HOMES_ROOT_ENV];
-const current = process.env.HOBO_HOME;
+const deliberate = process.env[DELIBERATE_HOME_ENV]?.trim()
+	? process.env[DELIBERATE_HOME_ENV]
+	: undefined;
+const runnerHome = process.env.HOBO_HOME?.trim()
+	? process.env.HOBO_HOME
+	: undefined;
+/** The runner's home, unless it is a real one; a real one counts as unset. */
+const current =
+	runnerHome && !isInRealHoboHome(runnerHome) ? runnerHome : undefined;
 
 /** Whether `dir` is inside the run's root. */
 function inRoot(dir: string, homes: string): boolean {
@@ -54,7 +71,9 @@ function inRoot(dir: string, homes: string): boolean {
 	return path !== "" && !path.startsWith("..") && !isAbsolute(path);
 }
 
-if (root && (!current || inRoot(current, root))) {
+if (deliberate) {
+	process.env.HOBO_HOME = deliberate;
+} else if (root && (!current || inRoot(current, root))) {
 	process.env.HOBO_HOME = mkdtempSync(join(root, "home-"));
 } else if (!current) {
 	process.env.HOBO_HOME = mkdtempSync(join(tmpdir(), "hobo-test-home-"));

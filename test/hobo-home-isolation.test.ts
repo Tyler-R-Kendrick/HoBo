@@ -199,6 +199,21 @@ describe("the throwaway HOBO_HOME", () => {
 		expect(left).toEqual([]);
 	}, 120_000);
 
+	it("never keeps a real HoBo home the runner exported: that one is replaced", () => {
+		// `export HOBO_HOME=$HOME/.hobo` is what the product's docs suggest; a
+		// suite run with it must not write the user's real state.
+		const user = join(scratch, "user-home");
+		mkdirSync(join(user, ".hobo"), { recursive: true });
+		const { status, seen, temp, left } = runProbes(
+			{ a: RECORDS },
+			{ HOME: user, HOBO_HOME: join(user, ".hobo"), HOBO_TEST_REAL_HOME: "" },
+		);
+		expect(status).toBe(0);
+		expect(seen).toHaveLength(1);
+		expect(seen[0]).toMatch(inRoot("file", temp));
+		expect(left).toEqual([]);
+	}, 120_000);
+
 	it("is never one the runner set: that one is kept, and no root is made", () => {
 		const own = join(scratch, "own-home");
 		mkdirSync(own);

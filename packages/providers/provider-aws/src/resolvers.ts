@@ -368,9 +368,51 @@ function optionalInteger(record: JsonObject, key: string): number | undefined {
 	return isJsonNumber(value) && Number.isSafeInteger(value) ? value : undefined;
 }
 
-function nestedRecord(record: JsonObject, key: string): JsonObject | undefined {
+/** The JSON type of a value, as a refusal names it. */
+function jsonTypeName(value: JsonValue): string {
+	if (isJsonArray(value)) return "an array";
+	if (isJsonObject(value)) return "an object";
+	if (isJsonString(value)) return "a string";
+	if (isJsonNumber(value)) return "a number";
+	if (isJsonBoolean(value)) return "a boolean";
+	return "null";
+}
+
+/**
+ * A member of a provider's JSON answer that must be a string, or an object.
+ * Absent and `null` are `undefined`, as Smithy's JSON protocols read a null
+ * member. Any other type means the answer is not the documented one: that is a
+ * provider fault, refused as RESOLVER_OUTPUT_UNPARSEABLE like every other
+ * answer this file cannot read, never read as absent. A blank string reads as
+ * absent, as `optionalString` reads one.
+ */
+function answerString(
+	record: JsonObject,
+	key: string,
+	label: string,
+): string | undefined {
 	const value = record[key];
-	return isJsonObject(value) ? value : undefined;
+	if (value === undefined || value === null) return undefined;
+	if (isJsonString(value)) return value.trim().length > 0 ? value : undefined;
+	throw unparseable(
+		label,
+		`AWS answered "${key}" with ${jsonTypeName(value)}, not a string, so the answer is not the documented one; it is refused rather than read as absent`,
+	);
+}
+
+/** As {@link answerString}, for a member that must be an object. */
+function answerRecord(
+	record: JsonObject,
+	key: string,
+	label: string,
+): JsonObject | undefined {
+	const value = record[key];
+	if (value === undefined || value === null) return undefined;
+	if (isJsonObject(value)) return value;
+	throw unparseable(
+		label,
+		`AWS answered "${key}" with ${jsonTypeName(value)}, not an object, so the answer is not the documented one; it is refused rather than read as absent`,
+	);
 }
 
 /**
@@ -497,7 +539,7 @@ interface AwsResolverContext {
 	readonly knownPhysicalId: string | undefined;
 	/**
 	 * The product's directives the declaration switches on. Each declared
-	 * directive was parsed as a boolean at the boundary ({@link parseDirectives}),
+	 * directive was parsed as a boolean at the boundary ({@link parseSettings}),
 	 * so a resolver reads this set and never `desired` for a directive.
 	 */
 	readonly directivesOn: ReadonlySet<string>;
@@ -818,6 +860,11 @@ function s3Diagnostics(
 }
 
 const S3_SPEC: Omit<AwsResolverSpec, "productId"> = {
+	settings: {
+		versioning: "boolean",
+		publicAccessBlocked: "boolean",
+		storageClass: "string",
+	},
 	async read(context) {
 		const observed = await readS3(context);
 		if (observed === undefined) return undefined;
@@ -1023,7 +1070,7 @@ async function readDynamoTable(
 		return undefined;
 	}
 	const body = jsonResult(context, response, label);
-	const table = nestedRecord(body, "Table");
+	const table = answerRecord(body, "Table", label);
 	if (table === undefined) {
 		throw unparseable(
 			label,
@@ -1034,7 +1081,7 @@ async function readDynamoTable(
 }
 
 function dynamoTableArn(table: JsonObject, label: string): string {
-	const arn = optionalString(table, "TableArn");
+	const arn = answerString(table, "TableArn", label);
 	if (arn === undefined) {
 		throw unparseable(
 			label,
@@ -1044,19 +1091,23 @@ function dynamoTableArn(table: JsonObject, label: string): string {
 	return arn;
 }
 
-function dynamoObservedMode(table: JsonObject): string | undefined {
-	const summary = nestedRecord(table, "BillingModeSummary");
+function dynamoObservedMode(
+	table: JsonObject,
+	label: string,
+): string | undefined {
+	const summary = answerRecord(table, "BillingModeSummary", label);
 	return summary === undefined
 		? undefined
-		: optionalString(summary, "BillingMode");
+		: answerString(summary, "BillingMode", label);
 }
 
 function dynamoOutputs(table: JsonObject, name: string): JsonObject {
-	const status = optionalString(table, "TableStatus");
-	const mode = dynamoObservedMode(table);
+	const label = `dynamodb table ${name}`;
+	const status = answerString(table, "TableStatus", label);
+	const mode = dynamoObservedMode(table, label);
 	return {
 		tableName: name,
-		tableArn: optionalString(table, "TableArn") ?? "",
+		tableArn: answerString(table, "TableArn", label) ?? "",
 		...(status === undefined ? undefined : { tableStatus: status }),
 		...(mode === undefined ? undefined : { billingMode: mode }),
 	};
@@ -1066,14 +1117,21 @@ function dynamoKeyDiagnostics(
 	context: AwsResolverContext,
 	table: JsonObject,
 ): readonly string[] {
+	const label = `dynamodb describe table ${context.name}`;
 	const wanted = optionalString(context.desired, "partitionKey") ?? "pk";
 	const schema = table.KeySchema;
-	if (!isJsonArray(schema)) return [];
+	if (schema === undefined || schema === null) return [];
+	if (!isJsonArray(schema)) {
+		throw unparseable(
+			label,
+			`AWS answered "KeySchema" with ${jsonTypeName(schema)}, not an array, so the answer is not the documented one; it is refused rather than read as absent`,
+		);
+	}
 	const hash = schema.find(
 		(entry) => isJsonObject(entry) && entry.KeyType === "HASH",
 	);
 	const actual = isJsonObject(hash)
-		? optionalString(hash, "AttributeName")
+		? answerString(hash, "AttributeName", label)
 		: undefined;
 	if (actual !== undefined && actual !== wanted) {
 		return [
@@ -1084,6 +1142,15 @@ function dynamoKeyDiagnostics(
 }
 
 const DYNAMODB_SPEC: Omit<AwsResolverSpec, "productId"> = {
+	settings: {
+		billingMode: "string",
+		readCapacity: "integer",
+		writeCapacity: "integer",
+		partitionKey: "string",
+		partitionKeyType: "string",
+		sortKey: "string",
+		sortKeyType: "string",
+	},
 	async read(context) {
 		const table = await readDynamoTable(context);
 		if (table === undefined) return undefined;
@@ -1154,7 +1221,7 @@ const DYNAMODB_SPEC: Omit<AwsResolverSpec, "productId"> = {
 				}),
 				label,
 			);
-			const description = nestedRecord(created, "TableDescription");
+			const description = answerRecord(created, "TableDescription", label);
 			if (description === undefined) {
 				throw unparseable(
 					label,
@@ -1170,7 +1237,10 @@ const DYNAMODB_SPEC: Omit<AwsResolverSpec, "productId"> = {
 		}
 
 		diagnostics.push(...dynamoKeyDiagnostics(context, existing));
-		const observedMode = dynamoObservedMode(existing);
+		const observedMode = dynamoObservedMode(
+			existing,
+			`dynamodb describe table ${context.name}`,
+		);
 		if (!billing.defaulted && observedMode !== billing.mode) {
 			const label = `dynamodb update table ${context.name}`;
 			const readCapacity = billing.readCapacity;
@@ -1193,7 +1263,8 @@ const DYNAMODB_SPEC: Omit<AwsResolverSpec, "productId"> = {
 				}),
 				label,
 			);
-			const description = nestedRecord(updated, "TableDescription") ?? existing;
+			const description =
+				answerRecord(updated, "TableDescription", label) ?? existing;
 			return outcome(
 				"update",
 				dynamoTableArn(description, label),
@@ -1356,6 +1427,11 @@ function sqsDiagnostics(context: AwsResolverContext): readonly string[] {
 
 function sqsSpec(productId: string): Omit<AwsResolverSpec, "productId"> {
 	return {
+		settings: {
+			fifo: "boolean",
+			visibilityTimeoutSeconds: "integer",
+			maxReceiveCount: "integer",
+		},
 		async read(context) {
 			const fifo = sqsIsFifo(context, productId);
 			const name = sqsQueueName(context, fifo);
@@ -1562,6 +1638,7 @@ function snsOutputs(
 }
 
 const SNS_SPEC: Omit<AwsResolverSpec, "productId"> = {
+	settings: { fifo: "boolean", contentBasedDeduplication: "boolean" },
 	async read(context) {
 		const fifo = optionalBoolean(context.desired, "fifo") === true;
 		const name = snsTopicName(context, fifo);
@@ -1995,7 +2072,7 @@ function scheduledNote(
 }
 
 function secretArn(record: JsonObject, label: string): string {
-	const arn = optionalString(record, "ARN");
+	const arn = answerString(record, "ARN", label);
 	if (arn === undefined) {
 		throw unparseable(
 			label,
@@ -2006,8 +2083,9 @@ function secretArn(record: JsonObject, label: string): string {
 }
 
 function secretOutputs(name: string, record: JsonObject): JsonObject {
-	const description = optionalString(record, "Description");
-	const kmsKeyId = optionalString(record, "KmsKeyId");
+	const label = `secretsmanager ${name}`;
+	const description = answerString(record, "Description", label);
+	const kmsKeyId = answerString(record, "KmsKeyId", label);
 	// The keys are `name`/`arn` rather than `secretName`/`secretArn`: core's
 	// outcome parse boundary refuses any property key matching /secret/, because
 	// a bag key that reads like a secret is exactly where material hides. The
@@ -2015,7 +2093,7 @@ function secretOutputs(name: string, record: JsonObject): JsonObject {
 	// unambiguous without the prefix.
 	return {
 		name,
-		arn: optionalString(record, "ARN") ?? "",
+		arn: answerString(record, "ARN", label) ?? "",
 		...(description === undefined ? undefined : { description }),
 		// A KMS key id is a locator for a key, not key material, so it belongs in
 		// outputs the way a bucket name does.
@@ -2037,6 +2115,11 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 	// Neither is a fact about the secret, so read() never reports one, and a
 	// preview or drift check leaves them out of its comparison (ADR-0175).
 	directives: SECRETS_MANAGER_DIRECTIVES,
+	settings: {
+		description: "string",
+		kmsKeyRef: "string",
+		rotationDays: "integer",
+	},
 	async read(context) {
 		const secret = await readSecret(context);
 		if (secret === undefined) return undefined;
@@ -2142,10 +2225,20 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 
 		const descriptionDrift =
 			description !== undefined &&
-			description !== optionalString(existing, "Description");
+			description !==
+				answerString(
+					existing,
+					"Description",
+					`secretsmanager describe ${context.name}`,
+				);
 		const keyDrift =
 			kmsKeyRef !== undefined &&
-			kmsKeyRef !== optionalString(existing, "KmsKeyId");
+			kmsKeyRef !==
+				answerString(
+					existing,
+					"KmsKeyId",
+					`secretsmanager describe ${context.name}`,
+				);
 		if (descriptionDrift || keyDrift) {
 			const label = `secretsmanager update ${context.name}`;
 			jsonResult(
@@ -2287,7 +2380,7 @@ async function readSsmParameter(
 		return undefined;
 	}
 	const body = jsonResult(context, response, label);
-	const parameter = nestedRecord(body, "Parameter");
+	const parameter = answerRecord(body, "Parameter", label);
 	if (parameter === undefined) {
 		throw unparseable(
 			label,
@@ -2302,10 +2395,13 @@ function ssmOutputs(
 	parameter: JsonObject | undefined,
 	tier: string | undefined,
 ): JsonObject {
+	const label = `ssm parameter ${name}`;
 	const arn =
-		parameter === undefined ? undefined : optionalString(parameter, "ARN");
+		parameter === undefined ? undefined : answerString(parameter, "ARN", label);
 	const type =
-		parameter === undefined ? undefined : optionalString(parameter, "Type");
+		parameter === undefined
+			? undefined
+			: answerString(parameter, "Type", label);
 	return {
 		parameterName: name,
 		...(arn === undefined ? undefined : { parameterArn: arn }),
@@ -2323,6 +2419,12 @@ function ssmDiagnostics(context: AwsResolverContext): readonly string[] {
 }
 
 const SSM_PARAMETER_SPEC: Omit<AwsResolverSpec, "productId"> = {
+	settings: {
+		type: "string",
+		tier: "string",
+		kmsKeyRef: "string",
+		value: "string",
+	},
 	async read(context) {
 		const parameter = await readSsmParameter(context);
 		if (parameter === undefined) return undefined;
@@ -2347,13 +2449,14 @@ const SSM_PARAMETER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 
 		if (existing !== undefined) {
 			const diagnostics = [...ssmDiagnostics(context)];
-			const observedType = optionalString(existing, "Type");
+			const answered = `ssm get parameter ${context.name}`;
+			const observedType = answerString(existing, "Type", answered);
 			if (observedType !== undefined && observedType !== type) {
 				diagnostics.push(
 					`parameter type is ${observedType} but the request asks for ${type}; SSM does not allow a type change on overwrite, so the drift is reported rather than forced`,
 				);
 			}
-			if (optionalString(existing, "Value") === value) {
+			if (answerString(existing, "Value", answered) === value) {
 				return outcome(
 					settledAction(context),
 					context.name,
@@ -2426,43 +2529,82 @@ interface AwsResolverSpec {
 	readonly productId: string;
 	/**
 	 * The declared parameters this product reads as directives, not state.
-	 * Every AWS directive is a boolean flag, parsed by {@link parseDirectives}.
+	 * Every AWS directive is a boolean flag, parsed by {@link parseSettings}.
 	 */
 	readonly directives?: readonly string[];
+	/**
+	 * The `desired` settings this product reads, and the JSON type each must
+	 * have; `name` is common to every product. {@link parseSettings} checks them
+	 * before any call, so a wrong type is refused rather than read as absent.
+	 */
+	readonly settings?: Readonly<Record<string, DesiredType>>;
 	reconcile(context: AwsResolverContext): Promise<ResolveOutcome>;
 	read(context: AwsResolverContext): Promise<ResolveOutcome | undefined>;
 	remove(context: AwsResolverContext): Promise<void>;
 }
 
+/** The JSON type a product's `desired` setting must have. */
+type DesiredType = "boolean" | "integer" | "string";
+
+/** How a refusal names each type. */
+const DESIRED_TYPE_NAMES = {
+	boolean: "a boolean (true or false)",
+	integer: "an integer",
+	string: "a string",
+} as const satisfies Readonly<Record<DesiredType, string>>;
+
+/** The setting every product reads: the resource name. */
+const COMMON_SETTINGS = {
+	name: "string",
+} as const satisfies Readonly<Record<string, DesiredType>>;
+
+function hasDesiredType(value: JsonValue, type: DesiredType): boolean {
+	switch (type) {
+		case "boolean":
+			return isJsonBoolean(value);
+		case "integer":
+			return isJsonNumber(value) && Number.isSafeInteger(value);
+		case "string":
+			return isJsonString(value);
+	}
+}
+
 /**
- * The parse boundary for a product's directives. A directive is a boolean
- * flag: absent means off, and any value but `true` or `false` is refused,
- * naming the key and the type it must have. Read loosely, a `"true"` would be
- * "not true", so `forceDelete: "true"` would preview clean and then delete
- * without force; a declaration that asks for something by mistake is refused
- * before the resolver acts on it, or makes any call.
+ * The parse boundary for a product's typed `desired` settings, run before
+ * credentials are resolved or any call is made. A setting that is absent stays
+ * absent. A setting present with any other type, `null` included, is refused
+ * with RESOLVER_PRODUCT_UNSUPPORTED in the words every wrong-type setting gets
+ * ("<id>: desired.<key> must be a boolean (true or false), received …"). Read
+ * loosely, `versioning: "true"` would be "not declared" and the bucket left as
+ * it is, and `forceDelete: "true"` would preview clean and then delete without
+ * force. The resolvers can read these settings with the optional readers
+ * because their types were checked here. Directives are boolean settings too,
+ * and the set returned is the directives the declaration switches on.
  */
-function parseDirectives(
+function parseSettings(
 	desired: JsonObject,
+	settings: Readonly<Record<string, DesiredType>>,
 	directives: readonly string[],
 	productId: string,
 ): ReadonlySet<string> {
-	const on = new Set<string>();
-	for (const name of directives) {
-		if (!Object.hasOwn(desired, name)) continue;
-		const value = desired[name];
-		if (!isJsonBoolean(value)) {
+	const declared: [string, DesiredType][] = [
+		...Object.entries(settings),
+		...directives.map((name): [string, DesiredType] => [name, "boolean"]),
+	];
+	for (const [key, type] of declared) {
+		if (!Object.hasOwn(desired, key)) continue;
+		const value = desired[key];
+		if (value === undefined || !hasDesiredType(value, type)) {
 			// A `desired` setting of the wrong type is RESOLVER_PRODUCT_UNSUPPORTED,
 			// in the same words as every other one this file refuses.
 			throw new ResolverError(
 				"RESOLVER_PRODUCT_UNSUPPORTED",
-				`${productId}: desired.${name} must be a boolean (true or false), received ${redactAwsText(JSON.stringify(value), undefined, 80)}`,
+				`${productId}: desired.${key} must be ${DESIRED_TYPE_NAMES[type]}, received ${redactAwsText(JSON.stringify(value), undefined, 80)}`,
 				productId,
 			);
 		}
-		if (value) on.add(name);
 	}
-	return on;
+	return new Set(directives.filter((name) => desired[name] === true));
 }
 
 function clockOf(nowMs: AwsResolverOptions["nowMs"]): () => number {
@@ -2505,8 +2647,9 @@ function createResolver(
 			);
 		}
 		const desired = parseJsonObject(JSON.stringify(request.desired));
-		const directivesOn = parseDirectives(
+		const directivesOn = parseSettings(
 			desired,
+			{ ...COMMON_SETTINGS, ...spec.settings },
 			spec.directives ?? [],
 			spec.productId,
 		);

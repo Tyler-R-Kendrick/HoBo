@@ -207,6 +207,17 @@ different suffix — is refused rather than interpolated into a hostname.
 - Resolvers do not create Resource Definitions. Whether a matching definition is
   registered in the catalog is still checked at resolution time
   (`YARD_BINDING_PRODUCT_UNKNOWN`).
+- Every `desired` setting a resolver reads has a type: `versioning`,
+  `publicAccessBlocked` and `fifo` are booleans, `readCapacity` and
+  `visibilityTimeoutSeconds` are integers, `storageClass` and `billingMode`
+  are strings, and so on through each product's options. A setting that is
+  absent stays absent. One of another type, `null` included, is refused
+  before any call with `RESOLVER_PRODUCT_UNSUPPORTED`
+  (`aws.s3/v1: desired.versioning must be a boolean (true or false), received
+  "true"`), never read as "not declared". A member of AWS's JSON answer with
+  the wrong type (a `TableStatus` of `5`, say) is the provider's fault. It is
+  refused as `RESOLVER_OUTPUT_UNPARSEABLE`, like any answer that cannot be
+  read; an absent or `null` member is absent.
 - A Secrets Manager secret **scheduled for deletion** (DescribeSecret answers
   `DeletedDate`) still holds its name for its recovery window, and AWS refuses
   CreateSecret, UpdateSecret and a second unforced DeleteSecret for it

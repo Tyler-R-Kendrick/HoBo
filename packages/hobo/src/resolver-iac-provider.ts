@@ -587,13 +587,23 @@ export function createResolverBackedIacProvider(
 			const directiveTail =
 				directives.length === 0 ? "" : `.${directiveNote(directives)}`;
 			const tail = `${directiveTail}${diagnosticSuffix(observed.diagnostics)}`;
+			// The directives left out, for a machine reader too: a sorted JSON
+			// list under the drift metadata, present only when one was left out.
+			const verdictOutputs: IacOutputs =
+				directives.length === 0
+					? outputs
+					: {
+							...outputs,
+							[`${RESERVED_OUTPUT_PREFIX}drift.notCompared`]:
+								JSON.stringify(directives),
+						};
 			if (differing.length > 0) {
 				return {
 					drift: true,
 					observed: marker(
 						true,
 						`declared parameters differ from what the provider reports: ${differing.join(", ")}${tail}`,
-						outputs,
+						verdictOutputs,
 					),
 				};
 			}
@@ -603,13 +613,17 @@ export function createResolverBackedIacProvider(
 					observed: marker(
 						false,
 						`every observable declared parameter matches, but ${unobservable.join(", ")} have no counterpart in what read() reports, so drift is UNDETERMINED and is reported as drift rather than certified clean${tail}`,
-						outputs,
+						verdictOutputs,
 					),
 				};
 			}
 			return {
 				drift: false,
-				observed: marker(true, `${allMatch(directives)}${tail}`, outputs),
+				observed: marker(
+					true,
+					`${allMatch(directives)}${tail}`,
+					verdictOutputs,
+				),
 			};
 		},
 	};

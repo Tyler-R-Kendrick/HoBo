@@ -371,7 +371,9 @@ refused rather than shadowed.
   `hobo.resolver.drift.determined = "false"` and a reason. The one exception is
   the same as preview's: a directive that `read()` reports nothing for is not
   state, so it is left out and named in `hobo.resolver.drift.reason` ("Not
-  compared: …") instead of turning the report into drift.
+  compared: …") instead of turning the report into drift. For a machine reader
+  the same keys are in `hobo.resolver.drift.notCompared`, a sorted JSON list
+  present only when a key was left out.
 - **No state of its own.** This driver threads no `physicalId`, so convergence
   rests entirely on each resolver's deterministic-name lookup. The visible
   consequence is that a re-apply reports `adopt` rather than `noop` — honest,

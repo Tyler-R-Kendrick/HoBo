@@ -276,6 +276,9 @@ describe("a plan that keeps its directives, against a live secret", () => {
 		const report = await driver.refresh(program("preview"));
 		expect(report.drift).toBe(false);
 		expect(report.observed["hobo.resolver.drift.determined"]).toBe("true");
+		expect(report.observed["hobo.resolver.drift.notCompared"]).toBe(
+			'["forceDelete","restoreScheduled"]',
+		);
 		expect(report.observed["hobo.resolver.drift.reason"]).toContain(
 			"Not compared: forceDelete, restoreScheduled",
 		);

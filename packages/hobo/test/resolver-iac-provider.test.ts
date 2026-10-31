@@ -534,6 +534,10 @@ describe("resolver-backed IacProvider: preview never mutates and never lies", ()
 		expect(report.observed["hobo.resolver.drift.reason"]).toContain(
 			"differ from what the provider reports: size",
 		);
+		// Compared, so not listed as left out.
+		expect(report.observed).not.toHaveProperty(
+			"hobo.resolver.drift.notCompared",
+		);
 	});
 
 	it("preview reports a reported directive that matches as compared, not as left out", async () => {
@@ -620,6 +624,9 @@ describe("resolver-backed IacProvider: refresh", () => {
 		expect(report.observed["hobo.resolver.drift.determined"]).toBe("true");
 		expect(report.observed["hobo.resolver.drift.reason"]).toContain(
 			"every compared declared parameter matches what the provider reports. Not compared: purgeOnDelete",
+		);
+		expect(report.observed["hobo.resolver.drift.notCompared"]).toBe(
+			'["purgeOnDelete"]',
 		);
 	});
 

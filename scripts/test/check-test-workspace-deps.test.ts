@@ -204,14 +204,14 @@ describe("importSpecifiersOf", () => {
 });
 
 describe("checkTestWorkspaceDeps", () => {
-	it("refuses a test that reaches an undeclared sibling by name or by a relative path", () => {
+	it("refuses a test that reaches an undeclared sibling by name or by a relative path into its build output", () => {
 		within(
 			{
 				...base,
 				"packages/app/package.json": manifest("@s/app"),
 				"packages/app/test/by-name.test.ts": 'import { x } from "@s/lib";\n',
 				"packages/app/test/by-path.test.ts":
-					'import { x } from "../../lib/src/index.js";\n',
+					'import { x } from "../../lib/dist/index.js";\n',
 				"packages/app/src/own.test.ts": 'import { y } from "./own.js";\n',
 			},
 			(dir) =>
@@ -235,7 +235,7 @@ describe("checkTestWorkspaceDeps", () => {
 				"packages/declared/test/a.test.ts": 'import { x } from "@s/lib";\n',
 				"packages/ordered/package.json": manifest("@s/ordered"),
 				"packages/ordered/test/a.test.ts":
-					'import { x } from "../../lib/src/index.js";\n',
+					'import { x } from "../../lib/dist/index.js";\n',
 			},
 			(dir) => assert.deepEqual(found(dir), []),
 		);
@@ -261,7 +261,7 @@ describe("checkTestWorkspaceDeps", () => {
 		// turbo 2.11.10 on a scratch workspace: `"a": "1.0.0"`, `"^1.0.0"`, `"*"`
 		// and `"link:../a"` schedule no a#build; `"workspace:*"`,
 		// `"workspace:^1.0.0"`, `"workspace:a@*"` and `"workspace:../a"` do.
-		const loads = 'import "../../lib/src/index.js";\n';
+		const loads = 'import "../../lib/dist/index.js";\n';
 		const declares = (
 			name: string,
 			devDependencies: Record<string, string>,
@@ -306,11 +306,11 @@ describe("checkTestWorkspaceDeps", () => {
 			"packages/app/package.json": manifest("@s/app", {
 				devDependencies: { "@s/lib": "0.0.0" },
 			}),
-			"packages/app/test/a.test.ts": 'import "../../lib/src/index.js";\n',
+			"packages/app/test/a.test.ts": 'import "../../lib/dist/index.js";\n',
 			"packages/git/package.json": manifest("@s/git", {
 				devDependencies: { "@s/lib": "github:s/lib" },
 			}),
-			"packages/git/test/a.test.ts": 'import "../../lib/src/index.js";\n',
+			"packages/git/test/a.test.ts": 'import "../../lib/dist/index.js";\n',
 		};
 		const yaml = `${base["pnpm-workspace.yaml"]}linkWorkspacePackages: `;
 		const reported = (files: Record<string, string>) =>
@@ -357,7 +357,7 @@ describe("checkTestWorkspaceDeps", () => {
 					devDependencies: { "@s/mid": "workspace:*" },
 				}),
 				"packages/app/test/a.test.ts":
-					'import { x } from "../../lib/src/index.js";\n',
+					'import { x } from "../../lib/dist/index.js";\n',
 			},
 			(dir) => assert.deepEqual(found(dir), []),
 		);
@@ -373,7 +373,7 @@ describe("checkTestWorkspaceDeps", () => {
 				}),
 				"packages/app/package.json": manifest("@s/app"),
 				"packages/app/test/a.test.ts":
-					'import { x } from "../../lib/src/index.js";\n',
+					'import { x } from "../../lib/dist/index.js";\n',
 				"packages/both/package.json": manifest("@s/both", {
 					scripts: {
 						build: "tsc",
@@ -383,7 +383,7 @@ describe("checkTestWorkspaceDeps", () => {
 				}),
 				// `vitest run` runs this file too, so it needs the build before both tasks.
 				"packages/both/contracts/consumer/a.consumer.pact.test.ts":
-					'import { x } from "../../../lib/src/index.js";\n',
+					'import { x } from "../../../lib/dist/index.js";\n',
 			},
 			(dir) =>
 				assert.deepEqual(found(dir), [
@@ -404,10 +404,10 @@ describe("checkTestWorkspaceDeps", () => {
 			manifest(name, { devDependencies: { "@s/mid": "workspace:*" } });
 		// mid's build is the package's own build's ^build; lib, x and y are named outright.
 		const loads = [
-			'import "../../mid/src/index.js";',
-			'import "../../lib/src/index.js";',
-			'import "../../x/src/index.js";',
-			'import "../../y/src/index.js";',
+			'import "../../mid/dist/index.js";',
+			'import "../../lib/dist/index.js";',
+			'import "../../x/dist/index.js";',
+			'import "../../y/dist/index.js";',
 		].join("\n");
 		within(
 			{
@@ -454,10 +454,10 @@ describe("checkTestWorkspaceDeps", () => {
 				...base,
 				"packages/app/package.json": manifest("@s/app"),
 				"packages/app/test/fixtures/helper.ts":
-					'export { x } from "../../../lib/src/index.js";\n',
+					'export { x } from "../../../lib/dist/index.js";\n',
 				"packages/app/src/__tests__/setup.ts": 'import "@s/lib";\n',
 				"packages/app/vitest.config.ts":
-					'import { x } from "../lib/src/index.js";\nexport default {};\n',
+					'import { x } from "../lib/dist/index.js";\nexport default {};\n',
 			},
 			(dir) =>
 				assert.deepEqual(found(dir), [
@@ -487,10 +487,10 @@ describe("checkTestWorkspaceDeps", () => {
 					'import { x } from "../../test/helpers/outer.js";\n',
 				"packages/app/test/helpers/outer.ts": 'export * from "./inner";\n',
 				"packages/app/test/helpers/inner.ts":
-					'export { x } from "../../../lib/src/index.js";\n',
+					'export { x } from "../../../lib/dist/index.js";\n',
 				// No contract test imports this one, so it runs under test only.
 				"packages/app/test/unit-helper.ts":
-					'export { x } from "../../lib/src/index.js";\n',
+					'export { x } from "../../lib/dist/index.js";\n',
 			},
 			(dir) =>
 				assert.deepEqual(found(dir), [
@@ -500,7 +500,7 @@ describe("checkTestWorkspaceDeps", () => {
 	});
 
 	it("counts a type-only import only where the package's tsconfig compiles the test", () => {
-		const types = 'import type { X } from "../../lib/src/index.js";\n';
+		const types = 'import type { X } from "../../lib/dist/index.js";\n';
 		within(
 			{
 				...base,
@@ -561,6 +561,68 @@ describe("checkTestWorkspaceDeps", () => {
 					"packages/app/test/tracked.test.ts [test] -> @s/lib",
 				]);
 			},
+		);
+	});
+
+	it("follows a test's imports into the package's other files, transitively", () => {
+		within(
+			{
+				...base,
+				"packages/app/package.json": manifest("@s/app"),
+				"packages/app/test/a.test.ts": 'import "../src/util.js";\n',
+				"packages/app/src/util.ts": 'export * from "./deeper";\n',
+				"packages/app/src/deeper.ts":
+					'export { x } from "../../lib/dist/index.js";\n',
+				"packages/app/test/b.test.ts": 'import "../services/svc.js";\n',
+				"packages/app/services/svc.ts": 'import "../../lib/dist/index.js";\n',
+				// No test imports this one.
+				"packages/app/src/unused.ts": 'import "../../lib/dist/index.js";\n',
+			},
+			(dir) =>
+				assert.deepEqual(found(dir), [
+					"packages/app/services/svc.ts [test] -> @s/lib",
+					"packages/app/src/deeper.ts [test] -> @s/lib",
+				]),
+		);
+	});
+
+	it("classifies a relative reach into a sibling's source by what that source loads", () => {
+		// The sibling's source runs as written, so its own build is not needed:
+		// what it loads is. The draft proof foundations-build-conformance-harness
+		// reaches hobo-monorepo-skeleton-contract's src this way.
+		within(
+			{
+				...base,
+				"packages/dep/package.json": manifest("@s/dep"),
+				"packages/sib/package.json": manifest("@s/sib", {
+					dependencies: { "@s/dep": "workspace:*" },
+				}),
+				"packages/sib/tsconfig.json": JSON.stringify({ include: ["src"] }),
+				"packages/sib/src/plain.ts": 'export * from "./more.js";\n',
+				"packages/sib/src/more.ts": "export const p = 1;\n",
+				"packages/sib/src/needs-dep.ts": 'export * from "@s/dep";\n',
+				// Erased when app's test loads it, whatever sib's tsconfig compiles.
+				"packages/sib/src/types.ts":
+					'import type { D } from "@s/dep";\nexport type E = D;\n',
+				"packages/app/package.json": manifest("@s/app"),
+				"packages/app/test/source.test.ts":
+					'import "../../sib/src/plain.js";\nimport "../../sib/src/types.js";\n',
+				"packages/app/test/dep.test.ts":
+					'import "../../sib/src/needs-dep.js";\n',
+				"packages/app/test/built.test.ts":
+					'import "../../sib/dist/plain.js";\n',
+			},
+			(dir) =>
+				assert.deepEqual(
+					checkTestWorkspaceDeps(dir).map(
+						(item) =>
+							`${item.file} [${item.package}#${item.task}] -> ${item.imports}`,
+					),
+					[
+						"packages/app/test/built.test.ts [@s/app#test] -> @s/sib",
+						"packages/sib/src/needs-dep.ts [@s/app#test] -> @s/dep",
+					],
+				),
 		);
 	});
 

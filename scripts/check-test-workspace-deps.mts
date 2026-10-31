@@ -14,18 +14,24 @@
  *   `src/draft/` that have the script for the task.
  * - Files: everything under a `test/`, `tests/` or `__tests__/` directory
  *   (fixtures and helpers included), `*.test.*` and `*.spec.*` anywhere, and
- *   `vitest*.config.*`. In a git repository only tracked files are read.
+ *   `vitest*.config.*`; and every file those import by a relative path,
+ *   transitively, in their own package (`src/`, `services/`, anything) or in a
+ *   sibling's source. In a git repository only tracked files are read.
+ * - A relative import that lands on a tracked source file needs no build of
+ *   the package it is in: the test runs it as written, and what it loads is
+ *   checked in turn. One that lands on a path git does not track (`dist/`)
+ *   needs that package built, as a by-name import does.
  * - Tasks: every test file runs under `test`; a file under
  *   `contracts/consumer/` or `contracts/provider/` also runs under
  *   `test:contract:consumer` / `test:contract:provider` where the package has
- *   that script. A test file another one in its package imports (a helper or
- *   fixture) also runs under every task of the files that import it, so a
- *   `test/` helper a `contracts/consumer/` test imports is checked under
- *   `test:contract:consumer` too. A file outside those paths that a test
- *   imports (`src/`, `services/`) is not read. Each task must have the sibling
- *   built (lib/turbo-task-graph).
- * - A type-only import counts only where the package's tsconfig compiles the
- *   file: anywhere else it is erased before the test runs.
+ *   that script. A file a test loads runs under every task of the files that
+ *   import it, so a `test/` helper a `contracts/consumer/` test imports is
+ *   checked under `test:contract:consumer` too, and a sibling's source under
+ *   the importing package's tasks. Each task must have every build such a
+ *   file needs (lib/turbo-task-graph); a task's own package is built where the
+ *   task needs it.
+ * - A type-only import counts only in a file of the task's own package that
+ *   its tsconfig compiles: anywhere else it is erased before the test runs.
  * - Imports are read from the syntax tree (lib/test-import-specifiers). A
  *   specifier computed at run time, and a `dist/` path built for a child
  *   process or a URL, cannot be read and are not checked.
@@ -517,9 +523,18 @@ export function scanTestWorkspaceDeps(
 	const { packages, graph } = workspace;
 	const byName = new Map(packages.map((pkg) => [pkg.name, pkg]));
 	const byDir = [...packages].sort((a, b) => b.dir.length - a.dir.length);
-	const owner = (path: string) =>
-		byDir.find((pkg) => path === pkg.dir || path.startsWith(`${pkg.dir}/`));
+	const owners = new Map<string, WorkspacePackage | undefined>();
+	const owner = (path: string): WorkspacePackage | undefined => {
+		if (!owners.has(path))
+			owners.set(
+				path,
+				byDir.find((pkg) => path === pkg.dir || path.startsWith(`${pkg.dir}/`)),
+			);
+		return owners.get(path);
+	};
 	const tsconfigs = new Map<string, Set<string>>();
+	const compiled = (pkg: WorkspacePackage, file: string) =>
+		compiledBy(root, pkg, tsconfigs, join(root, file));
 	const listed = new Set(files);
 	const sources = new Map<string, ImportSpecifier[]>();
 	const specifiersOf = (file: string): ImportSpecifier[] => {
@@ -536,69 +551,99 @@ export function scanTestWorkspaceDeps(
 		}
 		return found;
 	};
-	const loads = (pkg: WorkspacePackage, file: string, typeOnly: boolean) =>
-		!typeOnly || compiledBy(root, pkg, tsconfigs, join(root, file));
-	// The test files each task runs: by where a file is, and a test file
-	// (a helper or fixture) inherits every task of the test files in its own
-	// package that import it.
+	/**
+	 * Where a relative specifier lands: a tracked source file, which runs as
+	 * written and is followed; or a path in a package that git does not track
+	 * (its build output), which needs that package built.
+	 */
+	const reach = (
+		file: string,
+		specifier: string,
+	):
+		| { readonly source: string }
+		| { readonly built: WorkspacePackage }
+		| undefined => {
+		const path = posix.normalize(posix.join(posix.dirname(file), specifier));
+		const local = resolveLocal(path, listed);
+		if (local !== undefined)
+			return SOURCE.test(local) &&
+				!local.endsWith(".d.ts") &&
+				owner(local) !== undefined
+				? { source: local }
+				: undefined;
+		const target = owner(path);
+		return target === undefined ? undefined : { built: target };
+	};
+	// The tasks that load each file, as `<package>#<task>`: a test file's by
+	// where it is, and every file a loaded file imports by a relative path
+	// inherits the tasks that load the importer (its package's helpers and
+	// source, and a sibling's source).
+	const tasks = new Map<string, { pkg: WorkspacePackage; task: string }>();
+	const id = (pkg: WorkspacePackage, task: string) => {
+		const key = `${pkg.name}#${task}`;
+		if (!tasks.has(key)) tasks.set(key, { pkg, task });
+		return key;
+	};
+	// A type-only import loads only under the file's own package's tasks, and
+	// only where its tsconfig compiles the file; a test elsewhere erases it.
+	const carries = (key: string, file: string, typeOnly: boolean) => {
+		if (!typeOnly) return true;
+		const pkg = tasks.get(key)!.pkg;
+		return owner(file) === pkg && compiled(pkg, file);
+	};
 	const running = new Map<string, Set<string>>();
 	for (const file of files) {
 		const pkg = owner(file);
 		if (pkg === undefined || !SCOPES.some((scope) => pkg.dir.startsWith(scope)))
 			continue;
-		const tasks = tasksRunning(file.slice(pkg.dir.length + 1), pkg.scripts);
-		if (tasks.length > 0) running.set(file, new Set(tasks));
+		const own = tasksRunning(file.slice(pkg.dir.length + 1), pkg.scripts);
+		if (own.length > 0)
+			running.set(file, new Set(own.map((task) => id(pkg, task))));
 	}
 	const queue = [...running.keys()];
 	while (queue.length > 0) {
 		const file = queue.pop()!;
-		const pkg = owner(file)!;
-		const tasks = running.get(file)!;
+		const loading = running.get(file)!;
 		for (const { specifier, typeOnly } of specifiersOf(file)) {
 			if (!isRelative(specifier)) continue;
-			const local = resolveLocal(
-				posix.normalize(posix.join(posix.dirname(file), specifier)),
-				listed,
-			);
-			if (
-				local === undefined ||
-				owner(local) !== pkg ||
-				!isTestFile(local.slice(pkg.dir.length + 1)) ||
-				!loads(pkg, file, typeOnly)
-			)
-				continue;
-			const inherited = running.get(local) ?? new Set<string>();
+			const landed = reach(file, specifier);
+			if (landed === undefined || !("source" in landed)) continue;
+			const inherited = running.get(landed.source) ?? new Set<string>();
 			const before = inherited.size;
-			for (const task of tasks) inherited.add(task);
-			running.set(local, inherited);
-			if (inherited.size > before) queue.push(local);
+			for (const key of loading)
+				if (!inherited.has(key) && carries(key, file, typeOnly))
+					inherited.add(key);
+			running.set(landed.source, inherited);
+			if (inherited.size > before) queue.push(landed.source);
 		}
 	}
 	const seen = new Set<string>();
 	const violations: Violation[] = [];
-	for (const [file, tasks] of running) {
-		const pkg = owner(file)!;
+	for (const [file, loading] of running) {
 		for (const { specifier, typeOnly } of specifiersOf(file)) {
 			let target: WorkspacePackage | undefined;
-			if (isRelative(specifier))
-				target = owner(
-					posix.normalize(posix.join(posix.dirname(file), specifier)),
-				);
-			else {
+			if (isRelative(specifier)) {
+				const landed = reach(file, specifier);
+				if (landed === undefined || !("built" in landed)) continue;
+				target = landed.built;
+			} else {
 				const parts = specifier.split("/");
 				target = byName.get(
 					specifier.startsWith("@") ? parts.slice(0, 2).join("/") : parts[0]!,
 				);
 			}
-			if (target === undefined || target === pkg) continue;
-			if (!loads(pkg, file, typeOnly)) continue;
+			if (target === undefined) continue;
 			const needed = graph.needsBuilt(target.name);
-			for (const task of tasks) {
+			for (const key of loading) {
+				const { pkg, task } = tasks.get(key)!;
+				// A task builds its own package where it needs it (`test` on `build`).
+				if (target === pkg) continue;
 				const built = graph.buildsBefore(pkg.name, task);
 				if (needed.every((name) => built.has(name))) continue;
-				const key = `${file}\0${task}\0${target.name}\0${specifier}`;
-				if (seen.has(key)) continue;
-				seen.add(key);
+				if (!carries(key, file, typeOnly)) continue;
+				const unique = `${file}\0${key}\0${target.name}\0${specifier}`;
+				if (seen.has(unique)) continue;
+				seen.add(unique);
 				violations.push({
 					package: pkg.name,
 					file,
@@ -611,7 +656,7 @@ export function scanTestWorkspaceDeps(
 		}
 	}
 	const order = (item: Violation) =>
-		`${item.file}\0${item.task}\0${item.imports}\0${item.specifier}`;
+		`${item.file}\0${item.package}\0${item.task}\0${item.imports}\0${item.specifier}`;
 	violations.sort((a, b) =>
 		order(a) < order(b) ? -1 : order(a) > order(b) ? 1 : 0,
 	);
@@ -673,7 +718,7 @@ if (
 		for (const item of violations)
 			process.stderr.write(
 				item.declared === undefined
-					? `${item.file}: ${item.package}#${item.task} loads ${item.imports} (${item.specifier}), and turbo builds it after; declare it in devDependencies with "workspace:*" if the test imports it by name, else add "${item.imports}#build" to "${item.package}#${item.task}".dependsOn in turbo.json\n`
+					? `${item.file}: ${item.package}#${item.task} loads ${item.imports} (${item.specifier}), and turbo builds it after; declare it in devDependencies with "workspace:*" where ${item.package}'s own file imports it by name, else add "${item.imports}#build" to "${item.package}#${item.task}".dependsOn in turbo.json\n`
 					: `${item.file}: ${item.package}#${item.task} loads ${item.imports} (${item.specifier}), and turbo builds it after: ${item.package} declares it as ${item.declared}; write "workspace:*"\n`,
 			);
 	for (const item of unmodelled)

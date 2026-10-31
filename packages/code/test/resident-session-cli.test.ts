@@ -409,6 +409,13 @@ describe("resident session remote browser", () => {
 								},
 							},
 							auditTypes: () => ["pam.SessionDenied"],
+							yardDrainCount: () => 0,
+							resolveSshIdentity: async () => {
+								throw new Error("not reached");
+							},
+							handoffSshIdentity: async () => {
+								throw new Error("not reached");
+							},
 							close: async () => {},
 						};
 					},

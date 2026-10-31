@@ -187,6 +187,8 @@ function parseInteraction(
 	const providerStates = parseProviderStateList(
 		// SAFETY: a pact document is parsed JSON, so each of its values is a JSON value.
 		record.providerStates as PactJsonValue | undefined,
+		// SAFETY: as above; a v2 document's state is a string field of the interaction.
+		record.providerState as PactJsonValue | undefined,
 		prefix,
 		issues,
 	);
@@ -320,15 +322,20 @@ function parseStringMap(
 }
 /* oxlint-enable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion */
 
-/** One interaction's Pact v3 `providerStates`, or the issue that says what is wrong with them. */
+/**
+ * One interaction's Pact v3 `providerStates`, or the issue that says what is
+ * wrong with them. A Pact v2 `providerState` (`v2State`) is such an issue: a
+ * 3.0.0 document names its states as a list.
+ */
 function parseProviderStateList(
 	value: PactJsonValue | undefined,
+	v2State: PactJsonValue | undefined,
 	prefix: string,
 	issues: string[],
 ): readonly PactProviderState[] | undefined {
-	if (value === undefined) return undefined;
+	if (value === undefined && v2State === undefined) return undefined;
 	try {
-		return readProviderStates(value, prefix);
+		return readProviderStates(value, prefix, v2State);
 	} catch (error) {
 		if (!(error instanceof ProviderStateError)) throw error;
 		issues.push(error.message.replace(/^PROVIDER_STATE_INVALID: /u, ""));

@@ -89,13 +89,22 @@ function parseState(value: PactJsonValue, where: string): PactProviderState {
 
 /**
  * One interaction's `providerStates` (`where` names the interaction), none
- * when it has none; a malformed one is `ProviderStateError`. `parsePactDocument`
- * reads them with this too.
+ * when it has none; a malformed one, or a Pact v2 `providerState` beside them
+ * (`v2State`), is `ProviderStateError`. `parsePactDocument` reads them with
+ * this too.
  */
 export function readProviderStates(
 	declared: PactJsonValue | undefined,
 	where: string,
+	v2State: PactJsonValue | undefined = undefined,
 ): readonly PactProviderState[] {
+	if (v2State !== undefined) {
+		// A v2 state is one free-text string; read as "no v3 states" it would let
+		// the interaction run in whatever state it finds.
+		throw new ProviderStateError(
+			`${where} names a Pact v2 providerState; this harness sets up Pact v3 providerStates ([{ "name": ... }]) only`,
+		);
+	}
 	if (declared === undefined) return Object.freeze([]);
 	if (!Array.isArray(declared)) {
 		throw new ProviderStateError(`${where}.providerStates must be a list`);
@@ -126,16 +135,13 @@ export function parseProviderStates(
 					`${where}.request needs a method and a path`,
 				);
 			}
-			if (interaction.providerState !== undefined) {
-				// A v2 state is one free-text string; read as "no v3 states" it
-				// would let the interaction run in whatever state it finds.
-				throw new ProviderStateError(
-					`${where} names a Pact v2 providerState; this harness sets up Pact v3 providerStates ([{ "name": ... }]) only`,
-				);
-			}
 			return Object.freeze({
 				request: Object.freeze({ method, path }),
-				states: readProviderStates(interaction.providerStates, where),
+				states: readProviderStates(
+					interaction.providerStates,
+					where,
+					interaction.providerState,
+				),
 			});
 		}),
 	);

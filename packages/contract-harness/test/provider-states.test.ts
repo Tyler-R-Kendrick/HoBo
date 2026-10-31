@@ -292,6 +292,15 @@ describe("parsePactDocument with provider states", () => {
 		expect(pact.interactions[1]?.providerStates).toBeUndefined();
 	});
 
+	it("reports a Pact v2 providerState as an issue, rather than reading no states", () => {
+		expect(() =>
+			parsePactDocument({
+				...base,
+				interactions: [{ ...interaction, providerState: "a project exists" }],
+			}),
+		).toThrow(/interactions\[0\] names a Pact v2 providerState/u);
+	});
+
 	it("reports a malformed provider state as an issue", () => {
 		expect(() =>
 			parsePactDocument({

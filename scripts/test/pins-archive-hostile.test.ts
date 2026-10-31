@@ -191,13 +191,18 @@ describe("entry types the reader does not model", () => {
 });
 
 describe("member names", () => {
-	it("names an entry in a refusal by its UTF-8 text, with anything unprintable escaped", async () => {
+	it("names an entry in a refusal by its UTF-8 code points, every one outside printable ASCII escaped", async () => {
 		const utf8 = (name: string): string =>
 			Buffer.from(name, "utf8").toString("latin1");
 		for (const [name, shown] of [
-			[utf8("caf\u00e9/../x"), '"caf\u00e9/../x"'],
-			[utf8("\u202emirror/../x"), '"\\u{202e}mirror/../x"'],
-			[utf8("a\u00a0b/../x"), '"a\\u{a0}b/../x"'],
+			[utf8("caf\u00e9/../x"), '"caf\\u{00E9}/../x"'],
+			[utf8("\u202emirror/../x"), '"\\u{202E}mirror/../x"'],
+			[utf8("a\u00a0b/../x"), '"a\\u{00A0}b/../x"'],
+			// Two Hangul fillers: letters that draw nothing.
+			[utf8("\u3164\u3164/../x"), '"\\u{3164}\\u{3164}/../x"'],
+			[utf8("mirror\ufe0f/../x"), '"mirror\\u{FE0F}/../x"'],
+			[utf8("\ud83d\ude00/../x"), '"\\u{1F600}/../x"'],
+			['say "hi"\\/../x', '"say \\"hi\\"\\\\/../x"'],
 			["\xff/../x", '"\\xff/../x"'],
 		] as const) {
 			const bytes = tarGz([

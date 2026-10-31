@@ -131,17 +131,20 @@ export function upcaseName(name: string): string {
 	return upcased;
 }
 
-/** A character for a message: itself, or an escape when it would not show (a control, a format character, a space other than U+0020). */
+/** A character for a message: printable ASCII as it is (`"` and `\\` escaped), anything else as `\\u{XXXX}`. */
 function shownChar(char: string): string {
 	if (char === '"' || char === "\\") return `\\${char}`;
-	if (char === " " || !/[\p{C}\p{Z}]/u.test(char)) return char;
-	return `\\u{${(char.codePointAt(0) ?? 0).toString(16)}}`;
+	const point = char.codePointAt(0) ?? 0;
+	if (point >= 0x20 && point <= 0x7e) return char;
+	return `\\u{${point.toString(16).toUpperCase().padStart(4, "0")}}`;
 }
 
 /**
- * A name for a message, quoted: its bytes read as UTF-8, so `café` is shown
- * as `café` and not as the latin1 of its bytes, with anything unprintable
- * escaped. Bytes that are not UTF-8 are shown as `\xNN`.
+ * A name for a message, quoted and unambiguous: its bytes read as UTF-8, each
+ * printable ASCII character as it is and every other code point as
+ * `\\u{XXXX}`, so a letter that does not show (U+3164, U+115F), a variation
+ * selector or a direction override can never hide in a refusal. Bytes that
+ * are not UTF-8 are shown as `\\xNN`.
  */
 export function shownName(raw: string): string {
 	let text: string | undefined;

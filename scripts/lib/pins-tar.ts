@@ -436,7 +436,7 @@ export class TarScan {
 				"ARCHIVE_UNSAFE",
 				seen === name
 					? `${this.#archive} holds ${shownName(name)} twice; refusing to choose one`
-					: `${this.#archive} holds ${shownName(seen)} and ${shownName(name)}, which a case-insensitive file system (${which === 0 ? "Linux casefold, macOS" : "NTFS"}) stores as one file; refusing to choose one`,
+					: `${this.#archive} holds ${shownName(seen)} and ${shownName(name)}, one file ${which === 0 ? "under Unicode's caseless match (a Linux casefold directory)" : "under NTFS's uppercase"}; refusing to choose one`,
 			);
 		});
 		keys.forEach((key, which) => this.#names[which]?.set(key, name));

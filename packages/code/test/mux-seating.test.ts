@@ -31,8 +31,21 @@ afterEach(() => {
 	}
 });
 
+interface TmuxRun {
+	readonly status: number | null;
+	readonly out: string;
+}
+
+/** A machine for mux: a HOBO_HOME, stand-in agents on a PATH, their start log. */
+interface Machine {
+	readonly root: string;
+	readonly home: string;
+	readonly bin: string;
+	readonly log: string;
+}
+
 /** tmux on this test file's own server (test/isolate-tmux.ts). */
-function tmux(args: readonly string[]): { status: number | null; out: string } {
+function tmux(args: readonly string[]): TmuxRun {
 	const ran = spawnSync("tmux", [...args], { encoding: "utf8" });
 	return { status: ran.status, out: ran.stdout.trim() };
 }
@@ -52,7 +65,7 @@ function workingUnder(dir: string): number[] {
 }
 
 /** Stand-in agent CLIs on PATH that say they started, and then run on. */
-function machine(): { root: string; home: string; bin: string; log: string } {
+function machine(): Machine {
 	const root = mkdtempSync(join(tmpdir(), "hobo-mux-seat-"));
 	roots.push(root);
 	const home = join(root, "home");
@@ -70,10 +83,7 @@ function machine(): { root: string; home: string; bin: string; log: string } {
 	return { root, home, bin, log };
 }
 
-async function mux(
-	at: ReturnType<typeof machine>,
-	seating: "0" | "1",
-): Promise<void> {
+async function mux(at: Machine, seating: "0" | "1"): Promise<void> {
 	const result = await runHoboCodeCli(["mux", "--session", SESSION], {
 		hoboHome: at.home,
 		cwd: at.home,

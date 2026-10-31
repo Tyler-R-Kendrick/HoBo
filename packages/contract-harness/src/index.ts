@@ -24,12 +24,14 @@ export {
 } from "./http-provider.js";
 export { checkPactInventory } from "./inventory.js";
 export {
+	type InteractionMatchingRules,
+	type MatcherCombination,
 	MatchingRuleError,
+	matchResponseBody,
 	type PactJsonValue,
 	parseMatchingPath,
 	parseResponseMatchingRules,
 	type ResponseMatchingRule,
-	withResponseMatchingRules,
 } from "./matching.js";
 export {
 	createMirrorTransport,
@@ -67,5 +69,6 @@ export type {
 	InteractionFailure,
 	ProviderStub,
 	VerificationReport,
+	VerifyPactOptions,
 } from "./verify.js";
 export { verifyPact } from "./verify.js";

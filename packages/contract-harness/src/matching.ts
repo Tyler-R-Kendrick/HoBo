@@ -11,19 +11,45 @@
  *                 "matchingRules": { "body": { "$.id": {
  *                   "matchers": [{ "match": "regex", "regex": "^prj_[0-9a-f]+$" }] } } } }
  *
- * and `withResponseMatchingRules` wraps a `ProviderStub` so that a real
- * answer whose value at `$.id` matches the rule is reported to `verifyPact`
- * with the pact's example in its place. A value that does not match is left
- * as it is, so `verifyPact` still reports it. Only `regex`, `type` and
- * `equality` (the default) are understood; any other matcher is refused when
- * the rules are read, never ignored. The consumer side needs nothing: the
+ * and `matchResponseBody` compares an answer with the example under those
+ * rules; `verifyPact(pact, provider, { responseMatchingRules })` uses it for
+ * every interaction that declares any. The consumer side needs nothing: the
  * mock answers the example.
  *
+ * Semantics are the Pact Specification v3's
+ * (https://github.com/pact-foundation/pact-specification/tree/version-3,
+ * "Matchers"):
+ *
+ * - Rules cascade: "a rule can be specified on a value and will apply to all
+ *   children of that value". The rule for a value is the most specific one
+ *   whose path is the value's own or an ancestor's ("Matcher selection
+ *   algorithm": with only names and indices, the longest matching path has
+ *   the largest weighting).
+ * - `type`: "equal if they are the same type". On an object every key of the
+ *   example must be present, and each is compared by type in turn (extra keys
+ *   are allowed, as v2 "Response body" allows them); on an array every
+ *   element is compared with the example's first element (v2's own example
+ *   holds a `min: 5` list to its one example element), and `min` / `max`
+ *   bound "the length of the actual value" ("MinType", "MaxType").
+ * - `regex`: matched against "the string representation of a value": a
+ *   string, number or boolean.
+ * - `equality`, the default, compares by value and resets a cascading rule on
+ *   a child ("Add an equality matcher").
+ * - `combine` is `AND` (the default: every matcher) or `OR` (at least one)
+ *   ("Allow arrays of matchers to be defined against a matcher path").
+ *
+ * Anything else is refused when the rules are read, never ignored: another
+ * matcher (`include`, `integer`, `datetime`, ...), a key a matcher or a rule
+ * does not have, a path with `*` or bracketed names, a path the example does
+ * not have, and an example that does not satisfy its own rules. A value with
+ * no rule is compared as `verifyPact` compares any body: by value, arrays by
+ * the example's elements.
+ *
  * Paths are `$` followed by `.name` and `[index]` steps.
+ * Records: `data-models/contract-harness.proto` `ResponseMatcher` and
+ * `ResponseMatchingRule`, constrained by `contract-harness.cue`.
  */
-import type { PactRequest, PactResponse } from "./pact.js";
-import { isRecursiveSubset } from "./subset.js";
-import type { ProviderStub } from "./verify.js";
+import type { PactRequest } from "./pact.js";
 
 /** A JSON value as `JSON.parse` returns it. */
 export type PactJsonValue =
@@ -34,25 +60,36 @@ export type PactJsonValue =
 	| readonly PactJsonValue[]
 	| { readonly [key: string]: PactJsonValue };
 
+type JsonRecord = { readonly [key: string]: PactJsonValue };
+
 type Matcher =
-	| { readonly match: "regex"; readonly regex: RegExp }
-	| { readonly match: "type" }
+	| { readonly match: "regex"; readonly regex: RegExp; readonly source: string }
+	| { readonly match: "type"; readonly min?: number; readonly max?: number }
 	| { readonly match: "equality" };
 
-// domain-view: one rule, parsed (path steps and a compiled RegExp); data-models/contract-harness.proto ResponseMatchingRule is its wire form.
+// public-contract: how a rule's matchers combine (Pact v3 `combine`).
+export type MatcherCombination = "AND" | "OR";
+
+type Step = string | number;
+
+// domain-view: one rule, parsed (path steps, compiled RegExps, bounds); data-models/contract-harness.proto ResponseMatchingRule is its wire form.
 export interface ResponseMatchingRule {
 	readonly path: string;
-	readonly steps: readonly (string | number)[];
+	readonly steps: readonly Step[];
 	readonly matchers: readonly Matcher[];
+	readonly combine: MatcherCombination;
 }
 
-interface InteractionRules {
+// domain-view: the parsed response rules of one interaction, in the pact's order.
+export interface InteractionMatchingRules {
 	readonly request: PactRequest;
-	readonly example: PactResponse["body"];
+	readonly example: PactJsonValue | undefined;
 	readonly rules: readonly ResponseMatchingRule[];
 }
 
 export class MatchingRuleError extends Error {
+	readonly code = "MATCHING_RULE_INVALID";
+
 	constructor(message: string) {
 		super(`MATCHING_RULE_INVALID: ${message}`);
 		this.name = "MatchingRuleError";
@@ -61,14 +98,18 @@ export class MatchingRuleError extends Error {
 
 const tagOf = Object.prototype.toString;
 
-function isRecord(
-	value: PactJsonValue | undefined,
-): value is { readonly [key: string]: PactJsonValue } {
+function isRecord(value: PactJsonValue | undefined): value is JsonRecord {
 	return tagOf.call(value) === "[object Object]";
 }
 
 function isText(value: PactJsonValue | undefined): value is string {
 	return tagOf.call(value) === "[object String]";
+}
+
+function isList(
+	value: PactJsonValue | undefined,
+): value is readonly PactJsonValue[] {
+	return Array.isArray(value);
 }
 
 const METHODS: ReadonlySet<string> = new Set([
@@ -86,13 +127,13 @@ function isMethod(value: string): value is PactRequest["method"] {
 const STEP = /\.([A-Za-z_$][\w$-]*)|\[(\d+)\]/guy;
 
 /** `$.a[0].b` -> ["a", 0, "b"]; anything else is refused. */
-export function parseMatchingPath(path: string): readonly (string | number)[] {
+export function parseMatchingPath(path: string): readonly Step[] {
 	if (!path.startsWith("$")) {
 		throw new MatchingRuleError(
 			`path ${JSON.stringify(path)} must start with $`,
 		);
 	}
-	const steps: (string | number)[] = [];
+	const steps: Step[] = [];
 	STEP.lastIndex = 1;
 	while (STEP.lastIndex < path.length) {
 		const at = STEP.lastIndex;
@@ -107,43 +148,125 @@ export function parseMatchingPath(path: string): readonly (string | number)[] {
 	return Object.freeze(steps);
 }
 
+/** The keys each matcher may carry; any other is refused. */
+const MATCHER_KEYS: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+	["regex", new Set(["match", "regex"])],
+	["type", new Set(["match", "min", "max"])],
+	["equality", new Set(["match"])],
+]);
+const RULE_KEYS: ReadonlySet<string> = new Set(["matchers", "combine"]);
+
+function refuseUnknownKeys(
+	value: JsonRecord,
+	allowed: ReadonlySet<string>,
+	where: string,
+	what: string,
+): void {
+	for (const key of Object.keys(value)) {
+		if (!allowed.has(key)) {
+			throw new MatchingRuleError(
+				`${where} has key ${JSON.stringify(key)}; ${what} has only ${[...allowed].join(", ")}`,
+			);
+		}
+	}
+}
+
+function bound(
+	value: PactJsonValue | undefined,
+	name: "min" | "max",
+	where: string,
+): number | undefined {
+	if (value === undefined) return undefined;
+	if (
+		tagOf.call(value) !== "[object Number]" ||
+		!Number.isSafeInteger(value) ||
+		Number(value) < 0
+	) {
+		throw new MatchingRuleError(
+			`${where} ${name} must be a non-negative integer, got ${JSON.stringify(value)}`,
+		);
+	}
+	return Number(value);
+}
+
 function parseMatcher(value: PactJsonValue, where: string): Matcher {
 	if (!isRecord(value) || !isText(value.match)) {
 		throw new MatchingRuleError(`${where} must be an object with a match`);
 	}
+	const keys = MATCHER_KEYS.get(value.match);
+	if (keys === undefined) {
+		throw new MatchingRuleError(
+			`${where} uses matcher ${JSON.stringify(value.match)}; only regex, type and equality are understood`,
+		);
+	}
+	refuseUnknownKeys(value, keys, where, `a ${value.match} matcher`);
 	switch (value.match) {
 		case "regex": {
 			const source = value.regex;
-			if (!isText(source)) {
+			if (!isText(source) || source === "") {
 				throw new MatchingRuleError(`${where} names regex without a pattern`);
 			}
 			try {
-				return { match: "regex", regex: new RegExp(source, "u") };
+				return { match: "regex", regex: new RegExp(source, "u"), source };
 			} catch {
 				throw new MatchingRuleError(
 					`${where} regex ${JSON.stringify(source)} does not compile`,
 				);
 			}
 		}
-		case "type":
-			return { match: "type" };
-		case "equality":
-			return { match: "equality" };
+		case "type": {
+			const min = bound(value.min, "min", where);
+			const max = bound(value.max, "max", where);
+			if (min !== undefined && max !== undefined && max < min) {
+				throw new MatchingRuleError(`${where} max ${max} is below min ${min}`);
+			}
+			return {
+				match: "type",
+				...(min === undefined ? undefined : { min }),
+				...(max === undefined ? undefined : { max }),
+			};
+		}
 		default:
-			throw new MatchingRuleError(
-				`${where} uses matcher ${JSON.stringify(value.match)}; only regex, type and equality are understood`,
-			);
+			return { match: "equality" };
 	}
+}
+
+function parseCombine(
+	value: PactJsonValue | undefined,
+	where: string,
+): MatcherCombination {
+	if (value === undefined || value === "AND") return "AND";
+	if (value === "OR") return "OR";
+	throw new MatchingRuleError(
+		`${where}.combine must be AND or OR, got ${JSON.stringify(value)}`,
+	);
+}
+
+function at(
+	value: PactJsonValue | undefined,
+	steps: readonly Step[],
+): PactJsonValue | undefined {
+	let current = value;
+	for (const step of steps) {
+		current = isList(current)
+			? current[Number(step)]
+			: isRecord(current)
+				? current[String(step)]
+				: undefined;
+		if (current === undefined) return undefined;
+	}
+	return current;
 }
 
 function parseRules(
 	value: PactJsonValue | undefined,
+	example: PactJsonValue | undefined,
 	where: string,
 ): readonly ResponseMatchingRule[] {
 	if (value === undefined) return [];
-	if (!isRecord(value))
+	if (!isRecord(value)) {
 		throw new MatchingRuleError(`${where} must be an object`);
-	const body = value.body;
+	}
 	for (const key of Object.keys(value)) {
 		if (key !== "body") {
 			throw new MatchingRuleError(
@@ -151,168 +274,285 @@ function parseRules(
 			);
 		}
 	}
+	const body = value.body;
 	if (body === undefined) return [];
-	if (!isRecord(body))
+	if (!isRecord(body)) {
 		throw new MatchingRuleError(`${where}.body must be an object`);
-	return Object.entries(body).map(([path, rule]) => {
-		const at = `${where}.body[${JSON.stringify(path)}]`;
-		if (
-			!isRecord(rule) ||
-			!Array.isArray(rule.matchers) ||
-			rule.matchers.length === 0
-		) {
-			throw new MatchingRuleError(`${at} must carry a non-empty matchers list`);
+	}
+	const rules = Object.entries(body).map(([path, rule]) => {
+		const here = `${where}.body[${JSON.stringify(path)}]`;
+		if (!isRecord(rule)) {
+			throw new MatchingRuleError(
+				`${here} must carry a non-empty matchers list`,
+			);
+		}
+		refuseUnknownKeys(rule, RULE_KEYS, here, "a rule");
+		const { matchers } = rule;
+		if (!isList(matchers) || matchers.length === 0) {
+			throw new MatchingRuleError(
+				`${here} must carry a non-empty matchers list`,
+			);
+		}
+		const steps = parseMatchingPath(path);
+		if (at(example, steps) === undefined) {
+			throw new MatchingRuleError(
+				`${here} names no field of the example response body`,
+			);
 		}
 		return Object.freeze({
 			path,
-			steps: parseMatchingPath(path),
+			steps,
 			matchers: Object.freeze(
-				rule.matchers.map((matcher, index) =>
-					parseMatcher(matcher, `${at}.matchers[${index}]`),
+				matchers.map((matcher, index) =>
+					parseMatcher(matcher, `${here}.matchers[${index}]`),
 				),
 			),
+			combine: parseCombine(rule.combine, here),
 		});
 	});
-}
-
-function at(
-	value: PactJsonValue | undefined,
-	steps: readonly (string | number)[],
-): PactJsonValue | undefined {
-	let current = value;
-	for (const step of steps) {
-		if (current === undefined || current === null) return undefined;
-		current = Array.isArray(current)
-			? current[Number(step)]
-			: isRecord(current)
-				? current[String(step)]
-				: undefined;
-	}
-	return current;
-}
-
-/** A copy of `value` with `replacement` at `steps`; the path must exist. */
-function replaced(
-	value: PactJsonValue,
-	steps: readonly (string | number)[],
-	replacement: PactJsonValue,
-): PactJsonValue {
-	const [step, ...rest] = steps;
-	if (step === undefined) return replacement;
-	if (Array.isArray(value)) {
-		return value.map((item, index) =>
-			index === step ? replaced(item, rest, replacement) : item,
+	const own = matchResponseBody(rules, example, example);
+	if (own !== undefined) {
+		throw new MatchingRuleError(
+			`${where}: the example does not satisfy its own rules: ${own}`,
 		);
 	}
-	if (isRecord(value)) {
-		return {
-			...value,
-			[step]: replaced(value[String(step)] ?? null, rest, replacement),
-		};
-	}
-	return value;
-}
-
-function kindOf(value: PactJsonValue | undefined): string {
-	return Array.isArray(value) ? "array" : tagOf.call(value);
-}
-
-function satisfies(
-	matcher: Matcher,
-	actual: PactJsonValue | undefined,
-	example: PactJsonValue | undefined,
-): boolean {
-	switch (matcher.match) {
-		case "regex":
-			return isText(actual) && matcher.regex.test(actual);
-		case "type":
-			return actual !== undefined && kindOf(actual) === kindOf(example);
-		case "equality":
-			return false;
-	}
+	return Object.freeze(rules);
 }
 
 /**
- * The response rules of every interaction in a raw pact document, keyed by
- * its request. Refuses a rule it does not understand.
+ * The response rules of every interaction in a raw pact document, in its
+ * order. Refuses a rule it does not implement.
  */
 export function parseResponseMatchingRules(
 	document: PactJsonValue,
-): readonly InteractionRules[] {
-	if (!isRecord(document) || !Array.isArray(document.interactions)) {
+): readonly InteractionMatchingRules[] {
+	if (!isRecord(document) || !isList(document.interactions)) {
 		throw new MatchingRuleError("document must be a pact with interactions");
 	}
-	return document.interactions.map((interaction, index) => {
-		const where = `interactions[${index}].response.matchingRules`;
-		if (
-			!isRecord(interaction) ||
-			!isRecord(interaction.request) ||
-			!isRecord(interaction.response)
-		) {
-			throw new MatchingRuleError(
-				`interactions[${index}] must carry a request and a response`,
-			);
-		}
-		const { request, response } = interaction;
-		const { method, path } = request;
-		if (!isText(method) || !isMethod(method) || !isText(path)) {
-			throw new MatchingRuleError(
-				`interactions[${index}].request needs a method and a path`,
-			);
-		}
-		return Object.freeze({
-			request: {
-				method,
-				path,
-				...(request.body === undefined ? undefined : { body: request.body }),
-			},
-			example: response.body,
-			rules: parseRules(response.matchingRules, where),
-		});
-	});
-}
-
-function sameRequest(expected: PactRequest, actual: PactRequest): boolean {
-	return (
-		expected.method === actual.method &&
-		expected.path === actual.path &&
-		(expected.body === undefined ||
-			isRecursiveSubset(expected.body, actual.body))
+	return Object.freeze(
+		document.interactions.map((interaction, index) => {
+			const where = `interactions[${index}].response.matchingRules`;
+			if (
+				!isRecord(interaction) ||
+				!isRecord(interaction.request) ||
+				!isRecord(interaction.response)
+			) {
+				throw new MatchingRuleError(
+					`interactions[${index}] must carry a request and a response`,
+				);
+			}
+			const { request, response } = interaction;
+			const { method, path } = request;
+			if (!isText(method) || !isMethod(method) || !isText(path)) {
+				throw new MatchingRuleError(
+					`interactions[${index}].request needs a method and a path`,
+				);
+			}
+			return Object.freeze({
+				request: {
+					method,
+					path,
+					...(request.body === undefined ? undefined : { body: request.body }),
+				},
+				example: response.body,
+				rules: parseRules(response.matchingRules, response.body, where),
+			});
+		}),
 	);
 }
 
-/**
- * A stub whose answers carry the pact's example wherever the real value
- * satisfies the interaction's rule, and the real value everywhere else.
- */
-export function withResponseMatchingRules(
-	stub: ProviderStub,
-	rules: readonly InteractionRules[],
-): ProviderStub {
+// ---------------------------------------------------------------------------
+// Matching
+
+function pathText(steps: readonly Step[]): string {
+	return `$${steps.map((step) => (tagOf.call(step) === "[object Number]" ? `[${step}]` : `.${step}`)).join("")}`;
+}
+
+function kindOf(value: PactJsonValue | undefined): string {
+	if (value === undefined) return "missing";
+	if (value === null) return "null";
+	if (isList(value)) return "an array";
+	if (isRecord(value)) return "an object";
+	if (isText(value)) return "a string";
+	return tagOf.call(value) === "[object Number]" ? "a number" : "a boolean";
+}
+
+/** The most specific rule whose path is `steps` or one of its ancestors. */
+function ruleFor(
+	rules: readonly ResponseMatchingRule[],
+	steps: readonly Step[],
+): ResponseMatchingRule | undefined {
+	let chosen: ResponseMatchingRule | undefined;
+	for (const rule of rules) {
+		if (rule.steps.length > steps.length) continue;
+		if (!rule.steps.every((step, index) => step === steps[index])) continue;
+		if (chosen === undefined || rule.steps.length > chosen.steps.length) {
+			chosen = rule;
+		}
+	}
+	return chosen;
+}
+
+/** `$.x` and its value, as one comparison sees them. */
+interface Node {
+	readonly steps: readonly Step[];
+	readonly actual: PactJsonValue | undefined;
+	readonly example: PactJsonValue | undefined;
+}
+
+function child(
+	node: Node,
+	step: Step,
+	example: PactJsonValue | undefined,
+): Node {
+	const actual = node.actual;
 	return {
-		name: stub.name,
-		async handle(request: PactRequest): Promise<PactResponse> {
-			const answer = await stub.handle(request);
-			const interaction = rules.find((candidate) =>
-				sameRequest(candidate.request, request),
-			);
-			if (interaction === undefined || interaction.rules.length === 0) {
-				return answer;
-			}
-			// SAFETY: a provider answer body is parsed JSON (or text), which is a PactJsonValue.
-			let body = answer.body as PactJsonValue;
-			for (const rule of interaction.rules) {
-				// SAFETY: the example is the pact's response body, parsed JSON.
-				const example = at(interaction.example as PactJsonValue, rule.steps);
-				const actual = at(body, rule.steps);
-				if (
-					example !== undefined &&
-					rule.matchers.every((matcher) => satisfies(matcher, actual, example))
-				) {
-					body = replaced(body, rule.steps, example);
-				}
-			}
-			return { ...answer, body };
-		},
+		steps: [...node.steps, step],
+		actual: isList(actual)
+			? actual[Number(step)]
+			: isRecord(actual)
+				? actual[String(step)]
+				: undefined,
+		example,
 	};
+}
+
+/** Every key of the example, each compared in turn: an object's part of any comparison. */
+function compareRecord(
+	rules: readonly ResponseMatchingRule[],
+	node: Node,
+	example: JsonRecord,
+): string | undefined {
+	for (const [key, value] of Object.entries(example)) {
+		const reason = compare(rules, child(node, key, value));
+		if (reason !== undefined) return reason;
+	}
+	return undefined;
+}
+
+/** By value: what `verifyPact` does for a body with no rules. */
+function byValue(
+	rules: readonly ResponseMatchingRule[],
+	node: Node,
+): string | undefined {
+	const { actual, example } = node;
+	const where = pathText(node.steps);
+	if (actual === undefined) return `body field ${where} is missing`;
+	if (isRecord(example)) {
+		return isRecord(actual)
+			? compareRecord(rules, node, example)
+			: `body field ${where} does not match`;
+	}
+	if (isList(example)) {
+		if (!isList(actual) || actual.length < example.length) {
+			return `body field ${where} does not match`;
+		}
+		for (const [index, value] of example.entries()) {
+			const reason = compare(rules, child(node, index, value));
+			if (reason !== undefined) return reason;
+		}
+		return undefined;
+	}
+	return actual === example ? undefined : `body field ${where} does not match`;
+}
+
+function byType(
+	rules: readonly ResponseMatchingRule[],
+	node: Node,
+	matcher: Extract<Matcher, { readonly match: "type" }>,
+	rule: ResponseMatchingRule,
+): string | undefined {
+	const { actual, example } = node;
+	const where = pathText(node.steps);
+	const because = `(type rule at ${rule.path})`;
+	if (actual === undefined) return `body field ${where} is missing`;
+	if (kindOf(actual) !== kindOf(example)) {
+		return `body field ${where} is ${kindOf(actual)}, not ${kindOf(example)} like the example ${because}`;
+	}
+	if (isRecord(example) && isRecord(actual)) {
+		return compareRecord(rules, node, example);
+	}
+	if (isList(example) && isList(actual)) {
+		const count = `${actual.length} element${actual.length === 1 ? "" : "s"}`;
+		if (matcher.min !== undefined && actual.length < matcher.min) {
+			return `body field ${where} has ${count}, fewer than min ${matcher.min} ${because}`;
+		}
+		if (matcher.max !== undefined && actual.length > matcher.max) {
+			return `body field ${where} has ${count}, more than max ${matcher.max} ${because}`;
+		}
+		const [first] = example;
+		if (first === undefined) return undefined;
+		for (const index of actual.keys()) {
+			const reason = compare(rules, child(node, index, first));
+			if (reason !== undefined) return reason;
+		}
+	}
+	return undefined;
+}
+
+function byRegex(
+	node: Node,
+	matcher: Extract<Matcher, { readonly match: "regex" }>,
+): string | undefined {
+	const { actual } = node;
+	const where = pathText(node.steps);
+	if (actual === undefined) return `body field ${where} is missing`;
+	const text =
+		isText(actual) ||
+		tagOf.call(actual) === "[object Number]" ||
+		tagOf.call(actual) === "[object Boolean]"
+			? String(actual)
+			: undefined;
+	return text !== undefined && matcher.regex.test(text)
+		? undefined
+		: `body field ${where} does not match regex ${matcher.source}`;
+}
+
+function byMatcher(
+	rules: readonly ResponseMatchingRule[],
+	node: Node,
+	matcher: Matcher,
+	rule: ResponseMatchingRule,
+): string | undefined {
+	switch (matcher.match) {
+		case "regex":
+			return byRegex(node, matcher);
+		case "type":
+			return byType(rules, node, matcher, rule);
+		case "equality":
+			return byValue(rules, node);
+	}
+}
+
+function compare(
+	rules: readonly ResponseMatchingRule[],
+	node: Node,
+): string | undefined {
+	const rule = ruleFor(rules, node.steps);
+	if (rule === undefined) return byValue(rules, node);
+	const reasons = rule.matchers.map((matcher) =>
+		byMatcher(rules, node, matcher, rule),
+	);
+	if (rule.combine === "AND") {
+		return reasons.find((reason) => reason !== undefined);
+	}
+	if (reasons.some((reason) => reason === undefined)) return undefined;
+	const where = `body field ${pathText(node.steps)} `;
+	return `${where}matches none of the rule at ${rule.path}: ${reasons
+		.map((reason) =>
+			reason?.startsWith(where) ? reason.slice(where.length) : reason,
+		)
+		.join("; ")}`;
+}
+
+/**
+ * The first way `actual` fails the example under `rules`, as a reason a
+ * verification report can carry, or `undefined` when it matches.
+ */
+export function matchResponseBody(
+	rules: readonly ResponseMatchingRule[],
+	example: PactJsonValue | undefined,
+	actual: PactJsonValue | undefined,
+): string | undefined {
+	return compare(rules, { steps: [], actual, example });
 }

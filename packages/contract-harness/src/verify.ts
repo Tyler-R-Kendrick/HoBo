@@ -1,3 +1,8 @@
+import {
+	type InteractionMatchingRules,
+	matchResponseBody,
+	type PactJsonValue,
+} from "./matching.js";
 import type { PactDocument, PactRequest, PactResponse } from "./pact.js";
 import { isRecursiveSubset } from "./subset.js";
 
@@ -19,9 +24,40 @@ export interface VerificationReport {
 	readonly failures: readonly InteractionFailure[];
 }
 
+export interface VerifyPactOptions {
+	/**
+	 * Pact v3 response matching rules, `parseResponseMatchingRules` of the same
+	 * document: an interaction that declares rules has its body compared under
+	 * them (`matchResponseBody`), every other by value.
+	 */
+	readonly responseMatchingRules?: readonly InteractionMatchingRules[];
+}
+
+/** The rules read for each interaction, or why they cannot be used with this pact. */
+function rulesByInteraction(
+	pact: PactDocument,
+	read: readonly InteractionMatchingRules[] | undefined,
+): readonly (InteractionMatchingRules | undefined)[] | string {
+	if (read === undefined) return pact.interactions.map(() => undefined);
+	if (read.length !== pact.interactions.length) {
+		return `matching rules were read from another pact: ${read.length} interactions, this pact has ${pact.interactions.length}`;
+	}
+	const stranger = read.findIndex((rules, index) => {
+		const request = pact.interactions[index]?.request;
+		return (
+			request?.method !== rules.request.method ||
+			request.path !== rules.request.path
+		);
+	});
+	return stranger === -1
+		? read
+		: `matching rules were read from another pact: interaction ${stranger} is ${read[stranger]?.request.method} ${read[stranger]?.request.path} there`;
+}
+
 export async function verifyPact(
 	pact: PactDocument,
 	provider: ProviderStub,
+	options: VerifyPactOptions = {},
 ): Promise<VerificationReport> {
 	const failures: InteractionFailure[] = [];
 
@@ -32,7 +68,19 @@ export async function verifyPact(
 		});
 	}
 
-	for (const interaction of pact.interactions) {
+	const matching = rulesByInteraction(pact, options.responseMatchingRules);
+	if (!Array.isArray(matching)) {
+		return {
+			providerName: provider.name,
+			ok: false,
+			failures: [
+				...failures,
+				{ description: "matching rules", reason: String(matching) },
+			],
+		};
+	}
+
+	for (const [index, interaction] of pact.interactions.entries()) {
 		const actual = await provider.handle(interaction.request);
 		const expected = interaction.response;
 
@@ -62,9 +110,24 @@ export async function verifyPact(
 			}
 		}
 
-		if (expected.body !== undefined) {
+		const rules = matching[index]?.rules ?? [];
+		if (expected.body !== undefined && rules.length > 0) {
+			// SAFETY: a pact body and a provider's parsed answer are JSON values.
+			const reason = matchResponseBody(
+				rules,
+				expected.body as PactJsonValue,
+				actual.body as PactJsonValue | undefined,
+			);
+			if (reason !== undefined) {
+				failures.push({ description: interaction.description, reason });
+			}
+		} else if (expected.body !== undefined) {
 			if (!isRecursiveSubset(expected.body, actual.body)) {
-				const mismatch = findBodyMismatch(expected.body, actual.body);
+				// SAFETY: a pact body and a provider's parsed answer are JSON values.
+				const mismatch = findBodyMismatch(
+					expected.body as PactJsonValue,
+					actual.body as PactJsonValue | undefined,
+				);
 				failures.push({
 					description: interaction.description,
 					reason:
@@ -82,41 +145,42 @@ export async function verifyPact(
 	};
 }
 
+const tagOf = Object.prototype.toString;
+
+/** A JSON object (`isRecursiveSubset` reads any non-array object as one). */
+function isRecord(
+	value: PactJsonValue | undefined,
+): value is { readonly [key: string]: PactJsonValue } {
+	return value !== null && tagOf.call(value) === "[object Object]";
+}
+
+/**
+ * Where a body that is not a recursive superset of the pact's first differs:
+ * descends through objects only, as it always has, and names the field.
+ */
 function findBodyMismatch(
-	expected: unknown,
-	actual: unknown,
+	expected: PactJsonValue | undefined,
+	actual: PactJsonValue | undefined,
 	path = "$",
 ): string | undefined {
 	if (isRecursiveSubset(expected, actual, path)) {
 		return undefined;
 	}
 
-	if (
-		expected === null ||
-		expected === undefined ||
-		typeof expected !== "object" ||
-		Array.isArray(expected)
-	) {
+	if (!isRecord(expected)) {
 		return `body field ${path} does not match`;
 	}
 
-	if (typeof actual !== "object" || actual === null || Array.isArray(actual)) {
+	if (!isRecord(actual)) {
 		return `body field ${path} is missing`;
 	}
 
-	const expectedRecord = expected as Record<string, unknown>;
-	const actualRecord = actual as Record<string, unknown>;
-
-	for (const key of Object.keys(expectedRecord)) {
+	for (const key of Object.keys(expected)) {
 		const childPath = `${path}.${key}`;
-		if (!(key in actualRecord)) {
+		if (!(key in actual)) {
 			return `body field ${childPath} is missing`;
 		}
-		const nested = findBodyMismatch(
-			expectedRecord[key],
-			actualRecord[key],
-			childPath,
-		);
+		const nested = findBodyMismatch(expected[key], actual[key], childPath);
 		if (nested) {
 			return nested;
 		}

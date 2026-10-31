@@ -2,8 +2,8 @@
  * Provider side of contracts/hobo-vercel-api.pact.json, verified against the
  * mirror.cloud emulator (ADR-0174): each interaction is sent over real HTTP,
  * in order, with `Host: api.vercel.com`, and `verifyPact` reads what the
- * emulator answered. Generated ids are admitted only by the pact's own
- * matching rules (`withResponseMatchingRules`); every other declared field is
+ * emulator answered. Generated ids are admitted only by the pact's own Pact v3
+ * matching rules (`responseMatchingRules`); every other declared field is
  * compared by value.
  *
  * The consumer side is test/hobo-vercel-api.contract.test.ts (default lane).
@@ -19,7 +19,6 @@ import {
 	parseResponseMatchingRules,
 	recordMirrorLaneReport,
 	verifyPact,
-	withResponseMatchingRules,
 } from "@hobo/contract-harness";
 import { beforeAll, describe, expect, it } from "vitest";
 
@@ -29,15 +28,13 @@ import pactJson from "../../contracts/hobo-vercel-api.pact.json" with {
 
 const pact = parsePactDocument(pactJson);
 const endpoint = mirrorLaneEndpoint(process.env);
-const vercelApi = withResponseMatchingRules(
-	createHttpProviderStub(
-		parseHttpProviderTarget({
-			name: pact.provider.name,
-			...endpoint,
-			host: "api.vercel.com",
-		}),
-	),
-	parseResponseMatchingRules(pactJson),
+const responseMatchingRules = parseResponseMatchingRules(pactJson);
+const vercelApi = createHttpProviderStub(
+	parseHttpProviderTarget({
+		name: pact.provider.name,
+		...endpoint,
+		host: "api.vercel.com",
+	}),
 );
 
 describe("hobo-vercel-api.pact.json, provider side, against the emulator", () => {
@@ -57,7 +54,7 @@ describe("hobo-vercel-api.pact.json, provider side, against the emulator", () =>
 	});
 
 	it("the emulator honours every interaction, in order", async () => {
-		const report = await verifyPact(pact, vercelApi);
+		const report = await verifyPact(pact, vercelApi, { responseMatchingRules });
 
 		recordMirrorLaneReport(process.env, "hobo-vercel-api", {
 			consumer: pact.consumer.name,

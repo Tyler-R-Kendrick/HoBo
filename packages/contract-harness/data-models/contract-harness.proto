@@ -64,14 +64,18 @@ message MirrorJournalEntry {
   uint32 status = 5;
   string error_code = 6;
 }
-// A Pact v3 response matching rule as src/matching.ts applies it.
+// A Pact v3 response matching rule as src/matching.ts applies it: regex,
+// type (with min and max for an array) or equality, combined AND or OR.
 message ResponseMatcher {
   string match = 1;
   string regex = 2;
+  optional uint32 min = 3;
+  optional uint32 max = 4;
 }
 message ResponseMatchingRule {
   string path = 1;
   repeated ResponseMatcher matchers = 2;
+  string combine = 3;
 }
 // A provider verification the mirror lane prints (src/mirror-lane.ts).
 message MirrorLaneReport {

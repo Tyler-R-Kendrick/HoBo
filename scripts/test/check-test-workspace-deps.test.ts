@@ -301,6 +301,61 @@ describe("checkTestWorkspaceDeps", () => {
 		);
 	});
 
+	it("appends the inherited dependsOn where a package's turbo.json names $TURBO_EXTENDS$, and replaces it where not", () => {
+		// turbo 2.11.10 on a scratch workspace: with the root's `test` on
+		// ["build", "c#build"], a package's `["$TURBO_EXTENDS$", "a#build"]`
+		// schedules a, c and the package's own build, and `["a#build"]` only a.
+		// The inherited list is the root's `<pkg>#test` where it has one.
+		const extend = (dependsOn: string[]) =>
+			JSON.stringify({ extends: ["//"], tasks: { test: { dependsOn } } });
+		const app = (name: string) =>
+			manifest(name, { devDependencies: { "@s/mid": "workspace:*" } });
+		// mid's build is the package's own build's ^build; lib, x and y are named outright.
+		const loads = [
+			'import "../../mid/src/index.js";',
+			'import "../../lib/src/index.js";',
+			'import "../../x/src/index.js";',
+			'import "../../y/src/index.js";',
+		].join("\n");
+		within(
+			{
+				...base,
+				"turbo.json": turbo({
+					test: { dependsOn: ["build", "@s/x#build"] },
+					"@s/over#test": { dependsOn: ["build", "@s/y#build"] },
+				}),
+				"packages/mid/package.json": manifest("@s/mid"),
+				"packages/x/package.json": manifest("@s/x"),
+				"packages/y/package.json": manifest("@s/y"),
+				"packages/extends/package.json": app("@s/extends"),
+				"packages/extends/turbo.json": extend([
+					"$TURBO_EXTENDS$",
+					"@s/lib#build",
+					"@s/y#build",
+				]),
+				"packages/extends/test/a.test.ts": loads,
+				"packages/over/package.json": app("@s/over"),
+				"packages/over/turbo.json": extend([
+					"@s/lib#build",
+					"@s/x#build",
+					"$TURBO_EXTENDS$",
+				]),
+				"packages/over/test/a.test.ts": loads,
+				"packages/replaces/package.json": app("@s/replaces"),
+				"packages/replaces/turbo.json": extend([
+					"@s/lib#build",
+					"@s/x#build",
+					"@s/y#build",
+				]),
+				"packages/replaces/test/a.test.ts": loads,
+			},
+			(dir) =>
+				assert.deepEqual(found(dir), [
+					"packages/replaces/test/a.test.ts [test] -> @s/mid",
+				]),
+		);
+	});
+
 	it("reads fixture helpers, __tests__ helpers and vitest configs", () => {
 		within(
 			{

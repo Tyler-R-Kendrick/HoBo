@@ -9,11 +9,15 @@
  * - `"build"` reaches the package's own `build`; `"@s/x#build"` reaches that
  *   package's.
  * - A root `"<pkg>#<task>"` entry replaces the generic `"<task>"` for that
- *   package, and a package's own `turbo.json` replaces `dependsOn` when it sets
- *   one. An override of one task orders nothing for another.
+ *   package, and a package's own `turbo.json` replaces that `dependsOn` when it
+ *   sets one, unless the list names `"$TURBO_EXTENDS$"`: then turbo appends it
+ *   to the inherited list, wherever the marker sits. An override of one task
+ *   orders nothing for another.
  * - A task a package has no script for is still a node: turbo follows its
  *   `dependsOn` and runs nothing for it.
  */
+const TURBO_EXTENDS = "$TURBO_EXTENDS$";
+
 export interface TaskConfig {
 	readonly dependsOn?: readonly string[];
 }
@@ -36,13 +40,14 @@ export class TurboTaskGraph {
 	) {}
 
 	private dependsOn(pkg: GraphPackage, task: string): readonly string[] {
-		const own = pkg.tasks?.[task]?.dependsOn;
-		if (own !== undefined) return own;
-		return (
+		const inherited =
 			this.rootTasks[`${pkg.name}#${task}`]?.dependsOn ??
 			this.rootTasks[task]?.dependsOn ??
-			[]
-		);
+			[];
+		const own = pkg.tasks?.[task]?.dependsOn;
+		if (own === undefined) return inherited;
+		if (!own.includes(TURBO_EXTENDS)) return own;
+		return [...inherited, ...own.filter((entry) => entry !== TURBO_EXTENDS)];
 	}
 
 	/** The packages whose `build` turbo runs before `<pkg>#<task>` (and, for `build`, the package itself). */

@@ -335,7 +335,7 @@ export async function openStationGateway(
 		async close(reason) {
 			if (stopped) return;
 			const failures: unknown[] = [];
-			for (const proxy of [...localProxies]) {
+			for (const proxy of localProxies) {
 				try {
 					await proxy.close();
 					localProxies.delete(proxy);

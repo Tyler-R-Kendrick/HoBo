@@ -1722,6 +1722,15 @@ export function applyDenseChrome(message: string): string {
  */
 const SESSION_SERVE_FAILED = "session-serve-failed";
 
+/**
+ * The Station authorization `session serve --host` opened, if it did, and
+ * whether it handed it to the forward.
+ */
+interface OpenedAuthorization {
+	authorization?: OpenedGateway;
+	handedOff: boolean;
+}
+
 /** Close `gateway`, saying `reason`; the error, if closing failed. */
 async function closeAuthorization(
 	gateway: OpenedGateway,
@@ -3727,10 +3736,7 @@ export async function runHoboCodeCli(
 			// this verb's to close: the forward-sessions action hands it to the
 			// caller, which closes it when the forward ends. On any other way out
 			// of here (a refusal, or a throw after it opened) it is closed below.
-			const opened: {
-				authorization?: OpenedGateway;
-				handedOff: boolean;
-			} = { handedOff: false };
+			const opened: OpenedAuthorization = { handedOff: false };
 			const answer = await (async (): Promise<
 				HoboCodeCliResult | undefined
 			> => {

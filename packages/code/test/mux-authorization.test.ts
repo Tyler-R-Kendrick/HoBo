@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
 	chmodSync,
 	existsSync,
@@ -54,6 +54,7 @@ const roots: string[] = [];
 const servers: Server[] = [];
 const identities: ResolvedSshIdentity[] = [];
 afterEach(async () => {
+	tmux(["kill-session", "-t", `=${SESSION}`]);
 	for (const identity of identities.splice(0)) await identity.stop();
 	for (const server of servers.splice(0)) {
 		await new Promise((resolve) => server.close(resolve));
@@ -63,6 +64,14 @@ afterEach(async () => {
 		rmSync(root, { recursive: true, force: true });
 	}
 });
+
+/** The tmux session mux opens here, `--session t`. */
+const SESSION = "t";
+
+/** tmux on this test file's own server (test/isolate-tmux.ts); its status. */
+function tmux(args: readonly string[]): number | null {
+	return spawnSync("tmux", [...args], { stdio: "ignore" }).status;
+}
 
 function stationWithPam(hoboHome: string): void {
 	initStation({ hoboHome, id: STATION, tenant: "acme" });
@@ -379,5 +388,21 @@ describe("mux --host, signalled before its panes hold the leases", () => {
 		]);
 		expect(proxiesUnder(f.root)).toEqual([]);
 		expect(f.sockets()).toEqual([]);
+	}, 90_000);
+
+	it("while tmux is set up, kills the tmux session it created", async () => {
+		const f = await fixture();
+		const ended = await muxSignalled(f, "tmux");
+		expect(ended.code, ended.output).toBe(143);
+		expect(tmux(["has-session", "-t", `=${SESSION}`])).not.toBe(0);
+	}, 90_000);
+
+	it("while tmux is set up, leaves a session that was there before it", async () => {
+		const f = await fixture();
+		expect(tmux(["new-session", "-d", "-s", SESSION, "sleep 600"])).toBe(0);
+		const ended = await muxSignalled(f, "tmux");
+		expect(ended.code, ended.output).toBe(143);
+		expect(tmux(["has-session", "-t", `=${SESSION}`])).toBe(0);
+		expect(proxiesUnder(f.root)).toEqual([]);
 	}, 90_000);
 });

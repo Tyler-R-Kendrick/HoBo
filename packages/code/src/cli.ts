@@ -1746,6 +1746,27 @@ const MUX_FAILED = "mux-failed";
  */
 const MUX_INTERRUPTED = "mux-interrupted";
 
+/**
+ * Kill the tmux session `session`, which this run of mux created, on the
+ * server it is on, as tmux names its socket: only that session, by its exact
+ * name, so that a session the run found already there is never touched.
+ */
+async function killCreatedSession(
+	runner: MuxRunner,
+	session: string,
+): Promise<void> {
+	const where = await runner.run([
+		"display-message",
+		"-p",
+		"-t",
+		`=${session}:`,
+		"#{socket_path}",
+	]);
+	const socket = where.stdout.trim();
+	if (where.code !== 0 || socket.length === 0) return;
+	await runner.run(["-S", socket, "kill-session", "-t", `=${session}`]);
+}
+
 /** Close `gateway`, saying `reason` if any; the error, if closing failed. */
 async function closeAuthorization(
 	gateway: OpenedGateway,
@@ -3041,6 +3062,7 @@ export async function runHoboCodeCli(
 					{ agents, plan },
 				);
 			}
+			const muxRunner = deps.muxRunner ?? tmuxRunner();
 			const applied =
 				flags["dry-run"] === true
 					? {
@@ -3050,11 +3072,22 @@ export async function runHoboCodeCli(
 							existed: false,
 							detail: "dry run — no tmux invoked",
 						}
-					: await applyMux(plan, deps.muxRunner ?? tmuxRunner());
+					: await applyMux(plan, muxRunner);
 			// A signal held until now ends what mux opened rather than leave it
-			// to the panes: no proxy is retained, so the cleanup stops them all.
+			// to the panes: no proxy is retained, so the cleanup stops them all,
+			// and a tmux session this run created goes too, its panes' agent
+			// sockets gone with the proxies.
 			const signal = await interruption();
-			if (signal !== undefined) return interrupted(signal);
+			if (signal !== undefined) {
+				if (
+					flags["dry-run"] !== true &&
+					!applied.existed &&
+					applied.created.length > 0
+				) {
+					await killCreatedSession(muxRunner, plan.session);
+				}
+				return interrupted(signal);
+			}
 			const created = new Set(applied.created);
 			if (flags["dry-run"] !== true) {
 				for (const identity of resolvedIdentities) {

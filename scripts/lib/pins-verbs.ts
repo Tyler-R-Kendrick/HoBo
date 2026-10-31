@@ -8,9 +8,9 @@
 import { renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type GitPin, PINS_FILE, type Pins, PinsError } from "./pins.ts";
+import { bumpAsset } from "./pins-asset-bump.ts";
 import {
 	type AssetContext,
-	bumpAsset,
 	fetchAsset,
 	refuseOverridesInCi,
 	statusAsset,
@@ -38,6 +38,7 @@ export interface Request {
 	readonly drop: readonly string[];
 	readonly force: boolean;
 	readonly entry: string | undefined;
+	readonly member: string | undefined;
 	readonly names: readonly string[];
 	readonly allowLocal: boolean;
 }
@@ -250,6 +251,7 @@ export async function runBump(request: Request, pins: Pins): Promise<number> {
 			repo: request.repo,
 			drop: request.drop,
 			entry: request.entry,
+			member: request.member,
 			allowLocal: request.allowLocal,
 		},
 		assetContext(request),

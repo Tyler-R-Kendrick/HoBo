@@ -430,6 +430,21 @@ export function sns(options?: SnsOptions): SlotBinding {
 export interface SecretsManagerOptions {
 	readonly rotationDays?: number;
 	readonly kmsKeyRef?: string;
+	/**
+	 * Restore the secret if it is scheduled for deletion. Without it, apply
+	 * refuses a secret that is scheduled for deletion and says so. A directive,
+	 * not state: it changes what apply does, never what the secret is, so
+	 * preview and drift do not compare it (ADR-0175).
+	 */
+	readonly restoreScheduled?: boolean;
+	/**
+	 * Delete without a recovery window (`ForceDeleteWithoutRecovery`), also for
+	 * a secret already scheduled for deletion. The secret and its versions are
+	 * gone at once and cannot be restored. Without it, delete schedules the
+	 * deletion with AWS's default 30-day recovery window. A directive, not
+	 * state: it changes only what delete does (ADR-0175).
+	 */
+	readonly forceDelete?: boolean;
 }
 
 /**

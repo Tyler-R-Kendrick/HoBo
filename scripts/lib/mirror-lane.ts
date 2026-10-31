@@ -94,7 +94,7 @@ export const MIRROR_LANE_SERVICES = Object.freeze([
 export const MIRROR_LANE_SEED = "hobo-contract";
 
 const BUILD_HELP =
-	'build one from a mirror.cloud checkout with `CGO_ENABLED=0 go build -o <dir>/mirror ./cmd/mirror` and set MIRROR_BIN=<dir>/mirror (an unverified local build), or pin a mirror release with `pnpm run pins:bump mirror <tag>` and run `pnpm run pins:fetch mirror`: mirror publishes each release as mirror_<tag>_<os>_<arch>.tar.gz, so each target\'s pin is that archive\'s sha256 and size with "entry": "mirror", "archive": { "format": "tar.gz", "member": "mirror" } (asset pins that unpack an archive: ADR-0174, residuals)';
+	'build one from a mirror.cloud checkout with `CGO_ENABLED=0 go build -o <dir>/mirror ./cmd/mirror` and set MIRROR_BIN=<dir>/mirror (an unverified local build), or pin a mirror release with `pnpm run pins:bump mirror <tag>` and run `pnpm run pins:fetch mirror`: mirror publishes each release as mirror_<tag>_<os>_<arch>.tar.gz, so each target\'s pin is that archive\'s sha256 and size with "entry": "mirror", "archive": { "format": "tar.gz", "member": "mirror" } (asset pins for one member of a release archive: ADR-0169, amended 2026-10-31)';
 
 export interface MirrorBinary {
 	readonly path: string;

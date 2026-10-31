@@ -1717,7 +1717,8 @@ export function applyDenseChrome(message: string): string {
 
 /**
  * The reason recorded on `pam.SessionEnded` when `session serve --host` ends
- * without handing its Station authorization to the forward.
+ * without handing its Station authorization to the forward: a refusal, or a
+ * throw, once the authorization is open.
  */
 const SESSION_SERVE_FAILED = "session-serve-failed";
 
@@ -3795,7 +3796,6 @@ export async function runHoboCodeCli(
 					});
 					const auditTypes = gateway.auditTypes();
 					if (!outcome.ok) {
-						await gateway.close();
 						return fail(
 							"HOBO_CODE_SESSION_REMOTE_DENIED",
 							panel("✕ session", [
@@ -3807,7 +3807,6 @@ export async function runHoboCodeCli(
 						);
 					}
 					if (!auditTypes.includes("pam.SessionStarted")) {
-						await gateway.close();
 						return fail(
 							"HOBO_CODE_SESSION_REMOTE_AUDIT_MISSING",
 							panel("✕ session", [
@@ -3821,7 +3820,6 @@ export async function runHoboCodeCli(
 					try {
 						identity = await gateway.resolveSshIdentity(outcome.pane);
 					} catch (error) {
-						await gateway.close();
 						return fail(
 							"HOBO_CODE_SESSION_REMOTE_IDENTITY_UNAVAILABLE",
 							panel("✕ session", [
@@ -3866,8 +3864,8 @@ export async function runHoboCodeCli(
 					["hobo-code session --help", "hobo-code session list"],
 				);
 			} finally {
-				// Closing twice is closing once: the paths that close it themselves
-				// have.
+				// The one close on every way out but the hand-off, the refusals
+				// above included, so each pam.SessionEnded says why.
 				if (authorization !== undefined && !handedOff) {
 					await authorization.close(SESSION_SERVE_FAILED);
 				}

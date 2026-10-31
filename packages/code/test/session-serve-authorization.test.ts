@@ -18,14 +18,18 @@ import {
 } from "@hobo/stations";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { runHoboCodeCli } from "../src/cli.js";
+import { type HoboCodeCliResult, runHoboCodeCli } from "../src/cli.js";
 import { type JsonObject, parseJsonObject } from "../src/json.js";
-import { openStationGateway } from "../src/machine-sessions.js";
+import {
+	type OpenedGateway,
+	openStationGateway,
+	type StationBrokerContext,
+} from "../src/machine-sessions.js";
 
 // `hobo-code session serve --host <machine>` opens a Station authorization
 // and hands it to the forward, which closes it. If the verb ends any other
-// way once it is open, a throw included, the verb closes it: otherwise it
-// waited out its lease with no pam.SessionEnded in the Station's audit.
+// way once it is open, a refusal or a throw, the verb closes it, once, and the
+// Station's pam.SessionEnded says why: otherwise it waited out its lease.
 
 const STATION = "station:local";
 
@@ -55,77 +59,162 @@ function stationWithPam(hoboHome: string): void {
 	persistStationEvents(hoboHome, STATION, service.events);
 }
 
-function audit(hoboHome: string): readonly JsonObject[] {
-	const path = join(stationRoot(hoboHome, STATION), "pam-audit.jsonl");
+function auditPath(hoboHome: string): string {
+	return join(stationRoot(hoboHome, STATION), "pam-audit.jsonl");
+}
+
+/** The Station's audit, as `type` or `type(reason)` for a session's end. */
+function audit(hoboHome: string): readonly string[] {
+	const path = auditPath(hoboHome);
 	if (!existsSync(path)) return [];
 	return readFileSync(path, "utf8")
 		.split("\n")
 		.filter((line) => line.length > 0)
-		.map((line) => parseJsonObject(line));
+		.map((line): JsonObject => parseJsonObject(line))
+		.map((event) =>
+			event.type === "pam.SessionEnded"
+				? `${String(event.type)}(${String(event.reason)})`
+				: String(event.type),
+		);
+}
+
+interface Served {
+	readonly result: HoboCodeCliResult;
+	/** The reason of each close of the gateway, in order. */
+	readonly closes: readonly (string | undefined)[];
+	readonly hoboHome: string;
+}
+
+/**
+ * Run `session serve --host box` in process against a real local Station,
+ * with its gateway changed by `alter` (the real one when it changes nothing).
+ */
+async function serve(
+	alter: (
+		gateway: OpenedGateway,
+		context: StationBrokerContext,
+		hoboHome: string,
+	) => OpenedGateway = (gateway) => gateway,
+	upstream: "none" | "missing" = "none",
+): Promise<Served> {
+	const root = mkdtempSync(join(tmpdir(), "a"));
+	roots.push(root);
+	const hoboHome = join(root, "h");
+	const project = join(root, "p");
+	mkdirSync(project);
+	stationWithPam(hoboHome);
+	writeFileSync(
+		join(project, "devenv.machines.json"),
+		`${JSON.stringify({
+			machines: [
+				{ id: "box", host: "box.ts.net", isolationClass: "development" },
+			],
+		})}\n`,
+	);
+	const closes: (string | undefined)[] = [];
+	const result = await runHoboCodeCli(
+		[
+			"session",
+			"serve",
+			"--host",
+			"box",
+			"--port",
+			"4242",
+			"--station",
+			STATION,
+		],
+		{
+			hoboHome,
+			cwd: project,
+			env: { PATH: process.env.PATH ?? "", HOBO_HOME: hoboHome },
+			openStationGateway: async (context) => {
+				const gateway = await openStationGateway(
+					upstream === "missing"
+						? { ...context, sshAuthSock: join(root, "no-agent.sock") }
+						: context,
+				);
+				const altered = alter(gateway, context, hoboHome);
+				return {
+					...altered,
+					close: async (reason) => {
+						closes.push(reason);
+						await altered.close(reason);
+					},
+				};
+			},
+		},
+	);
+	return { result, closes, hoboHome };
 }
 
 describe("session serve --host, failing once the Station authorization is open", () => {
-	it("closes the authorization, and the Station's audit says why", async () => {
-		const root = mkdtempSync(join(tmpdir(), "hobo-serve-auth-"));
-		roots.push(root);
-		const hoboHome = join(root, "h");
-		const project = join(root, "p");
-		mkdirSync(project);
-		stationWithPam(hoboHome);
-		writeFileSync(
-			join(project, "devenv.machines.json"),
-			`${JSON.stringify({
-				machines: [
-					{ id: "box", host: "box.ts.net", isolationClass: "development" },
-				],
-			})}\n`,
-		);
-		const closes: (string | undefined)[] = [];
-		const result = await runHoboCodeCli(
-			[
-				"session",
-				"serve",
-				"--host",
-				"box",
-				"--port",
-				"4242",
-				"--station",
-				STATION,
-			],
-			{
-				hoboHome,
-				cwd: project,
-				env: { PATH: process.env.PATH ?? "", HOBO_HOME: hoboHome },
-				// The Station's own gateway, which throws once it has authorized
-				// the session: reading its audit types, the next step.
-				openStationGateway: async (context) => {
-					const gateway = await openStationGateway(context);
-					return {
-						...gateway,
-						auditTypes: () => {
-							throw new Error("the gateway's audit could not be read");
-						},
-						close: async (reason) => {
-							closes.push(reason);
-							await gateway.close(reason);
-						},
-					};
-				},
+	it("closes the authorization after a throw, and the Station's audit says why", async () => {
+		// The Station's own gateway, which throws once it has authorized the
+		// session: reading its audit types, the next step.
+		const served = await serve((gateway) => ({
+			...gateway,
+			auditTypes: () => {
+				throw new Error("the gateway's audit could not be read");
 			},
+		}));
+		expect(served.result.ok).toBe(false);
+		expect(served.result.code).toBe("HOBO_CODE_SESSION_FAILED");
+		expect(served.result.message).toContain(
+			"the gateway's audit could not be read",
 		);
-		expect(result.ok).toBe(false);
-		expect(result.code).toBe("HOBO_CODE_SESSION_FAILED");
-		expect(result.message).toContain("the gateway's audit could not be read");
-		expect(closes).toEqual(["session-serve-failed"]);
-		const events = audit(hoboHome);
-		expect(events.map((event) => event.type)).toEqual([
+		expect(served.closes).toEqual(["session-serve-failed"]);
+		expect(audit(served.hoboHome)).toEqual([
 			"pam.GatewayStarted",
 			"pam.SessionStarted",
-			"pam.SessionEnded",
+			"pam.SessionEnded(session-serve-failed)",
 			"pam.GatewayStopped",
 		]);
-		expect(events.find((event) => event.type === "pam.SessionEnded")).toEqual(
-			expect.objectContaining({ reason: "session-serve-failed" }),
+	});
+
+	it("closes it once, saying why, when the SSH agent cannot be resolved", async () => {
+		const served = await serve(undefined, "missing");
+		expect(served.result.code).toBe(
+			"HOBO_CODE_SESSION_REMOTE_IDENTITY_UNAVAILABLE",
 		);
+		expect(served.closes).toEqual(["session-serve-failed"]);
+		expect(audit(served.hoboHome)).toEqual([
+			"pam.GatewayStarted",
+			"pam.SessionStarted",
+			"pam.SessionEnded(session-serve-failed)",
+			"pam.GatewayStopped",
+		]);
+	});
+
+	it("closes it once, saying why, when the start audit event is missing", async () => {
+		const served = await serve((gateway) => ({
+			...gateway,
+			auditTypes: () => [],
+		}));
+		expect(served.result.code).toBe("HOBO_CODE_SESSION_REMOTE_AUDIT_MISSING");
+		expect(served.closes).toEqual(["session-serve-failed"]);
+		expect(audit(served.hoboHome)).toEqual([
+			"pam.GatewayStarted",
+			"pam.SessionStarted",
+			"pam.SessionEnded(session-serve-failed)",
+			"pam.GatewayStopped",
+		]);
+	});
+
+	it("closes it once when the Station refuses the session", async () => {
+		const served = await serve((gateway) => ({
+			...gateway,
+			broker: {
+				registerTarget: (target) => gateway.broker.registerTarget(target),
+				brokerSession: async () => {
+					throw new Error("policy denied browser access");
+				},
+			},
+		}));
+		expect(served.result.code).toBe("HOBO_CODE_SESSION_REMOTE_DENIED");
+		expect(served.closes).toEqual(["session-serve-failed"]);
+		expect(audit(served.hoboHome)).toEqual([
+			"pam.GatewayStarted",
+			"pam.GatewayStopped",
+		]);
 	});
 });

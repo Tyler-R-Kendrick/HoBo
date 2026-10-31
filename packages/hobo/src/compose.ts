@@ -246,7 +246,8 @@ export interface SelectIacProviderDeps {
 	readonly providers: readonly CloudProvider[];
 	// Optional Pulumi adapter override (forces the Pulumi lane; see above).
 	readonly adapter?: PulumiAutomationAdapter;
-	// The environment consulted for `VERCEL_TOKEN` (and `VERCEL_TEAM_ID`) /
+	// The environment consulted for `VERCEL_TOKEN` (and `VERCEL_TEAM_ID` /
+	// `VERCEL_ORG_ID`) /
 	// `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`. Defaults to `process.env`.
 	readonly env?: Record<string, string | undefined>;
 	// Optional injected transport for the Vercel client (tests mock the network).
@@ -446,15 +447,18 @@ function hostCredentialResolver(
 	};
 }
 
-// The Vercel team the environment names in `VERCEL_TEAM_ID`, trimmed, or
-// `undefined` when it is unset or blank (the name and the trim
-// `scripts/staging-cutover-demo.mts` already use, and the rule
-// `createVercelDeployProvider` applies to its own `teamId`). Both Vercel lanes
-// read it.
+// The Vercel team the environment names: `VERCEL_TEAM_ID` (the name
+// `scripts/staging-cutover-demo.mts` already uses), else `VERCEL_ORG_ID` (the
+// Vercel CLI's), each trimmed and taken as unset when blank, the rule
+// `createVercelDeployProvider` applies to its own `teamId`; `undefined` when
+// neither names one. Both Vercel lanes read it.
 function vercelTeamIdOf(
 	env: Record<string, string | undefined>,
 ): string | undefined {
-	return normalizeVercelTeamId(env.VERCEL_TEAM_ID);
+	return (
+		normalizeVercelTeamId(env.VERCEL_TEAM_ID) ??
+		normalizeVercelTeamId(env.VERCEL_ORG_ID)
+	);
 }
 
 // Build the OPT-IN resolver-backed deploy provider for whichever cloud the
@@ -517,8 +521,8 @@ function resolverBackedProviderFor(
 //   - else `VERCEL_TOKEN` present -> the REAL Vercel deploy provider (cred-gated).
 //
 // Both Vercel lanes (the deploy provider and the resolver plane) work in the
-// team `VERCEL_TEAM_ID` names, or in the token's own scope when it is unset or
-// blank (`vercelTeamIdOf`).
+// team `VERCEL_TEAM_ID`, else `VERCEL_ORG_ID`, names, or in the token's own
+// scope when neither does (`vercelTeamIdOf`).
 //
 // The resolver lane is OPT-IN and deliberately sits INSIDE the cred-gated
 // bracket: it can only replace the two bespoke deploy providers, never the

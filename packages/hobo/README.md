@@ -127,7 +127,7 @@ as a live deployment. IaC selection lives in `src/compose.ts`:
 | Real Pulumi Automation/CLI | `HOBO_PULUMI_LIVE=1` (engine- and credential-gated); its programs and `file://` state go in `HOBO_PULUMI_WORKDIR`, which is kept, else in a `hobo-pulumi-live-*` directory removed when the process ends (one `hobo:` line on stderr names it), so set `HOBO_PULUMI_WORKDIR` to keep the state |
 | Direct-HTTP resolver plane | a cloud credential **plus** `HOBO_DEPLOY_RESOLVERS=1` (opt-in) |
 | Live Cloudflare Workers | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` |
-| Live Vercel | `VERCEL_TOKEN` (and `VERCEL_TEAM_ID` for a project in a team) |
+| Live Vercel | `VERCEL_TOKEN` (and `VERCEL_TEAM_ID`, or `VERCEL_ORG_ID`, for a project in a team) |
 
 The live Vercel provider (`src/vercel-deploy-provider.ts`) deploys first, with
 one `POST /v13/deployments`. Only when Vercel refuses that because the project
@@ -159,14 +159,18 @@ lives only in another scope, so a missing `teamId`, or a wrong one the token can
 still deploy to, does not fail: it creates a second project of that name there
 and deploys to it. Set `teamId` (`createVercelDeployProvider({ token, teamId })`)
 for a project that lives in a team. `selectIacProvider`, and so `hobo up`, reads
-it from `VERCEL_TEAM_ID`, beside `VERCEL_TOKEN`. Both take it trimmed, and take
-an empty or blank one as none: the deploy and any create are then in the
-token's own scope. The resolver plane
+it from `VERCEL_TEAM_ID`, beside `VERCEL_TOKEN`, else from `VERCEL_ORG_ID`, the
+Vercel CLI's name for it. Both entry points take a team id trimmed, and take an
+empty or blank one as none: with none, the deploy and any create are in the
+token's own scope. The Vercel CLI's `VERCEL_ORG_ID` can name a personal
+account rather than a team; it is sent as `teamId` all the same, which Vercel
+may refuse, so unset it where it does not name a team (a blank `VERCEL_TEAM_ID`
+does not stop the fallback). The resolver plane
 (`HOBO_DEPLOY_RESOLVERS=1`) reads it the same way, and its project lookups and
 creates carry the same `teamId`. A run whose credentials come from OpenSesame
-(`HOBO_CREDENTIALS=opensesame`) keeps it too: the relaunched `hobo` starts from
-`@hobo/adapter-opensesame`'s allowlisted environment, and `VERCEL_TEAM_ID`, a
-team id and not a credential, is on that allowlist.
+(`HOBO_CREDENTIALS=opensesame`) keeps them too: the relaunched `hobo` starts from
+`@hobo/adapter-opensesame`'s allowlisted environment, and `VERCEL_TEAM_ID` and
+`VERCEL_ORG_ID`, team ids and not credentials, are on that allowlist.
 The outputs say what happened: `projectCreated` is `"true"` when this deployment
 created the project and `"false"` otherwise, and `scope` is the `teamId`, or
 `"token-default"` when there is none: the scope Vercel gives a request with no

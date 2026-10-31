@@ -549,9 +549,40 @@ describe("the composed provider's team (selectIacProvider, scripted transport, n
 	});
 
 	it.each([
+		[
+			"VERCEL_ORG_ID alone, trimmed",
+			{ VERCEL_ORG_ID: " team_org " },
+			"team_org",
+		],
+		[
+			"VERCEL_TEAM_ID over VERCEL_ORG_ID",
+			{ VERCEL_TEAM_ID: "team_acme", VERCEL_ORG_ID: "team_org" },
+			"team_acme",
+		],
+		[
+			"VERCEL_ORG_ID when VERCEL_TEAM_ID is blank",
+			{ VERCEL_TEAM_ID: "  ", VERCEL_ORG_ID: "team_org" },
+			"team_org",
+		],
+	])("takes the team from %s", async (_case, team, teamId) => {
+		const { outputs, queries } = await composedDeploy({
+			VERCEL_TOKEN: "tok",
+			...team,
+		});
+
+		expect(queries).toEqual([
+			`?teamId=${teamId}`,
+			`?teamId=${teamId}`,
+			`?teamId=${teamId}`,
+		]);
+		expect(outputs.scope).toBe(teamId);
+	});
+
+	it.each([
 		["unset", {}],
 		["empty", { VERCEL_TEAM_ID: "" }],
 		["blank", { VERCEL_TEAM_ID: "  " }],
+		["blank, VERCEL_ORG_ID too", { VERCEL_TEAM_ID: "", VERCEL_ORG_ID: " " }],
 	])("with VERCEL_TEAM_ID %s, stays in the token's own scope", async (_case, team) => {
 		const { outputs, queries } = await composedDeploy({
 			VERCEL_TOKEN: "tok",

@@ -896,6 +896,18 @@ describe("selectIacProvider: the Vercel resolver lane's team", () => {
 		}
 	});
 
+	it("falls back to VERCEL_ORG_ID, and VERCEL_TEAM_ID wins over it", async () => {
+		const org = await reconcileWith({ VERCEL_ORG_ID: " team_org " });
+		const both = await reconcileWith({
+			VERCEL_TEAM_ID: "team_acme",
+			VERCEL_ORG_ID: "team_org",
+		});
+
+		for (const request of org) expect(request).toMatch(/\?teamId=team_org$/u);
+		for (const request of both) expect(request).toMatch(/\?teamId=team_acme$/u);
+		expect([org.length, both.length]).toEqual([2, 2]);
+	});
+
 	it.each([
 		["unset", {}],
 		["empty", { VERCEL_TEAM_ID: "" }],

@@ -137,8 +137,14 @@ const PRELOADS = {
 type Window = keyof typeof PRELOADS;
 
 interface Ending {
-	/** What ends hobo-code: one of its signals, or the stand-in ssh exiting. */
-	readonly by: NodeJS.Signals | "ssh ends";
+	/**
+	 * What ends hobo-code: one of its signals, the stand-in ssh exiting, or
+	 * SIGKILL to the launcher, which passes nothing on: hobo-code then hangs
+	 * up on itself.
+	 */
+	readonly by: NodeJS.Signals | "ssh ends" | "the launcher killed";
+	/** A stand-in ssh that ignores the four ending signals, until SIGKILL. */
+	readonly stubbornSsh?: boolean;
 	/** Send the signal inside this window rather than once ssh runs. */
 	readonly inside?: Window;
 	/** Send the same signal again inside this window, after the first. */
@@ -178,7 +184,7 @@ async function forwardThenEnd(ending: Ending): Promise<Forwarded> {
 	const release = join(root, "ssh.release");
 	writeFileSync(
 		ssh,
-		`#!/bin/sh\necho $$ > '${pidFile}'\nwhile [ ! -e '${release}' ]; do sleep 0.1; done\nexit 0\n`,
+		`#!/bin/sh\n${ending.stubbornSsh === true ? "trap '' INT TERM HUP QUIT\n" : ""}echo $$ > '${pidFile}'\nwhile [ ! -e '${release}' ]; do sleep 0.1; done\nexit 0\n`,
 	);
 	chmodSync(ssh, 0o755);
 	const marker = join(root, "window");
@@ -246,6 +252,7 @@ async function forwardThenEnd(ending: Ending): Promise<Forwarded> {
 	);
 	if (forwarded && !closed) {
 		if (ending.by === "ssh ends") writeFileSync(release, "");
+		else if (ending.by === "the launcher killed") run.kill("SIGKILL");
 		else {
 			// The second window opens only after the first signal.
 			rmSync(marker, { force: true });
@@ -284,25 +291,59 @@ async function forwardThenEnd(ending: Ending): Promise<Forwarded> {
 describe.skipIf(process.platform !== "linux")(
 	"hobo-code forwarding a resident browser, ended",
 	() => {
-		for (const by of [
-			"SIGINT",
-			"SIGTERM",
-			"SIGHUP",
-			"SIGQUIT",
-			"ssh ends",
+		// The status each ending gives hobo-code: 128+n for signal n. The
+		// launcher reports the same when a signal kills hobo-code outright, and
+		// the launcher's group signal ends this ssh too, so these alone do not
+		// show that the forward stopped ssh: the last two cases end hobo-code
+		// where nothing but the forward can.
+		for (const [by, status] of [
+			["SIGINT", 130],
+			["SIGTERM", 143],
+			["SIGHUP", 129],
+			["SIGQUIT", 131],
+			["ssh ends", 0],
 		] as const) {
 			it(
-				`by ${by}: closes the Station authorization, and ssh is gone`,
+				`by ${by}: closes the Station authorization, ssh is gone, and the status is ${status}`,
 				async () => {
 					const ended = await forwardThenEnd({ by });
 					expect(ended.forwarded, ended.output).toBe(true);
 					expect(ended.audit, ended.output).toContain("pam.SessionStarted");
 					expect(ended.audit, ended.output).toContain("pam.SessionEnded");
 					expect(ended.standInEnded).toBe(true);
+					expect(ended.code, ended.output).toBe(status);
 				},
 				FORWARD_DEADLINE_MS + 3 * END_GRACE_MS,
 			);
 		}
+
+		it(
+			"by SIGKILL to the launcher, which passes nothing on: hobo-code hangs up on itself, stops ssh, and closes the authorization",
+			async () => {
+				// ssh is in hobo-code's process group, which nothing signals here:
+				// only the forward can stop it.
+				const ended = await forwardThenEnd({ by: "the launcher killed" });
+				expect(ended.forwarded, ended.output).toBe(true);
+				expect(ended.audit, ended.output).toContain("pam.SessionEnded");
+				expect(ended.standInEnded).toBe(true);
+			},
+			FORWARD_DEADLINE_MS + 3 * END_GRACE_MS,
+		);
+
+		it(
+			"by SIGTERM, with an ssh that ignores it: ssh is killed 5 s on, and the authorization closed",
+			async () => {
+				const ended = await forwardThenEnd({
+					by: "SIGTERM",
+					stubbornSsh: true,
+				});
+				expect(ended.forwarded, ended.output).toBe(true);
+				expect(ended.audit, ended.output).toContain("pam.SessionEnded");
+				expect(ended.standInEnded).toBe(true);
+				expect(ended.code, ended.output).toBe(143);
+			},
+			FORWARD_DEADLINE_MS + 3 * END_GRACE_MS,
+		);
 	},
 );
 

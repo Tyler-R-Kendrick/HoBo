@@ -5,14 +5,14 @@
  * deleted on any mismatch before anything is extracted or made executable
  * (the discipline of `scripts/fetch-celld.mts`, generalised). The cache is
  * keyed by content: `<cache>/<sha256>/<entry>`, so two pins of the same bytes
- * share one directory and a cached file is trusted only after being re-hashed.
+ * share one directory and a cached file is trusted only after being re-hashed
+ * (`pins-verify.ts`).
  *
  * Erasable TypeScript with node builtins only.
  */
 import { createHash } from "node:crypto";
 import {
 	closeSync,
-	createReadStream,
 	fchmodSync,
 	fstatSync,
 	mkdirSync,
@@ -22,20 +22,22 @@ import {
 	rmSync,
 	writeSync,
 } from "node:fs";
-import { lstat, rm } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import { type AssetFile, assertAllowedUrl, PinsError } from "./pins.ts";
-import { cachedPath } from "./pins-assets.ts";
+import { extractMember } from "./pins-archive.ts";
+import { cachedArchivePath, cachedPath } from "./pins-assets.ts";
 import { prepareCache } from "./pins-cache.ts";
 import { netTimeout, netTimeoutMs, Watchdog } from "./pins-net.ts";
 import { armGuard, partialPath, removeEmptyDirs } from "./pins-partial.ts";
+import { verifyCached, verifyFile } from "./pins-verify.ts";
 
-export async function sha256OfFile(path: string): Promise<string> {
-	const hash = createHash("sha256");
-	for await (const chunk of createReadStream(path)) hash.update(chunk);
-	return hash.digest("hex");
-}
+export {
+	type CacheState,
+	sha256OfFile,
+	verifyCached,
+} from "./pins-verify.ts";
 
 /** The sha256 of the first `length` bytes of an open file, read through `fd`. */
 function sha256OfFd(fd: number, length: number): string {
@@ -289,42 +291,12 @@ export async function fetchText(
 	}
 }
 
-export type CacheState =
-	| { readonly state: "absent" }
-	| { readonly state: "ok" }
-	| { readonly state: "mismatch"; readonly actual: string }
-	/** Something is there that is not a regular file: a link, a directory, a device. */
-	| { readonly state: "invalid"; readonly reason: string };
-
-function describeKind(info: Awaited<ReturnType<typeof lstat>>): string {
-	if (info.isSymbolicLink()) return "a symbolic link";
-	if (info.isDirectory()) return "a directory";
-	return "not a regular file";
-}
-
-/**
- * Re-hash what the cache holds for `file`; never trusts a file by its name,
- * and never reads anything but a regular file (a link to a correct file, or to
- * /dev/zero, is not a verified file).
- */
-export async function verifyCached(
-	cache: string,
-	file: AssetFile,
-): Promise<CacheState> {
-	const path = cachedPath(cache, file);
-	let info: Awaited<ReturnType<typeof lstat>>;
-	try {
-		info = await lstat(path);
-	} catch (error) {
-		if (error instanceof Error && "code" in error && error.code === "ENOENT")
-			return { state: "absent" };
-		throw error;
-	}
-	if (!info.isFile()) return { state: "invalid", reason: describeKind(info) };
-	const actual = await sha256OfFile(path);
-	return actual === file.sha256
-		? { state: "ok" }
-		: { state: "mismatch", actual };
+export interface Cached {
+	readonly path: string;
+	/** The file (or, for an archive pin, the archive) was downloaded now. */
+	readonly downloaded: boolean;
+	/** An archive pin's entry was unpacked now, from the verified archive. */
+	readonly unpacked: boolean;
 }
 
 /** The cached path of `file`, downloading and verifying it first when needed. */
@@ -332,18 +304,32 @@ export async function ensureCached(
 	cache: string,
 	file: AssetFile,
 	options: FetchOptions = {},
-): Promise<{ readonly path: string; readonly downloaded: boolean }> {
+): Promise<Cached> {
 	await prepareCache(cache, file.sha256);
 	const path = cachedPath(cache, file);
+	const downloadTo =
+		file.archive === undefined ? path : cachedArchivePath(cache, file);
 	const state = await verifyCached(cache, file);
-	if (state.state === "ok") return { path, downloaded: false };
-	if (state.state === "mismatch") await rm(path, { force: true });
+	if (state.state === "ok") return { path, downloaded: false, unpacked: false };
+	if (state.state === "mismatch") await rm(state.path, { force: true });
 	if (state.state === "invalid")
-		await rm(path, { recursive: true, force: true });
-	await fetchVerified(file.url, file.sha256, path, {
-		...options,
-		maxBytes: file.size,
-		expectedSize: file.size,
-	});
-	return { path, downloaded: true };
+		await rm(state.path, { recursive: true, force: true });
+	let downloaded = false;
+	const fetched =
+		file.archive === undefined
+			? state
+			: await verifyFile(downloadTo, file.sha256);
+	if (fetched.state !== "ok") {
+		await fetchVerified(file.url, file.sha256, downloadTo, {
+			...options,
+			maxBytes: file.size,
+			expectedSize: file.size,
+		});
+		downloaded = true;
+	}
+	if (file.archive === undefined) return { path, downloaded, unpacked: false };
+	// Only now, with the archive verified, is anything unpacked from it.
+	await rm(path, { recursive: true, force: true });
+	await extractMember(downloadTo, file.archive.member, path, file.sha256);
+	return { path, downloaded, unpacked: true };
 }

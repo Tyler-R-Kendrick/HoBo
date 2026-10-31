@@ -34,6 +34,10 @@
  *   (lib/turbo-task-graph `orderedDependency`); a violation says how the
  *   package declared the sibling, and which file sets the setting or which
  *   default applies.
+ * - What it does not model fails, naming the file and why, rather than
+ *   passing unseen: a `catalog:` specifier that may name a workspace package;
+ *   with link-workspace-packages on, a version range or tag on one; and a
+ *   submodule inside a submodule.
  * - Files git tracks that the checkout leaves out (a sparse checkout, or a
  *   submodule never initialised) cannot be read. The check names how many it
  *   skipped and passes with a warning; under `--strict`, or in CI (`CI` set,
@@ -96,8 +100,16 @@ export interface Skipped {
 	readonly submodules: readonly string[];
 }
 
+/** A declaration or a checkout this check does not model, so it fails rather than guesses. */
+export interface Unmodelled {
+	/** The manifest that declares it, or the nested submodule's path. */
+	readonly file: string;
+	readonly reason: string;
+}
+
 export interface Report {
 	readonly violations: readonly Violation[];
+	readonly unmodelled: readonly Unmodelled[];
 	readonly skipped: Skipped;
 }
 
@@ -108,6 +120,7 @@ export interface CheckOptions {
 
 interface Manifest {
 	readonly name?: string;
+	readonly version?: string;
 	readonly packageManager?: string;
 	readonly scripts?: Readonly<Record<string, string>>;
 	readonly dependencies?: Readonly<Record<string, string>>;
@@ -127,6 +140,8 @@ export interface Workspace {
 	readonly packages: readonly WorkspacePackage[];
 	readonly graph: TurboTaskGraph;
 	readonly link: LinkWorkspacePackages;
+	/** Declarations whose ordering this check cannot tell. */
+	readonly unmodelled: readonly Unmodelled[];
 }
 
 const ORDERING_FIELDS = [
@@ -174,31 +189,59 @@ function walk(root: string, dir = ""): string[] {
 
 /**
  * git's tracked files (submodules' included) when `root` is a work tree's top,
- * else undefined; and the submodules that are not checked out.
+ * else undefined; the submodules that are not checked out; and any submodule
+ * inside a checked-out one, which this check does not model.
  */
-function trackedFiles(
-	root: string,
-): { files: string[]; submodules: string[] } | undefined {
+function trackedFiles(root: string):
+	| {
+			files: string[];
+			submodules: string[];
+			nested: Unmodelled[];
+	  }
+	| undefined {
 	try {
-		const git = (args: string[]) =>
-			execFileSync("git", ["-C", root, ...args], {
+		const git = (cwd: string, args: string[]) =>
+			execFileSync("git", ["-C", cwd, ...args], {
 				encoding: "utf8",
 				maxBuffer: GIT_OUTPUT_MAX_BUFFER,
 				stdio: ["ignore", "pipe", "ignore"],
 			});
 		if (
-			realpathSync(git(["rev-parse", "--show-toplevel"]).trim()) !==
+			realpathSync(git(root, ["rev-parse", "--show-toplevel"]).trim()) !==
 			realpathSync(root)
 		)
 			return undefined;
-		const lines = (args: string[]) => git(args).split("\0").filter(Boolean);
-		return {
-			files: lines(["ls-files", "-z", "--recurse-submodules"]),
-			// `<mode> <object> <stage>\t<path>`; a gitlink is mode 160000.
-			submodules: lines(["ls-files", "-z", "--stage"])
+		// `<mode> <object> <stage>\t<path>`; a gitlink is mode 160000.
+		const gitlinks = (dir: string) =>
+			git(dir, ["ls-files", "-z", "--stage"])
+				.split("\0")
 				.filter((line) => line.startsWith("160000 "))
-				.map((line) => line.slice(line.indexOf("\t") + 1))
-				.filter((path) => !existsSync(join(root, path, ".git"))),
+				.map((line) => line.slice(line.indexOf("\t") + 1));
+		const top = gitlinks(root);
+		const checkedOut = top.filter((path) =>
+			existsSync(join(root, path, ".git")),
+		);
+		return {
+			files: git(root, ["ls-files", "-z", "--recurse-submodules"])
+				.split("\0")
+				.filter(Boolean),
+			submodules: top.filter((path) => !checkedOut.includes(path)),
+			nested: checkedOut.flatMap((path): Unmodelled[] => {
+				try {
+					return gitlinks(join(root, path)).map((inner) => ({
+						file: `${path}/${inner}`,
+						reason: `a submodule inside the submodule ${path}, which this check does not model`,
+					}));
+				} catch {
+					return [
+						{
+							file: path,
+							reason:
+								"a submodule git cannot list, so this check cannot tell what is inside it",
+						},
+					];
+				}
+			}),
 		};
 	} catch {
 		return undefined;
@@ -257,17 +300,28 @@ export function readWorkspace(
 		const manifest = readJson<Manifest>(join(root, file));
 		if (manifest?.name) found.push({ dir, manifest });
 	}
+	const workspaceYaml = readText(join(root, "pnpm-workspace.yaml")) ?? "";
+	// A catalog entry with a workspace: specifier can order a build under any key.
+	const catalogNamesWorkspace = /^\s+[^#\s][^:]*:\s*["']?workspace:/mu.test(
+		workspaceYaml,
+	);
 	const link = linkWorkspacePackages({
 		packageManager: readJson<Manifest>(join(root, "package.json"))
 			?.packageManager,
 		npmrc: readText(join(root, ".npmrc")),
-		workspaceYaml: readText(join(root, "pnpm-workspace.yaml")),
+		workspaceYaml,
 	});
 	const names = new Set(found.map((item) => item.manifest.name!));
 	const atDir = new Map(found.map((item) => [item.dir, item.manifest.name!]));
+	const versions = new Map(
+		found.map((item) => [item.manifest.name!, item.manifest.version]),
+	);
+	const unmodelled: Unmodelled[] = [];
 	const packages = found.map(({ dir, manifest }): WorkspacePackage => {
 		const index: WorkspaceIndex = {
 			byName: (name) => (names.has(name) ? name : undefined),
+			versionOf: (name) => versions.get(name),
+			catalogNamesWorkspace,
 			// From the dependent's directory, else (as turbo also tries) from the root.
 			byPath: (path) =>
 				atDir.get(posix.normalize(posix.join(dir, path))) ??
@@ -284,9 +338,19 @@ export function readWorkspace(
 		const unordered = new Map<string, string>();
 		for (const field of ORDERING_FIELDS)
 			for (const [key, specifier] of Object.entries(manifest[field] ?? {})) {
-				if (!specifier.startsWith("workspace:") && !names.has(key)) continue;
+				if (
+					!specifier.startsWith("workspace:") &&
+					!specifier.startsWith("catalog:") &&
+					!names.has(key)
+				)
+					continue;
 				const ordered = orderedDependency(key, specifier, link, index);
-				if (ordered.target !== undefined) dependencies.push(ordered.target);
+				if (ordered.kind === "ordered") dependencies.push(ordered.target);
+				else if (ordered.kind === "unmodelled")
+					unmodelled.push({
+						file: `${dir}/package.json`,
+						reason: `"${key}": "${specifier}", ${ordered.reason}`,
+					});
 				else if (names.has(key)) unordered.set(key, ordered.reason);
 			}
 		return {
@@ -307,7 +371,7 @@ export function readWorkspace(
 		readJson<{ tasks?: Record<string, TaskConfig> }>(join(root, "turbo.json"))
 			?.tasks ?? {},
 	);
-	return { packages, graph, link };
+	return { packages, graph, link, unmodelled };
 }
 
 /** Whether `path` (relative to its package) is a test file, a test helper or a vitest config. */
@@ -435,7 +499,7 @@ function missingFiles(
 	});
 }
 
-/** The violations under `root`, and what the checkout left out (see the header). */
+/** The violations under `root`, what it cannot model, and what the checkout left out (see the header). */
 export function scanTestWorkspaceDeps(
 	root: string,
 	options: CheckOptions = {},
@@ -449,7 +513,8 @@ export function scanTestWorkspaceDeps(
 		),
 		submodules: tracked?.submodules ?? [],
 	};
-	const { packages, graph } = readWorkspace(root, files);
+	const workspace = readWorkspace(root, files);
+	const { packages, graph } = workspace;
 	const byName = new Map(packages.map((pkg) => [pkg.name, pkg]));
 	const byDir = [...packages].sort((a, b) => b.dir.length - a.dir.length);
 	const owner = (path: string) =>
@@ -550,7 +615,10 @@ export function scanTestWorkspaceDeps(
 	violations.sort((a, b) =>
 		order(a) < order(b) ? -1 : order(a) > order(b) ? 1 : 0,
 	);
-	return { violations, skipped };
+	const unmodelled = [...workspace.unmodelled, ...(tracked?.nested ?? [])].sort(
+		(a, b) => (`${a.file}\0${a.reason}` < `${b.file}\0${b.reason}` ? -1 : 1),
+	);
+	return { violations, unmodelled, skipped };
 }
 
 /** Whether `CI` names a CI run: set, and not empty, `0` or `false`. */
@@ -596,10 +664,10 @@ if (
 			? resolve(args[rootArg + 1]!)
 			: join(dirname(fileURLToPath(import.meta.url)), "..");
 	const strict = args.includes("--strict") || inCi(process.env.CI);
-	const { violations, skipped } = scanTestWorkspaceDeps(root);
+	const { violations, unmodelled, skipped } = scanTestWorkspaceDeps(root);
 	if (args.includes("--json"))
 		process.stdout.write(
-			`${JSON.stringify({ violations, skipped }, null, "\t")}\n`,
+			`${JSON.stringify({ violations, unmodelled, skipped }, null, "\t")}\n`,
 		);
 	else
 		for (const item of violations)
@@ -608,8 +676,14 @@ if (
 					? `${item.file}: ${item.package}#${item.task} loads ${item.imports} (${item.specifier}), and turbo builds it after; declare it in devDependencies with "workspace:*" if the test imports it by name, else add "${item.imports}#build" to "${item.package}#${item.task}".dependsOn in turbo.json\n`
 					: `${item.file}: ${item.package}#${item.task} loads ${item.imports} (${item.specifier}), and turbo builds it after: ${item.package} declares it as ${item.declared}; write "workspace:*"\n`,
 			);
+	for (const item of unmodelled)
+		process.stderr.write(`error: ${item.file}: ${item.reason}\n`);
 	const lines = skippedLines(skipped, strict ? "error" : "warning");
 	for (const line of lines) process.stderr.write(`${line}\n`);
 	process.exitCode =
-		violations.length === 0 && (!strict || lines.length === 0) ? 0 : 1;
+		violations.length === 0 &&
+		unmodelled.length === 0 &&
+		(!strict || lines.length === 0)
+			? 0
+			: 1;
 }

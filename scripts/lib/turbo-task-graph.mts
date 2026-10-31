@@ -97,12 +97,24 @@ export interface WorkspaceIndex {
 	byPath(path: string): string | undefined;
 	/** Whether a path relative to the dependent's directory stays in the repository. */
 	inside(path: string): boolean;
+	/** The `version` of the workspace package of that name, if it has one. */
+	versionOf(name: string): string | undefined;
+	/** Whether a pnpm catalog may name a workspace package (pnpm-workspace.yaml says `workspace:`). */
+	readonly catalogNamesWorkspace: boolean;
 }
 
-/** The workspace package turbo orders a dependency on, or why it orders none. */
+/**
+ * The workspace package turbo orders a dependency on; why it orders none; or
+ * why this model cannot tell, which the check reports rather than guesses.
+ */
 export type Ordered =
-	| { readonly target: string }
-	| { readonly target?: undefined; readonly reason: string };
+	| { readonly kind: "ordered"; readonly target: string }
+	| { readonly kind: "external"; readonly reason: string }
+	| { readonly kind: "unmodelled"; readonly reason: string };
+
+/** `1.2.3`, `1.2.3-rc.1`, with an optional `=`/`v` and build metadata, which semver ignores. */
+const EXACT_VERSION =
+	/^[=v]?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)(?:\+[0-9A-Za-z.-]+)?$/u;
 
 /**
  * Whether turbo's dependency splitter (2.11.10) counts `"<key>": "<specifier>"`
@@ -112,13 +124,14 @@ export type Ordered =
  *   anything else names `<key>`. A path is read from the dependent's directory,
  *   then from the repository root.
  * - Anything else counts only where link-workspace-packages is on, and names
- *   `<key>`: a version, `*`, `npm:<range>`, or a `file:`/`link:` path that
- *   stays in the repository. Not an npm alias (`npm:<name>@<version>`) or
- *   another protocol (`github:`, `git+https:`, `catalog:`, which is not
- *   resolved here).
+ *   `<key>`: `*`, a version the workspace package's own matches, or a
+ *   `file:`/`link:` path that stays in the repository. Not an npm alias
+ *   (`npm:<name>@<version>`) or another protocol (`github:`, `git+https:`).
  *
- * Not modelled: with link-workspace-packages on, turbo leaves a version or
- * range the workspace package's version does not satisfy external.
+ * Unmodelled, so reported: a `catalog:` specifier where the key names a
+ * workspace package or a catalog may (turbo resolves the catalog first), and,
+ * with link-workspace-packages on, a range or tag (turbo decides it with a
+ * semver parser this model does not have).
  */
 export function orderedDependency(
 	key: string,
@@ -127,12 +140,22 @@ export function orderedDependency(
 	index: WorkspaceIndex,
 ): Ordered {
 	const external = (reason: string): Ordered => ({
+		kind: "external",
 		reason: `"${specifier}", and turbo ${reason}`,
 	});
 	const found = (target: string | undefined): Ordered =>
 		target === undefined
 			? external("finds no workspace package it names")
-			: { target };
+			: { kind: "ordered", target };
+	if (
+		specifier.startsWith("catalog:") &&
+		(index.byName(key) !== undefined || index.catalogNamesWorkspace)
+	)
+		return {
+			kind: "unmodelled",
+			reason:
+				"a catalog this check does not resolve; turbo may order the build it names",
+		};
 	if (specifier.startsWith("workspace:")) {
 		const rest = specifier.slice("workspace:".length);
 		const alias = /^(.+)@[*^~]$/u.exec(rest)?.[1];
@@ -146,17 +169,33 @@ export function orderedDependency(
 	const colon = specifier.indexOf(":");
 	const protocol = colon < 0 ? undefined : specifier.slice(0, colon);
 	const version = specifier.slice(colon + 1);
-	if (protocol === "file" || protocol === "link") {
-		if (!index.inside(version))
-			return external(`orders no ${protocol}: path outside the repository`);
-	} else if (protocol === "npm") {
-		if (/^@?[^@]+@/u.test(version))
-			return external("orders no npm alias to another package");
-	} else if (protocol !== undefined)
+	if (protocol === "file" || protocol === "link")
+		return index.inside(version)
+			? found(index.byName(key))
+			: external(`orders no ${protocol}: path outside the repository`);
+	if (protocol === "npm" && /^@?[^@]+@/u.test(version))
+		return external("orders no npm alias to another package");
+	if (protocol !== undefined && protocol !== "npm")
 		return external(
 			`orders no ${protocol}: specifier although link-workspace-packages is on (${link.source})`,
 		);
-	return found(index.byName(key));
+	const target = index.byName(key);
+	if (target === undefined || version === "*") return found(target);
+	const own = index.versionOf(target) ?? "";
+	if (own === "")
+		return external("orders no version on a workspace package that has none");
+	const ownExact = EXACT_VERSION.exec(own)?.[1];
+	// turbo counts a workspace package whose version it cannot parse.
+	if (ownExact === undefined) return found(target);
+	const wanted = EXACT_VERSION.exec(version)?.[1];
+	if (wanted !== undefined)
+		return wanted === ownExact
+			? found(target)
+			: external(`orders no version other than the workspace package's ${own}`);
+	return {
+		kind: "unmodelled",
+		reason: `a range or tag this check does not compare with the workspace package's ${own} (link-workspace-packages is on: ${link.source})`,
+	};
 }
 
 export interface TaskConfig {

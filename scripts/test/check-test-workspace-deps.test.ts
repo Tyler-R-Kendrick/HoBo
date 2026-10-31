@@ -19,7 +19,10 @@ import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { checkTestWorkspaceDeps } from "../check-test-workspace-deps.mts";
+import {
+	checkTestWorkspaceDeps,
+	scanTestWorkspaceDeps,
+} from "../check-test-workspace-deps.mts";
 import { importSpecifiersOf } from "../lib/test-import-specifiers.mts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -561,6 +564,136 @@ describe("checkTestWorkspaceDeps", () => {
 		);
 	});
 
+	it("refuses a catalog: specifier it cannot resolve, naming the manifest", () => {
+		const fixture = (yaml: string) => ({
+			...base,
+			"pnpm-workspace.yaml": `${base["pnpm-workspace.yaml"]}${yaml}`,
+			"packages/app/package.json": manifest("@s/app", {
+				devDependencies: { "@s/lib": "catalog:", "left-pad": "catalog:" },
+			}),
+		});
+		const unmodelled = (yaml: string) =>
+			within(fixture(yaml), (dir) =>
+				scanTestWorkspaceDeps(dir).unmodelled.map(
+					(item) => `${item.file}: ${item.reason}`,
+				),
+			);
+		const lib =
+			'packages/app/package.json: "@s/lib": "catalog:", a catalog this check does not resolve; turbo may order the build it names';
+		// left-pad names no workspace package, so its catalog entry orders nothing,
+		// unless the catalog itself names a workspace package.
+		assert.deepEqual(unmodelled("catalog:\n  left-pad: 1.3.0\n"), [lib]);
+		assert.deepEqual(unmodelled('catalog:\n  left-pad: "workspace:*"\n'), [
+			lib,
+			'packages/app/package.json: "left-pad": "catalog:", a catalog this check does not resolve; turbo may order the build it names',
+		]);
+	});
+
+	it("refuses a version range on a workspace sibling where link-workspace-packages is on", () => {
+		within(
+			{
+				...base,
+				".npmrc": "link-workspace-packages=true\n",
+				"packages/lib/package.json": JSON.stringify({
+					name: "@s/lib",
+					version: "1.2.3",
+					scripts: { build: "tsc" },
+				}),
+				"packages/exact/package.json": manifest("@s/exact", {
+					devDependencies: { "@s/lib": "1.2.3" },
+				}),
+				"packages/exact/test/a.test.ts": 'import "@s/lib";\n',
+				"packages/other/package.json": manifest("@s/other", {
+					devDependencies: { "@s/lib": "1.2.4" },
+				}),
+				"packages/other/test/a.test.ts": 'import "@s/lib";\n',
+				"packages/ranged/package.json": manifest("@s/ranged", {
+					devDependencies: { "@s/lib": "^1.2.0" },
+				}),
+				"packages/tagged/package.json": manifest("@s/tagged", {
+					devDependencies: { "@s/lib": "npm:latest" },
+				}),
+			},
+			(dir) => {
+				const report = scanTestWorkspaceDeps(dir);
+				// turbo orders "1.2.3" against 1.2.3 and not "1.2.4"; a range or a tag
+				// it decides with a semver parser this check does not have.
+				assert.deepEqual(
+					report.violations.map((item) => `${item.package}: ${item.declared}`),
+					[
+						'@s/other: "1.2.4", and turbo orders no version other than the workspace package\'s 1.2.3',
+					],
+				);
+				assert.deepEqual(
+					report.unmodelled.map((item) => `${item.file}: ${item.reason}`),
+					[
+						'packages/ranged/package.json: "@s/lib": "^1.2.0", a range or tag this check does not compare with the workspace package\'s 1.2.3 (link-workspace-packages is on: .npmrc sets it)',
+						'packages/tagged/package.json: "@s/lib": "npm:latest", a range or tag this check does not compare with the workspace package\'s 1.2.3 (link-workspace-packages is on: .npmrc sets it)',
+					],
+				);
+			},
+		);
+	});
+
+	it("refuses a submodule inside a submodule, naming its path", () => {
+		within(
+			{
+				...base,
+				"packages/app/package.json": manifest("@s/app"),
+				"external/sub/README.md": "sub\n",
+			},
+			(dir) => {
+				const git = (cwd: string, ...args: string[]) =>
+					execFileSync(
+						"git",
+						[
+							"-c",
+							"commit.gpgsign=false",
+							"-c",
+							"user.name=t",
+							"-c",
+							"user.email=t@t",
+							...args,
+						],
+						{ cwd, stdio: "pipe" },
+					)
+						.toString()
+						.trim();
+				const sub = join(dir, "external/sub");
+				git(sub, "init", "-q");
+				git(sub, "add", ".");
+				git(sub, "commit", "-qm", "sub");
+				const subHead = git(sub, "rev-parse", "HEAD");
+				// A gitlink inside the submodule: a submodule of the submodule.
+				git(
+					sub,
+					"update-index",
+					"--add",
+					"--cacheinfo",
+					`160000,${subHead},vendor/nested`,
+				);
+				git(sub, "commit", "-qm", "nested");
+				git(dir, "init", "-q");
+				git(dir, "add", "pnpm-workspace.yaml", "turbo.json", "packages");
+				git(
+					dir,
+					"update-index",
+					"--add",
+					"--cacheinfo",
+					`160000,${git(sub, "rev-parse", "HEAD")},external/sub`,
+				);
+				assert.deepEqual(
+					scanTestWorkspaceDeps(dir).unmodelled.map(
+						(item) => `${item.file}: ${item.reason}`,
+					),
+					[
+						"external/sub/vendor/nested: a submodule inside the submodule external/sub, which this check does not model",
+					],
+				);
+			},
+		);
+	});
+
 	it("warns about tracked files a sparse checkout left out, and fails on them under --strict or in CI", () => {
 		const reaches = 'import { x } from "@s/lib";\n';
 		within(
@@ -644,12 +777,15 @@ describe("checkTestWorkspaceDeps", () => {
 	});
 
 	it("finds no such test in this repository", () => {
-		const violations = checkTestWorkspaceDeps(root);
+		const { violations, unmodelled } = scanTestWorkspaceDeps(root);
 		assert.deepEqual(
-			violations.map(
-				(item) =>
-					`${item.file} [${item.task}]: ${item.package} -> ${item.imports}`,
-			),
+			[
+				...violations.map(
+					(item) =>
+						`${item.file} [${item.task}]: ${item.package} -> ${item.imports}`,
+				),
+				...unmodelled.map((item) => `${item.file}: ${item.reason}`),
+			],
 			[],
 		);
 	});

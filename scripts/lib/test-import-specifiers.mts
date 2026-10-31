@@ -272,6 +272,22 @@ function calledSpecifier(
  */
 export const COMPUTED = "\u0000";
 
+/**
+ * Stands for a computed part that is visibly a temporary directory: a call to
+ * `tmpdir()`, `mkdtemp(…)` or `mkdtempSync(…)`, a path built on one
+ * (`join(tmpdir(), "x")`, `realpathSync(…)` of one), a literal under `/tmp/`,
+ * or a name every binding of which in the file is one. A parameter, a loop
+ * variable or a destructured name is not visibly one. It is computed too.
+ */
+export const TEMPORARY = `${COMPUTED}\u0001`;
+
+const TEMPORARY_LITERAL = /^\/tmp(?:\/|$)/u;
+
+/** Whether an assembled path is rooted at a temporary directory (`TEMPORARY`, or a literal `/tmp/…`). */
+export function isTemporaryPath(text: string): boolean {
+	return text.startsWith(TEMPORARY) || TEMPORARY_LITERAL.test(text);
+}
+
 /** What a file names, read from one parse. */
 export interface ModuleFacts {
 	/** Every module specifier, in source order. */
@@ -282,7 +298,8 @@ export interface ModuleFacts {
 	 * `/`, a spread of an array literal, or of a name bound to one, read as its
 	 * elements; and each `+` chain with a string in it, concatenated. A
 	 * substitution, a non-literal argument or operand, or any other spread
-	 * reads `COMPUTED`.
+	 * reads `COMPUTED`, or `TEMPORARY` where it is visibly a temporary
+	 * directory.
 	 */
 	readonly paths: string[];
 	/**
@@ -320,15 +337,106 @@ function calleeName(node: ts.Expression): string | undefined {
 	return undefined;
 }
 
-function templateText(node: ts.Node): string | undefined {
+/** A literal's text, a substitution in it read by `part` (`COMPUTED` by default). */
+function templateText(
+	node: ts.Node,
+	part: (expression: ts.Expression) => string = () => COMPUTED,
+): string | undefined {
 	if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))
 		return node.text;
 	if (ts.isTemplateExpression(node))
 		return [
 			node.head.text,
-			...node.templateSpans.map((span) => `${COMPUTED}${span.literal.text}`),
+			...node.templateSpans.map(
+				(span) => `${part(span.expression)}${span.literal.text}`,
+			),
 		].join("");
 	return undefined;
+}
+
+const TEMPORARY_MAKERS = new Set(["tmpdir", "mkdtemp", "mkdtempSync"]);
+/** Calls whose result is rooted where their first argument is. */
+const ROOT_KEEPING = new Set([
+	"join",
+	"resolve",
+	"normalize",
+	"realpath",
+	"realpathSync",
+]);
+
+/** Whether `node` is visibly a temporary directory (`TEMPORARY`), given the names that are. */
+function isTemporary(node: ts.Expression, names: ReadonlySet<string>): boolean {
+	const inner = unwrap(node);
+	if (ts.isIdentifier(inner)) return names.has(inner.text);
+	const text = literal(inner);
+	if (text !== undefined) return TEMPORARY_LITERAL.test(text);
+	if (ts.isTemplateExpression(inner)) {
+		const first = inner.templateSpans[0];
+		return inner.head.text === "" && first !== undefined
+			? isTemporary(first.expression, names)
+			: TEMPORARY_LITERAL.test(inner.head.text);
+	}
+	if (isPlus(inner)) return isTemporary(operands(inner)[0]!, names);
+	if (!ts.isCallExpression(inner)) return false;
+	const name = calleeName(inner.expression);
+	if (name === undefined) return false;
+	if (TEMPORARY_MAKERS.has(name)) return true;
+	const first = inner.arguments[0];
+	return (
+		ROOT_KEEPING.has(name) &&
+		first !== undefined &&
+		!ts.isSpreadElement(first) &&
+		isTemporary(first, names)
+	);
+}
+
+/**
+ * The names that are visibly a temporary directory: every binding of the name
+ * in the file (a declaration's initializer, an assignment) is one. A name also
+ * bound as a parameter, a loop variable or by destructuring is not.
+ */
+function temporaryNames(file: ts.SourceFile): Set<string> {
+	// Each name's bindings; undefined for one whose value the file does not show.
+	const bindings = new Map<string, (ts.Expression | undefined)[]>();
+	const bind = (name: string, value: ts.Expression | undefined) => {
+		bindings.set(name, [...(bindings.get(name) ?? []), value]);
+	};
+	const visit = (node: ts.Node): void => {
+		if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
+			const statement = node.parent.parent;
+			if (node.initializer !== undefined)
+				bind(node.name.text, node.initializer);
+			else if (ts.isForOfStatement(statement) || ts.isForInStatement(statement))
+				bind(node.name.text, undefined);
+		} else if (
+			(ts.isParameter(node) || ts.isBindingElement(node)) &&
+			ts.isIdentifier(node.name)
+		)
+			bind(node.name.text, undefined);
+		else if (
+			ts.isBinaryExpression(node) &&
+			node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+			ts.isIdentifier(node.left)
+		)
+			bind(node.left.text, node.right);
+		ts.forEachChild(node, visit);
+	};
+	visit(file);
+	const names = new Set<string>();
+	for (let grew = true; grew; ) {
+		grew = false;
+		for (const [name, values] of bindings)
+			if (
+				!names.has(name) &&
+				values.every(
+					(value) => value !== undefined && isTemporary(value, names),
+				)
+			) {
+				names.add(name);
+				grew = true;
+			}
+	}
+	return names;
 }
 
 const isPlus = (node: ts.Node): node is ts.BinaryExpression =>
@@ -381,11 +489,48 @@ export function readModule(source: string, fileName: string): ModuleFacts {
 	);
 	const loaders = loaderNames(file);
 	const arrays = arrayBindings(file);
+	const temporary = temporaryNames(file);
+	/** How a computed part reads: `TEMPORARY` where it is visibly a temporary directory. */
+	const part = (expression: ts.Expression) =>
+		isTemporary(expression, temporary) ? TEMPORARY : COMPUTED;
+	/**
+	 * Whether `node` is a later piece of a path rooted at a temporary directory
+	 * (`join(tmp, "packages/hobo")`, `tmp + "/packages/hobo"`): that path is read
+	 * whole, so the piece is not read as a path of its own.
+	 */
+	const inTemporaryPath = (node: ts.Node) => {
+		const parent = node.parent;
+		const first = ts.isCallExpression(parent) ? parent.arguments[0] : undefined;
+		if (
+			ts.isCallExpression(parent) &&
+			ROOT_KEEPING.has(calleeName(parent.expression) ?? "") &&
+			first !== undefined &&
+			first !== node &&
+			!ts.isSpreadElement(first) &&
+			isTemporary(first, temporary)
+		)
+			return true;
+		let chain: ts.Node | undefined;
+		for (
+			let up = node.parent;
+			ts.isParenthesizedExpression(up) || isPlus(up);
+			up = up.parent
+		)
+			if (isPlus(up)) chain = up;
+		if (chain === undefined || !isPlus(chain)) return false;
+		const head = operands(chain)[0]!;
+		return head !== node && isTemporary(head, temporary);
+	};
+	/** An operand's text, and whether it was written as a literal. */
+	const piece = (expression: ts.Expression) => {
+		const text = templateText(expression, part);
+		return { text: text ?? part(expression), literal: text !== undefined };
+	};
 	// A path builder's arguments, a spread of an array the file writes or binds
 	// read as its elements (`join(root, ...segs)`), any other spread as computed.
 	const segments = (args: readonly ts.Expression[]) =>
-		args.flatMap((argument): (string | undefined)[] => {
-			if (!ts.isSpreadElement(argument)) return [templateText(argument)];
+		args.flatMap((argument) => {
+			if (!ts.isSpreadElement(argument)) return [piece(argument)];
 			const spread = argument.expression;
 			const array = ts.isArrayLiteralExpression(spread)
 				? spread
@@ -393,9 +538,11 @@ export function readModule(source: string, fileName: string): ModuleFacts {
 					? arrays.get(spread.text)
 					: undefined;
 			return array === undefined
-				? [undefined]
+				? [{ text: COMPUTED, literal: false }]
 				: array.elements.map((element) =>
-						ts.isSpreadElement(element) ? undefined : templateText(element),
+						ts.isSpreadElement(element)
+							? { text: COMPUTED, literal: false }
+							: piece(element),
 					);
 		});
 	const imports: ImportSpecifier[] = [];
@@ -441,8 +588,8 @@ export function readModule(source: string, fileName: string): ModuleFacts {
 				name !== undefined && PATH_BUILDERS.has(name)
 					? segments(node.arguments)
 					: [];
-			if (parts.length > 1 && parts.some((part) => part !== undefined))
-				paths.push(parts.map((part) => part ?? COMPUTED).join("/"));
+			if (parts.length > 1 && parts.some((item) => item.literal))
+				paths.push(parts.map((item) => item.text).join("/"));
 		} else if (
 			ts.isNewExpression(node) &&
 			calleeName(node.expression) === "Worker"
@@ -450,12 +597,12 @@ export function readModule(source: string, fileName: string): ModuleFacts {
 			loadsComputed = true;
 		else if (isPlus(node) && !insidePlus(node)) {
 			// A concatenation, `root + "/packages/" + name`, as one path.
-			const parts = operands(node).map(templateText);
-			if (parts.some((part) => part !== undefined))
-				paths.push(parts.map((part) => part ?? COMPUTED).join(""));
+			const parts = operands(node).map(piece);
+			if (parts.some((item) => item.literal))
+				paths.push(parts.map((item) => item.text).join(""));
 		} else if (!specifiers.has(node)) {
-			const text = templateText(node);
-			if (text !== undefined) paths.push(text);
+			const text = templateText(node, part);
+			if (text !== undefined && !inTemporaryPath(node)) paths.push(text);
 		}
 		ts.forEachChild(node, visit);
 	};

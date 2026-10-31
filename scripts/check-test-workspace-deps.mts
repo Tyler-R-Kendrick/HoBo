@@ -47,7 +47,11 @@
  *   that names no build of a package other than the file's own (an empty
  *   `needs`), fails too, as does a file declared twice, and one whose needs
  *   leave out a package the reader sees it reach (a need the reader sees no
- *   reach for may stand: it cannot see every reach).
+ *   reach for may stand: it cannot see every reach). A path rooted at a
+ *   temporary directory is a stub tree, and needs no build; a file whose only
+ *   reaches are stubs is declared `{ "from", "stubOnly": true, "reason" }`,
+ *   which fails if the reader sees it reach anything outside a temporary
+ *   root.
  * - A declaration orders the sibling's build only with a `workspace:`
  *   specifier, unless pnpm's link-workspace-packages is on
  *   (lib/turbo-task-graph `orderedDependency`); a violation says how the
@@ -779,26 +783,51 @@ export function scanTestWorkspaceDeps(
 	// A declared file's reaches its entry does not name the build of: a package
 	// the reader sees, and the path that names it.
 	const uncovered = new Map<string, Map<string, string>>();
+	// A stubOnly file's first reach outside a temporary root: what, and the path.
+	const notStub = new Map<string, readonly [string, string]>();
 	for (const [file, loading] of running) {
-		const { named, computed } = reachesOf(file);
-		if (named.size === 0 && computed === undefined) continue;
+		const { named, computed, stubs } = reachesOf(file);
+		if (
+			named.size === 0 &&
+			computed === undefined &&
+			stubs.named.size === 0 &&
+			stubs.computed === undefined
+		)
+			continue;
 		const entry = declared.get(file);
 		for (const key of loading) {
 			const { pkg, task } = tasks.get(key)!;
 			// A computed segment may name any package, so it counts as another.
 			const others = [...named].filter(([name]) => name !== pkg.name);
-			if (others.length === 0 && computed === undefined) continue;
+			const stubbed = [...stubs.named].filter(([name]) => name !== pkg.name);
+			const real = others.length > 0 || computed !== undefined;
+			if (!real && stubbed.length === 0 && stubs.computed === undefined)
+				continue;
 			reachesAnother.add(file);
 			if (entry === undefined) {
+				// A stub reach needs an entry too: the reader may misjudge a root.
 				const found = undeclared.get(file) ?? {
 					named: new Map<string, string>(),
-					computed,
+					computed: computed ?? stubs.computed,
 				};
-				for (const [name, text] of others)
+				for (const [name, text] of [...others, ...stubbed])
 					if (!found.named.has(name)) found.named.set(name, text);
 				undeclared.set(file, found);
 				continue;
 			}
+			if ("stubOnly" in entry) {
+				const [first] = others;
+				if (real && !notStub.has(file))
+					notStub.set(
+						file,
+						first ?? [
+							"a package it names by a computed segment",
+							computed ?? "",
+						],
+					);
+				continue;
+			}
+			// A stub tree needs no build, so only a real reach must be a need.
 			for (const [name, text] of others)
 				if (!entry.needs.includes(`${name}#build`)) {
 					const missing = uncovered.get(file) ?? new Map<string, string>();
@@ -831,12 +860,22 @@ export function scanTestWorkspaceDeps(
 	}));
 	const staleness = (reason: string) =>
 		stale.push({ file: RUNTIME_REACHES_FILE, reason });
-	for (const { from, needs } of registry.reaches) {
+	for (const entry of registry.reaches) {
+		const { from } = entry;
 		if (!listed.has(from)) staleness(`"${from}" is not a tracked file`);
 		else if (!running.has(from))
 			staleness(`"${from}" is loaded by no test task`);
 		else if (!reachesAnother.has(from))
 			staleness(`"${from}" no longer reaches another package at run time`);
+		if ("stubOnly" in entry) {
+			const reach = notStub.get(from);
+			if (reach !== undefined)
+				staleness(
+					`"${from}" is marked stubOnly, but reaches ${reach[0]} ("${shownPath(reach[1])}") outside a temporary root`,
+				);
+			continue;
+		}
+		const { needs } = entry;
 		for (const need of needs) {
 			const name = neededBuild(need);
 			if (name === undefined)

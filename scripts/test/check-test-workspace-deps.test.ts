@@ -1342,6 +1342,132 @@ describe("checkTestWorkspaceDeps", () => {
 		});
 	});
 
+	it("accepts a stubOnly entry for a file whose only reaches are stub trees under a temporary root", () => {
+		const fs =
+			'import { mkdtempSync, writeFileSync } from "node:fs";\nimport { mkdtemp } from "node:fs/promises";\nimport { tmpdir } from "node:os";\n';
+		// Four ways to root a path at a temporary directory, all stubs of lib: a
+		// name bound to mkdtempSync, tmpdir() in a template, an awaited mkdtemp,
+		// and a /tmp/ literal.
+		const stub = `${fs}${JOIN}const root = mkdtempSync(join(tmpdir(), "x-"));\nwriteFileSync(join(root, "packages", "lib", "dist", "bin.js"), "");\nwriteFileSync(\`\${tmpdir()}/packages/lib/dist/x.js\`, "");\nwriteFileSync(join(await mkdtemp("/tmp/y-"), "packages", "lib", "dist", "y.js"), "");\nwriteFileSync("/tmp/z/packages/lib/dist/z.js", "");\n`;
+		const entry = (fields: {
+			readonly stubOnly: boolean;
+			readonly reason?: string | undefined;
+			readonly needs?: readonly string[] | undefined;
+		}) => ({
+			[REGISTRY]: JSON.stringify({
+				reaches: [{ from: "packages/app/test/stub.test.ts", ...fields }],
+			}),
+		});
+		const reason = {
+			stubOnly: true,
+			reason: "writes a stub lib under a temp root",
+		};
+		const report = (files: Record<string, string>) =>
+			within(
+				{
+					...base,
+					"packages/app/package.json": manifest("@s/app"),
+					...files,
+				},
+				(dir) => {
+					const found = scanTestWorkspaceDeps(dir);
+					return [
+						...found.violations.map((item) => `violation ${item.imports}`),
+						...[...found.unmodelled, ...found.stale].map(
+							(item) => `${item.file}: ${item.reason}`,
+						),
+					];
+				},
+			);
+		// Undeclared, a stub reach still fails: the reader may misjudge a root.
+		assert.deepEqual(report({ "packages/app/test/stub.test.ts": stub }), [
+			reaching(
+				"packages/app/test/stub.test.ts",
+				"@s/lib",
+				"*/packages/lib/dist/bin.js",
+			),
+		]);
+		assert.deepEqual(
+			report({ "packages/app/test/stub.test.ts": stub, ...entry(reason) }),
+			[],
+		);
+		// A real reach beside the stubs refuses the entry.
+		assert.deepEqual(
+			report({
+				"packages/app/test/stub.test.ts": `${stub}export const real = join(process.cwd(), "packages", "lib", "dist", "cli.js");\n`,
+				...entry(reason),
+			}),
+			[
+				`${REGISTRY}: "packages/app/test/stub.test.ts" is marked stubOnly, but reaches @s/lib ("*/packages/lib/dist/cli.js") outside a temporary root`,
+			],
+		);
+		// So does a name bound to a temporary directory in one place and to
+		// another directory in another: it is not visibly a stub.
+		assert.deepEqual(
+			report({
+				"packages/app/test/stub.test.ts": `${fs}${JOIN}export function a() {\n\tconst root = mkdtempSync(join(tmpdir(), "x-"));\n\treturn join(root, "packages", "lib", "dist", "a.js");\n}\nexport function b() {\n\tconst root = process.cwd();\n\treturn root;\n}\n`,
+				...entry(reason),
+			}),
+			[
+				`${REGISTRY}: "packages/app/test/stub.test.ts" is marked stubOnly, but reaches @s/lib ("*/packages/lib/dist/a.js") outside a temporary root`,
+			],
+		);
+		// A reason is required, and needs are not allowed.
+		// A refused entry declares nothing, so the reach is undeclared too.
+		for (const [fields, problem] of [
+			[{ stubOnly: true }, 'is stubOnly and needs a non-empty "reason"'],
+			[
+				{ stubOnly: true, reason: " " },
+				'is stubOnly and needs a non-empty "reason"',
+			],
+			[
+				{ ...reason, needs: ["@s/lib#build"] },
+				'is stubOnly and cannot carry "needs"',
+			],
+		] as const)
+			assert.deepEqual(
+				report({ "packages/app/test/stub.test.ts": stub, ...entry(fields) }),
+				[
+					reaching(
+						"packages/app/test/stub.test.ts",
+						"@s/lib",
+						"*/packages/lib/dist/bin.js",
+					),
+					`${REGISTRY}: entry 0 ("packages/app/test/stub.test.ts") ${problem}`,
+				],
+			);
+	});
+
+	it("does not hold an entry's needs to the stub trees a file writes", () => {
+		within(
+			{
+				...base,
+				"turbo.json": turbo({
+					"@s/app#test": { dependsOn: ["build", "@s/hobo#build"] },
+				}),
+				[REGISTRY]: JSON.stringify({
+					reaches: [
+						{
+							from: "packages/app/test/a.test.ts",
+							needs: ["@s/hobo#build"],
+							why: "spawns hobo; stubs lib",
+						},
+					],
+				}),
+				"packages/hobo/package.json": manifest("@s/hobo"),
+				"packages/app/package.json": manifest("@s/app"),
+				"packages/app/test/a.test.ts": `${SPAWN}${JOIN}import { mkdtempSync } from "node:fs";\nimport { tmpdir } from "node:os";\nspawn(process.execPath, [join(process.cwd(), "packages", "hobo", "dist", "bin.js")]);\nconst root = mkdtempSync(join(tmpdir(), "x-"));\nexport const stub = join(root, "packages", "lib", "dist", "bin.js");\n`,
+			},
+			(dir) => {
+				const report = scanTestWorkspaceDeps(dir);
+				assert.deepEqual(
+					[...report.violations, ...report.unmodelled, ...report.stale],
+					[],
+				);
+			},
+		);
+	});
+
 	it("refuses a file the registry declares more than once", () => {
 		const entry = (needs: string[]) => ({
 			from: "packages/app/src/run.ts",

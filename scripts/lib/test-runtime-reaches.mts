@@ -56,6 +56,13 @@
  * sibling's `src/run.ts` under tsx) is tracked source, so it needs no build
  * here, and its own imports are not read.
  *
+ * A reach whose path is rooted at a temporary directory the file visibly makes
+ * (lib/test-import-specifiers `TEMPORARY`: `mkdtempSync(…)`, `tmpdir()`, a
+ * `/tmp/` literal, or a name bound only to one) is a stub tree: it still needs
+ * an entry, since the reader may misjudge a root, but never a build. A file
+ * whose only reaches are stubs is declared `{ "from", "stubOnly": true,
+ * "reason" }`, which holds only while the reader sees no other reach from it.
+ *
  * The check cannot see what such a reach loads, so an undeclared one fails.
  * A declaration in `scripts/test-deps-runtime-reaches.json` says what the file
  * needs built, `{ "from": "<file>", "needs": ["<package>#build"], "why": "…" }`,
@@ -65,7 +72,12 @@ import { posix } from "node:path";
 
 import { z } from "zod";
 
-import { COMPUTED, type ModuleFacts } from "./test-import-specifiers.mts";
+import {
+	COMPUTED,
+	isTemporaryPath,
+	type ModuleFacts,
+	TEMPORARY,
+} from "./test-import-specifiers.mts";
 
 /** The registry, relative to the repository root. */
 export const RUNTIME_REACHES_FILE = "scripts/test-deps-runtime-reaches.json";
@@ -84,6 +96,14 @@ export interface RuntimeReaches {
 	readonly named: ReadonlyMap<string, string>;
 	/** The first path that names a package by a computed segment, if one does. */
 	readonly computed: string | undefined;
+	/**
+	 * The same for paths rooted at a temporary directory (lib/test-import-specifiers
+	 * `isTemporaryPath`): stub trees a test writes, which need no build.
+	 */
+	readonly stubs: {
+		readonly named: ReadonlyMap<string, string>;
+		readonly computed: string | undefined;
+	};
 }
 
 /** One way a path names a package, or a directory or scope that holds packages. */
@@ -110,7 +130,8 @@ const isComputed = (part: string | undefined) =>
 	part?.includes(COMPUTED) === true;
 
 /** A path as the check reports it: each computed part reads `*`. */
-export const shownPath = (text: string) => text.replaceAll(COMPUTED, "*");
+export const shownPath = (text: string) =>
+	text.replaceAll(TEMPORARY, COMPUTED).replaceAll(COMPUTED, "*");
 
 const segments = (path: string) =>
 	path.split(/[\\/]/u).filter((part) => part !== "" && part !== ".");
@@ -184,9 +205,11 @@ export function runtimeReachReader(
 			whole,
 		});
 	return (facts, file) => {
-		const named = new Map<string, string>();
-		let computed: string | undefined;
-		for (const text of facts.paths)
+		const real = { named: new Map<string, string>(), computed: "" };
+		const stub = { named: new Map<string, string>(), computed: "" };
+		for (const text of facts.paths) {
+			const found = isTemporaryPath(text) ? stub : real;
+			const { named } = found;
 			for (const { parts, absolute } of readings(text, file))
 				parts.forEach((part, i) => {
 					const before = parts[i - 1];
@@ -210,7 +233,7 @@ export function runtimeReachReader(
 									(anchor !== undefined || !form.byName) &&
 									facts.loadsComputed)
 							)
-								computed ??= text;
+								found.computed ||= text;
 							continue;
 						}
 						// Where a path that stops here is a path to the package.
@@ -227,7 +250,12 @@ export function runtimeReachReader(
 							if (!named.has(form.name)) named.set(form.name, text);
 					}
 				});
-		return { named, computed };
+		}
+		return {
+			named: real.named,
+			computed: real.computed || undefined,
+			stubs: { named: stub.named, computed: stub.computed || undefined },
+		};
 	};
 }
 
@@ -237,7 +265,18 @@ const RuntimeReachSchema = z.object({
 	why: z.string().trim().min(1),
 });
 
-export type RuntimeReach = z.infer<typeof RuntimeReachSchema>;
+/** A file whose only reaches are stub trees it writes under a temporary root. */
+const StubOnlySchema = z.object({
+	from: z.string(),
+	stubOnly: z.literal(true),
+	reason: z.string().optional(),
+	needs: z.unknown().optional(),
+});
+
+/** An entry: what a file needs built, or that it only writes stub trees. */
+export type RuntimeReach =
+	| z.infer<typeof RuntimeReachSchema>
+	| { readonly from: string; readonly stubOnly: true; readonly reason: string };
 
 const RegistrySchema = z.object({ reaches: z.array(z.json()) });
 
@@ -264,11 +303,21 @@ export function parseRuntimeReaches(
 	const reaches: RuntimeReach[] = [];
 	const problems: string[] = [];
 	registry.data.reaches.forEach((entry, i) => {
+		const stub = StubOnlySchema.safeParse(entry);
+		if (stub.success) {
+			const { from, reason = "", needs } = stub.data;
+			const at = `entry ${i} ("${from}") is stubOnly and`;
+			if (reason.trim() === "")
+				problems.push(`${at} needs a non-empty "reason"`);
+			else if (needs !== undefined) problems.push(`${at} cannot carry "needs"`);
+			else reaches.push({ from, stubOnly: true, reason });
+			return;
+		}
 		const parsed = RuntimeReachSchema.safeParse(entry);
 		if (parsed.success) reaches.push(parsed.data);
 		else
 			problems.push(
-				`entry ${i} is not { "from": string, "needs": string[], "why": string }`,
+				`entry ${i} is not { "from": string, "needs": string[], "why": string } or { "from": string, "stubOnly": true, "reason": string }`,
 			);
 	});
 	// One file, one entry: with two, which one holds is a guess.

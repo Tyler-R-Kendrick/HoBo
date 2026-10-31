@@ -10,17 +10,20 @@
  */
 import assert from "node:assert/strict";
 import {
+	closeSync,
 	existsSync,
+	openSync,
 	readdirSync,
 	readFileSync,
 	statSync,
 	writeFileSync,
+	writeSync,
 } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
 import { PinsError, parsePins } from "../lib/pins.ts";
-import { extractMember, memberDigest } from "../lib/pins-archive.ts";
+import { extractMember, memberDigest, writeAll } from "../lib/pins-archive.ts";
 import { serializePins } from "../lib/pins-assets.ts";
 import { scratch, sha256Hex } from "./support/pins-support.ts";
 import { paxPath, tarGz } from "./support/tar-support.ts";
@@ -133,6 +136,32 @@ describe("extractMember", () => {
 			assert.deepEqual(readdirSync(dir), ["a.tar.gz"]);
 		});
 	}
+});
+
+describe("writeAll", () => {
+	it("keeps writing until every byte is written when a write takes only some", () => {
+		const path = join(scratch("write-all"), "out");
+		const fd = openSync(path, "w");
+		const bytes = Buffer.from("0123456789abcdef");
+		const asked: number[] = [];
+		try {
+			writeAll(fd, bytes, (out, buffer, offset, length) => {
+				asked.push(length);
+				return writeSync(out, buffer, offset, Math.min(length, 5));
+			});
+		} finally {
+			closeSync(fd);
+		}
+		assert.deepEqual(readFileSync(path), bytes);
+		assert.deepEqual(asked, [16, 11, 6, 1]);
+	});
+
+	it("throws on a write that makes no progress instead of looping", () => {
+		assert.throws(
+			() => writeAll(-1, Buffer.from("x"), () => 0),
+			/wrote 0 of 1 bytes/u,
+		);
+	});
 });
 
 describe("an asset pin of an archive", () => {

@@ -132,6 +132,36 @@ async function readMember(
 	return { size: scan.finish(), archive: hash.digest("hex") };
 }
 
+/** How `writeAll` writes: `writeSync`'s shape, returning the bytes it wrote. */
+export type WriteSome = (
+	fd: number,
+	buffer: Uint8Array,
+	offset: number,
+	length: number,
+) => number;
+
+/**
+ * Write every byte of `chunk` to `fd`. One `writeSync` may write fewer bytes
+ * than it was given; the rest are written until none is left, and a write
+ * that makes no progress is an error rather than a loop.
+ */
+export function writeAll(
+	fd: number,
+	chunk: Uint8Array,
+	write: WriteSome = writeSync,
+): void {
+	let offset = 0;
+	while (offset < chunk.length) {
+		const written = write(fd, chunk, offset, chunk.length - offset);
+		if (written <= 0) {
+			throw new Error(
+				`a write to the partial file wrote ${written} of ${chunk.length - offset} bytes`,
+			);
+		}
+		offset += written;
+	}
+}
+
 /** The sha256 of `archive` and of `member` inside it, from one read, writing nothing. */
 export async function memberDigest(
 	archive: string,
@@ -162,7 +192,7 @@ export async function extractMember(
 		fd = openSync(partial, "wx", 0o600);
 		const out = fd;
 		const read = await readMember(archive, member, (chunk) => {
-			writeSync(out, chunk);
+			writeAll(out, chunk);
 		});
 		if (read.archive !== sha256) {
 			throw new PinsError(

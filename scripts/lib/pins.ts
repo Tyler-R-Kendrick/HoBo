@@ -105,12 +105,12 @@ export function isSafeRef(value: string): boolean {
 	return REF.test(value) && !value.includes("..") && !value.includes("//");
 }
 
-/** A file name, not a path, of at most 200 bytes: what `entry` and a release asset are called. */
 /** A relative archive member path of plain segments, none of them `.` or `..`. */
 export function isArchiveMember(value: string): boolean {
 	return MEMBER.test(value);
 }
 
+/** A file name, not a path, of at most 200 bytes: what `entry` and a release asset are called. */
 export function isFileName(value: string): boolean {
 	return FILE_NAME.test(value) && value !== "." && value !== "..";
 }

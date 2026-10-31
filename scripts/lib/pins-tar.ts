@@ -175,7 +175,7 @@ function parseHeader(block: Buffer, archive: string): TarHeader {
 		const kind = REFUSED_KIND.get(type);
 		throw new PinsError(
 			"ARCHIVE_UNSUPPORTED",
-			`${archive} has a type ${JSON.stringify(type)} entry${kind === undefined ? "" : ` (${kind})`}, whose data tar reads as that entry's own; only regular files, links, devices, directories and FIFOs are read`,
+			`${archive} has a type ${JSON.stringify(type)} entry${kind === undefined ? "" : ` (${kind})`}, whose data tar reads as that entry's own; only regular files, devices, directories and FIFOs are read`,
 		);
 	}
 	const size = octal(block, 124, 12, "size");

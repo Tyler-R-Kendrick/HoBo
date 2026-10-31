@@ -1,34 +1,27 @@
-import { describe, expect, it, vi } from "vitest";
+import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+import { ENDING_SIGNALS } from "@hobo/code/ending-signals";
+import { describe, expect, it } from "vitest";
 
-import {
-	type DirOwner,
-	removeOwnedDirsOnSignals,
-} from "../src/owned-temp-dir.js";
+import { parseJsonValue } from "../src/json.js";
 
 // The signals on which an entry point's owned directories are removed are
-// hobo-code's ending signals, one list (`@hobo/code/ending-signals`). Here it
-// names a signal no one else uses, so the handlers follow the list, not a copy.
-vi.mock("@hobo/code/ending-signals", () => ({
-	ENDING_SIGNALS: Object.freeze(["SIGUSR2"]),
-}));
-// The handlers are installed in a process's main thread only, and this suite
-// runs in worker threads: the owner below stands for a main thread's process.
-vi.mock("node:worker_threads", () => ({ isMainThread: true }));
+// hobo-code's ending signals, one list (`@hobo/code/ending-signals`), read in
+// its order rather than written out again in an order of this module's own.
+
+const TSX_LOADER = createRequire(import.meta.url).resolve("tsx");
+const FIXTURE = fileURLToPath(
+	new URL("./fixtures/owned-temp-dir-signal-order.mts", import.meta.url),
+);
 
 describe("removeOwnedDirsOnSignals", () => {
-	it("handles the signals of hobo-code's one list", () => {
-		const handled: string[] = [];
-		const owner: DirOwner = {
-			pid: 4242,
-			on: () => {},
-			prependListener: (signal) => {
-				handled.push(signal);
-			},
-			off: () => {},
-			listenerCount: () => 0,
-			kill: () => {},
-		};
-		removeOwnedDirsOnSignals(owner);
-		expect(handled).toEqual(["SIGUSR2"]);
-	});
+	it("handles hobo-code's ending signals, as that one list gives them", () => {
+		const ran = spawnSync(process.execPath, ["--import", TSX_LOADER, FIXTURE], {
+			env: { PATH: process.env.PATH ?? "", NODE_NO_WARNINGS: "1" },
+			encoding: "utf8",
+		});
+		expect(ran.status, ran.stderr).toBe(0);
+		expect(parseJsonValue(ran.stdout.trim())).toEqual([...ENDING_SIGNALS]);
+	}, 60_000);
 });

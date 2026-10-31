@@ -465,6 +465,37 @@ describe("checkTestWorkspaceDeps", () => {
 		);
 	});
 
+	it("checks a helper under every task of the test files that import it", () => {
+		within(
+			{
+				...base,
+				"turbo.json": turbo({
+					"@s/app#test": { dependsOn: ["build", "@s/lib#build"] },
+				}),
+				"packages/app/package.json": manifest("@s/app", {
+					scripts: {
+						build: "tsc",
+						test: "vitest run",
+						"test:contract:consumer": "vitest run contracts/consumer",
+					},
+				}),
+				// The contract test reaches lib through two test/ helpers.
+				"packages/app/contracts/consumer/a.consumer.test.ts":
+					'import { x } from "../../test/helpers/outer.js";\n',
+				"packages/app/test/helpers/outer.ts": 'export * from "./inner";\n',
+				"packages/app/test/helpers/inner.ts":
+					'export { x } from "../../../lib/src/index.js";\n',
+				// No contract test imports this one, so it runs under test only.
+				"packages/app/test/unit-helper.ts":
+					'export { x } from "../../lib/src/index.js";\n',
+			},
+			(dir) =>
+				assert.deepEqual(found(dir), [
+					"packages/app/test/helpers/inner.ts [test:contract:consumer] -> @s/lib",
+				]),
+		);
+	});
+
 	it("counts a type-only import only where the package's tsconfig compiles the test", () => {
 		const types = 'import type { X } from "../../lib/src/index.js";\n';
 		within(

@@ -18,7 +18,12 @@
  * - Tasks: every test file runs under `test`; a file under
  *   `contracts/consumer/` or `contracts/provider/` also runs under
  *   `test:contract:consumer` / `test:contract:provider` where the package has
- *   that script. Each task must have the sibling built (lib/turbo-task-graph).
+ *   that script. A test file another one in its package imports (a helper or
+ *   fixture) also runs under every task of the files that import it, so a
+ *   `test/` helper a `contracts/consumer/` test imports is checked under
+ *   `test:contract:consumer` too. A file outside those paths that a test
+ *   imports (`src/`, `services/`) is not read. Each task must have the sibling
+ *   built (lib/turbo-task-graph).
  * - A type-only import counts only where the package's tsconfig compiles the
  *   file: anywhere else it is erased before the test runs.
  * - Imports are read from the syntax tree (lib/test-import-specifiers). A
@@ -48,7 +53,10 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 import { GIT_OUTPUT_MAX_BUFFER } from "./lib/git-output.ts";
-import { importSpecifiersOf } from "./lib/test-import-specifiers.mts";
+import {
+	type ImportSpecifier,
+	importSpecifiersOf,
+} from "./lib/test-import-specifiers.mts";
 import {
 	type GraphPackage,
 	type LinkWorkspacePackages,
@@ -275,23 +283,63 @@ export function readWorkspace(
 	return { packages, graph, link };
 }
 
-/** The tasks that run `path` (relative to its package), or none for a file no test task loads. */
-function tasksRunning(path: string, scripts: ReadonlySet<string>): string[] {
-	if (!SOURCE.test(path) || path.endsWith(".d.ts")) return [];
+/** Whether `path` (relative to its package) is a test file, a test helper or a vitest config. */
+function isTestFile(path: string): boolean {
+	if (!SOURCE.test(path) || path.endsWith(".d.ts")) return false;
 	const parts = path.split("/");
 	const name = parts.at(-1)!;
-	const config = parts.length === 1 && VITEST_CONFIG.test(name);
-	if (
-		!config &&
-		!TEST_NAME.test(name) &&
-		!parts.slice(0, -1).some((part) => TEST_DIRS.has(part))
-	)
-		return [];
+	return (
+		(parts.length === 1 && VITEST_CONFIG.test(name)) ||
+		TEST_NAME.test(name) ||
+		parts.slice(0, -1).some((part) => TEST_DIRS.has(part))
+	);
+}
+
+/** The tasks that run `path` (relative to its package) by where it is, or none. */
+function tasksRunning(path: string, scripts: ReadonlySet<string>): string[] {
+	if (!isTestFile(path)) return [];
+	const config = !path.includes("/") && VITEST_CONFIG.test(path);
 	const tasks = scripts.has("test") ? ["test"] : [];
 	for (const [prefix, task] of CONTRACT_TASKS)
 		if ((config || path.includes(prefix)) && scripts.has(task))
 			tasks.push(task);
 	return tasks;
+}
+
+const RESOLVE_SUFFIXES = [
+	"",
+	".ts",
+	".tsx",
+	".mts",
+	".cts",
+	".js",
+	".mjs",
+	".cjs",
+	".jsx",
+	"/index.ts",
+	"/index.tsx",
+	"/index.js",
+];
+
+/** The listed file a relative import of `path` loads: as written, its TypeScript source, or with an extension or `/index` added. */
+function resolveLocal(
+	path: string,
+	files: ReadonlySet<string>,
+): string | undefined {
+	const source = path.replace(/\.([cm]?)js(x?)$/u, ".$1ts$2");
+	for (const base of source === path ? [path] : [source, path])
+		for (const suffix of RESOLVE_SUFFIXES)
+			if (files.has(base + suffix)) return base + suffix;
+	return undefined;
+}
+
+function isRelative(specifier: string): boolean {
+	return (
+		specifier === "." ||
+		specifier === ".." ||
+		specifier.startsWith("./") ||
+		specifier.startsWith("../")
+	);
 }
 
 /** Whether the package's tsconfig compiles `file` (an absolute path). */
@@ -333,28 +381,67 @@ export function checkTestWorkspaceDeps(
 	const owner = (path: string) =>
 		byDir.find((pkg) => path === pkg.dir || path.startsWith(`${pkg.dir}/`));
 	const tsconfigs = new Map<string, Set<string>>();
-	const seen = new Set<string>();
-	const violations: Violation[] = [];
+	const listed = new Set(files);
+	const sources = new Map<string, ImportSpecifier[]>();
+	const specifiersOf = (file: string): ImportSpecifier[] => {
+		let found = sources.get(file);
+		if (found === undefined) {
+			let source = "";
+			try {
+				source = readFileSync(join(root, file), "utf8");
+			} catch {
+				// An unreadable file names nothing.
+			}
+			found = importSpecifiersOf(source, file);
+			sources.set(file, found);
+		}
+		return found;
+	};
+	const loads = (pkg: WorkspacePackage, file: string, typeOnly: boolean) =>
+		!typeOnly || compiledBy(root, pkg, tsconfigs, join(root, file));
+	// The test files each task runs: by where a file is, and a test file
+	// (a helper or fixture) inherits every task of the test files in its own
+	// package that import it.
+	const running = new Map<string, Set<string>>();
 	for (const file of files) {
 		const pkg = owner(file);
 		if (pkg === undefined || !SCOPES.some((scope) => pkg.dir.startsWith(scope)))
 			continue;
 		const tasks = tasksRunning(file.slice(pkg.dir.length + 1), pkg.scripts);
-		if (tasks.length === 0) continue;
-		let source: string;
-		try {
-			source = readFileSync(join(root, file), "utf8");
-		} catch {
-			continue;
-		}
-		for (const { specifier, typeOnly } of importSpecifiersOf(source, file)) {
-			let target: WorkspacePackage | undefined;
+		if (tasks.length > 0) running.set(file, new Set(tasks));
+	}
+	const queue = [...running.keys()];
+	while (queue.length > 0) {
+		const file = queue.pop()!;
+		const pkg = owner(file)!;
+		const tasks = running.get(file)!;
+		for (const { specifier, typeOnly } of specifiersOf(file)) {
+			if (!isRelative(specifier)) continue;
+			const local = resolveLocal(
+				posix.normalize(posix.join(posix.dirname(file), specifier)),
+				listed,
+			);
 			if (
-				specifier === "." ||
-				specifier === ".." ||
-				specifier.startsWith("./") ||
-				specifier.startsWith("../")
+				local === undefined ||
+				owner(local) !== pkg ||
+				!isTestFile(local.slice(pkg.dir.length + 1)) ||
+				!loads(pkg, file, typeOnly)
 			)
+				continue;
+			const inherited = running.get(local) ?? new Set<string>();
+			const before = inherited.size;
+			for (const task of tasks) inherited.add(task);
+			running.set(local, inherited);
+			if (inherited.size > before) queue.push(local);
+		}
+	}
+	const seen = new Set<string>();
+	const violations: Violation[] = [];
+	for (const [file, tasks] of running) {
+		const pkg = owner(file)!;
+		for (const { specifier, typeOnly } of specifiersOf(file)) {
+			let target: WorkspacePackage | undefined;
+			if (isRelative(specifier))
 				target = owner(
 					posix.normalize(posix.join(posix.dirname(file), specifier)),
 				);
@@ -365,8 +452,7 @@ export function checkTestWorkspaceDeps(
 				);
 			}
 			if (target === undefined || target === pkg) continue;
-			if (typeOnly && !compiledBy(root, pkg, tsconfigs, join(root, file)))
-				continue;
+			if (!loads(pkg, file, typeOnly)) continue;
 			const needed = graph.needsBuilt(target.name);
 			for (const task of tasks) {
 				const built = graph.buildsBefore(pkg.name, task);

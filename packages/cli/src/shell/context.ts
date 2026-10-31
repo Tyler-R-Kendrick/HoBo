@@ -36,8 +36,10 @@ const markers = [
  * Directories project discovery never walks up into, in the style of
  * `GIT_CEILING_DIRECTORIES`: absolute paths separated by `path.delimiter`.
  * The start directory is always examined; the walk stops before it would
- * move into a listed directory, so that directory and everything above it are
- * never examined. Empty and relative entries are ignored.
+ * move into a listed directory, so a ceiling above the start, and everything
+ * above it, are never examined. As in git, a ceiling equal to the start
+ * directory does not stop the walk above it. Empty and relative entries are
+ * ignored.
  */
 export const CEILING_DIRECTORIES_ENV = "HOBO_CEILING_DIRECTORIES";
 

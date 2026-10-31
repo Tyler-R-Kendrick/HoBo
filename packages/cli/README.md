@@ -114,9 +114,12 @@ this rule, every directory under `$HOME` resolved to `$HOME`, and a stray
 `/tmp/.hobo` made `/tmp` the project of every temp dir.
 
 `HOBO_CEILING_DIRECTORIES` bounds the walk the way `GIT_CEILING_DIRECTORIES`
-bounds git's: a `:`-separated (`;` on Windows) list of absolute paths the walk
-never moves up into. The starting directory is always examined; empty and
-relative entries are ignored. The CLI's own tests set it to their temp root.
+bounds git's: a `:`-separated (`;` on Windows) list of absolute paths. A ceiling
+stops only a walk that starts below it: the walk examines the starting
+directory, then each parent, and stops before it would move into a listed
+directory, so a ceiling and everything above it go unexamined. As in git, a
+ceiling equal to the starting directory does not stop the walk above it; list
+its parent for that. Empty and relative entries are ignored. The CLI's own tests set it to their temp root.
 
 | Variable | Default | Effect |
 | --- | --- | --- |

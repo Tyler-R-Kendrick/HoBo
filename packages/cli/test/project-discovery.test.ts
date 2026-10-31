@@ -245,6 +245,15 @@ describe(`${CEILING_DIRECTORIES_ENV}`, () => {
 		);
 	});
 
+	it("does not stop the walk above a ceiling equal to the start directory, as in git", async () => {
+		const top = root("outer/app");
+		writeFileSync(path.join(top, "outer", "hobo.bindle.json"), "{}");
+		const app = path.join(top, "outer", "app");
+		expect(await projectDirFrom(app, { [CEILING_DIRECTORIES_ENV]: app })).toBe(
+			path.join(top, "outer"),
+		);
+	});
+
 	it("takes several entries and ignores relative and empty ones", async () => {
 		const top = root("outer/inner/app");
 		writeFileSync(path.join(top, "outer", "hobo.bindle.json"), "{}");

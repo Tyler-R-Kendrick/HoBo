@@ -42,6 +42,12 @@ package core
 // Lowercase provider/product id.
 #ResolverId: =~"^[a-z0-9][a-z0-9._/-]{0,127}$"
 
+// One name in a resolver's `directives` list: the realization parameter key
+// of a directive (how reconcile or delete acts, never what the resource is),
+// bounded, with no separators (ADR-0175). The list is distinct names; the
+// TypeScript parser `parseResolverDirectives` holds the same pattern.
+#Directive: =~"^[A-Za-z][A-Za-z0-9_]{0,63}$"
+
 // Author-facing id: stable across redeploys, safe in a path segment.
 #LogicalId: =~"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
 

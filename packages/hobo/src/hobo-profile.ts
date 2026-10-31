@@ -3,9 +3,10 @@
  * Local `hobo up` never requires this file; remote authenticated paths prefer it.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PrincipalKind, PrincipalRef } from "@hobo/core";
+import { ensureHoboHome } from "@hobo/core/hobo-home";
 import {
 	isJsonObject,
 	isJsonString,
@@ -66,7 +67,7 @@ export function saveHoboProfile(
 	hoboHome: string,
 	profile: HoboProfile,
 ): string {
-	mkdirSync(hoboHome, { recursive: true });
+	ensureHoboHome(hoboHome);
 	const path = profilePath(hoboHome);
 	writeFileSync(path, `${JSON.stringify(profile, null, 2)}\n`, "utf8");
 	return path;

@@ -11,6 +11,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { ensureHoboHome } from "@hobo/core/hobo-home";
 import { parseStationEvent, type StationEvent } from "./events.js";
 import { isJsonString, type JsonObject } from "./json.js";
 import { railFromBrokerConfig } from "./rail.js";
@@ -73,7 +74,7 @@ export function persistStationEvents(
 	stationId: string,
 	events: readonly StationEvent[],
 ): void {
-	const root = stationRoot(hoboHome, stationId);
+	const root = stationRoot(ensureHoboHome(hoboHome), stationId);
 	mkdirSync(root, { recursive: true });
 	writeFileSync(
 		stationEventsPath(hoboHome, stationId),

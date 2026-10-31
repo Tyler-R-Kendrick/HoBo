@@ -590,6 +590,31 @@ function parseArgv(argv: readonly string[]) {
 	return { verb: "dispatch", args: positional, flags, defaultedVerb: true };
 }
 
+/** What a hobo-code command line asks of the HoBo home, before it runs. */
+export interface HoboCodeInvocation {
+	/** A help request (`help`, `--help`, `-h`, `<verb> --help`): it writes nothing. */
+	readonly help: boolean;
+	/** A command line the CLI refuses before it touches the home. */
+	readonly malformed: boolean;
+}
+
+/**
+ * Reads a command line the way `runHoboCodeCli` does, so the binary knows
+ * whether the verb will write the HoBo home (and so must prepare it first).
+ * Only a real help request counts as help: a prompt that mentions the word
+ * does not.
+ */
+export function describeHoboCodeInvocation(
+	argv: readonly string[],
+): HoboCodeInvocation {
+	try {
+		const { verb, flags } = parseArgv(argv);
+		return { help: verb === "help" || flags.help === true, malformed: false };
+	} catch {
+		return { help: false, malformed: true };
+	}
+}
+
 /**
  * Power-user dense help: intentional glyph/tail idioms (opt-in via --dense).
  * Full keys still available with --json.
@@ -1763,8 +1788,12 @@ export async function runHoboCodeCli(
 			: undefined),
 		// `init` owns Station creation explicitly (discovery-gated, ADR-0155);
 		// composing the snapshot must not pre-empt it with a silent auto-init.
+		// Help writes nothing, not even the Station a first run would create.
 		autoInitStation:
-			verb !== "init" && !(verb === "session" && isJsonString(flags.host)),
+			verb !== "init" &&
+			verb !== "help" &&
+			flags.help !== true &&
+			!(verb === "session" && isJsonString(flags.host)),
 		tenant: resolvedTenant,
 		features,
 	});

@@ -21,7 +21,11 @@ import {
 	prepareHoboHome,
 	resolveHoboHome,
 } from "@hobo/core/hobo-home";
-import { formatHoboCodeResult, runHoboCodeCli } from "../cli.js";
+import {
+	describeHoboCodeInvocation,
+	formatHoboCodeResult,
+	runHoboCodeCli,
+} from "../cli.js";
 import { removeComposedDirsOnSignals } from "../composed-hobo.js";
 import type { DevMachine } from "../dev-machines.js";
 import { resolveShellEngine } from "../engine-resolve.js";
@@ -54,10 +58,10 @@ removeComposedDirsOnSignals();
 // that cannot be made (`nobody`'s /nonexistent/.hobo) is reported by name with
 // what to set, rather than as EACCES from whichever write came first, and a
 // user whose state an earlier HoBo kept in /tmp/.hobo hears where it went.
-const asksForHelp = process.argv
-	.slice(2)
-	.some((arg) => arg === "--help" || arg === "-h" || arg === "help");
-if (!asksForHelp) {
+// Help, and a command line the CLI refuses, write nothing and are not
+// prepared for.
+const invocation = describeHoboCodeInvocation(process.argv.slice(2));
+if (!invocation.help && !invocation.malformed) {
 	try {
 		prepareHoboHome({ program: "hobo-code" });
 	} catch (error) {

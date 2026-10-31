@@ -9,6 +9,7 @@
 
 import { spawn } from "node:child_process";
 import {
+	chmodSync,
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
@@ -23,6 +24,7 @@ import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 
 import {
+	ensureHoboHome,
 	HoboHomeUnavailable,
 	LEGACY_NOTICE_MARKER,
 	prepareHoboHome,
@@ -51,6 +53,18 @@ function layout() {
 }
 
 const me = process.getuid?.() ?? 0;
+
+describe("ensureHoboHome", () => {
+	it("creates a missing home owner-only and leaves an existing one as it is", () => {
+		const { root, user } = layout();
+		const fresh = join(root, "fresh", ".hobo");
+		expect(ensureHoboHome(fresh)).toBe(fresh);
+		expect(statSync(fresh).mode & 0o777).toBe(0o700);
+		chmodSync(user, 0o750);
+		ensureHoboHome(user);
+		expect(statSync(user).mode & 0o777).toBe(0o750);
+	});
+});
 
 describe("prepareHoboHome", () => {
 	it("creates the home, owner-only", () => {

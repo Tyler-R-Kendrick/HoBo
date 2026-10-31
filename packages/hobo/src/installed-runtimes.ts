@@ -2,8 +2,9 @@
  * Durable set of Camp host runtimes enabled on this HOBO_HOME yard.
  * Written by `hobo add runtime-*`; read by broker placement hard-fail.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { ensureHoboHome } from "@hobo/core/hobo-home";
 
 import type { ComponentHostKind } from "./bare-metal-yard.js";
 import { defaultHoboHome } from "./bare-metal-yard.js";
@@ -75,7 +76,7 @@ export function saveInstalledRuntimes(
 	state: InstalledRuntimesState,
 	hoboHome: string = defaultHoboHome(),
 ): string {
-	mkdirSync(hoboHome, { recursive: true });
+	ensureHoboHome(hoboHome);
 	const path = installedRuntimesPath(hoboHome);
 	writeFileSync(path, `${JSON.stringify(state, null, "\t")}\n`, "utf8");
 	return path;

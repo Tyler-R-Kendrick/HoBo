@@ -7,7 +7,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { join } from "node:path";
 import {
@@ -31,6 +31,7 @@ import {
 	resolveBindleDeployment,
 	type YardPlacementReceipt,
 } from "@hobo/broker";
+import { ensureHoboHome } from "@hobo/core/hobo-home";
 import { must } from "@hobo/core/total-access";
 import {
 	initStation,
@@ -298,7 +299,7 @@ export function saveEmbeddedBrokerState(
 	state: EmbeddedBrokerState,
 	hoboHome: string = defaultHoboHome(),
 ): string {
-	mkdirSync(hoboHome, { recursive: true });
+	ensureHoboHome(hoboHome);
 	const path = brokerStatePath(hoboHome);
 	writeFileSync(path, `${JSON.stringify(state, null, "\t")}\n`, "utf8");
 	return path;

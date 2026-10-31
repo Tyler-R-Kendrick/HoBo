@@ -194,7 +194,19 @@ export interface PrepareHoboHomeOptions {
  */
 export function prepareHoboHome(options: PrepareHoboHomeOptions = {}): string {
 	const env = options.env ?? process.env;
-	const home = resolveHoboHome(env);
+	const home = ensureHoboHome(resolveHoboHome(env));
+	if (!isSet(env.HOBO_HOME)) noticeLegacyHomes(home, env, options);
+	return home;
+}
+
+/**
+ * Creates the HoBo home if it is missing, owner-only (mode 0700), and returns
+ * it. Every place that may be the first to create a home calls this, so none
+ * leaves it at the umask's 0755 for later steps to inherit. A home that cannot
+ * be created fails with `HoboHomeUnavailable` naming the path and HOBO_HOME.
+ * An existing home is left as it is.
+ */
+export function ensureHoboHome(home: string): string {
 	try {
 		mkdirSync(home, { recursive: true, mode: 0o700 });
 	} catch (error) {
@@ -204,7 +216,6 @@ export function prepareHoboHome(options: PrepareHoboHomeOptions = {}): string {
 			{ cause: error, remedy: "set HOBO_HOME to a directory you can write" },
 		);
 	}
-	if (!isSet(env.HOBO_HOME)) noticeLegacyHomes(home, env, options);
 	return home;
 }
 

@@ -10,6 +10,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { ensureHoboHome } from "@hobo/core/hobo-home";
 import { isJsonObject, isJsonString } from "./json.js";
 
 import { stationRoot } from "./station-client.js";
@@ -239,7 +240,9 @@ export function persistStationCapabilityManifest(
 	manifest: StationCapabilityManifest,
 ): string {
 	const path = stationCapabilitiesPath(hoboHome, stationId);
-	mkdirSync(stationRoot(hoboHome, stationId), { recursive: true });
+	mkdirSync(stationRoot(ensureHoboHome(hoboHome), stationId), {
+		recursive: true,
+	});
 	writeFileSync(path, `${JSON.stringify(manifest, null, "\t")}\n`, "utf8");
 	return path;
 }

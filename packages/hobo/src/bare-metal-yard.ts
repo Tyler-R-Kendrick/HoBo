@@ -4,7 +4,7 @@ import type { BindleDefinition } from "@hobo/bindles";
 import { bindleScope, descriptorFromHandle } from "@hobo/bindles/topology";
 import { camp } from "@hobo/camps";
 import type { YardRuntime } from "@hobo/cli";
-import { resolveHoboHome } from "@hobo/core/hobo-home";
+import { ensureHoboHome, resolveHoboHome } from "@hobo/core/hobo-home";
 import { type Yard, yard } from "@hobo/yards";
 import { createDefaultYardRuntime } from "./compose.js";
 import {
@@ -226,7 +226,7 @@ export function initBareMetalYard(
 				? { componentHost: options.host }
 				: undefined),
 	});
-	mkdirSync(hoboHome, { recursive: true });
+	ensureHoboHome(hoboHome);
 	mkdirSync(config.dataDir, { recursive: true });
 	writeFileSync(configPath, `${JSON.stringify(config, null, "\t")}\n`, "utf8");
 	return { config, configPath };

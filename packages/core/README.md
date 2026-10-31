@@ -100,8 +100,12 @@ neither variable and the account has no home (a uid with no passwd entry, where
 (`code: "HOBO_HOME_UNAVAILABLE"`), whose message says to set `HOBO_HOME` or
 `HOME`; CLI project discovery catches it and skips its home exclusion.
 
-`prepareHoboHome()` is what the `hobo` and `hobo-code` entry points call before
-they write. It creates the home (mode 0700), and a home that cannot be created
+`ensureHoboHome(home)` is the one way a HoBo home is created: owner-only (mode
+0700), with `HoboHomeUnavailable` when it cannot be. The Station writer, the
+profile, broker and runtime stores and the bare-metal Yard call it before they
+write, so none leaves a new home at the umask's 0755. `prepareHoboHome()` is
+what the `hobo` and `hobo-code` entry points call before they write (`hobo-code`
+skips it only for a real help request, which writes nothing). It creates the home (mode 0700), and a home that cannot be created
 (the account `nobody`, whose home is `/nonexistent`) fails with
 `HoboHomeUnavailable` naming the path and telling the user to set `HOBO_HOME`.
 Earlier versions kept state in `/tmp/.hobo` or `$(os.tmpdir())/.hobo` when HOME

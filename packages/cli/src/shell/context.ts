@@ -1,4 +1,4 @@
-import { access, readdir, realpath, stat } from "node:fs/promises";
+import { access, readdir, realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import {
@@ -10,6 +10,7 @@ import {
 
 import type { CliContext } from "../types/envelope.js";
 import { NoBindleError } from "./errors.js";
+import { untrustedEntry, untrustedMarker } from "./marker-trust.js";
 import type { CliFlags } from "./parse.js";
 
 const markers = [
@@ -30,7 +31,8 @@ const markers = [
 	"app.js",
 	"app.mjs",
 	// Project state (`.hobo/session.json`, `generated/`, `build/`, `sources/`),
-	// but only when it is a project's: see `isProjectState`.
+	// but only when it is a project's: see `isProjectState`. Every marker is
+	// trusted only when it is this uid's own: see `untrustedMarker`.
 	".hobo",
 ] as const;
 
@@ -53,12 +55,14 @@ export interface ContextFactoryRequest {
 	readonly args: readonly string[];
 	readonly requiresProject: boolean;
 	/**
-	 * Whose `.hobo` discovery trusts: only one this uid owns counts as a project
-	 * marker, as git's `safe.directory` trusts only a repository its user owns.
-	 * Defaults to `process.getuid()`; unchecked where there is none (Windows).
+	 * Whose markers discovery trusts: only one this uid owns, that no one else
+	 * can write, in a directory no one else can write, counts as a project
+	 * marker (`untrustedMarker`), as git's `safe.directory` trusts only a
+	 * repository its user owns. Defaults to `process.getuid()`; unchecked where
+	 * there is none (Windows).
 	 */
 	readonly uid?: number;
-	/** Where discovery says it ignored a `.hobo` (one line each); stderr by default. */
+	/** Where discovery says it ignored a marker (one line each); stderr by default. */
 	readonly warn?: (message: string) => void;
 	/**
 	 * How discovery asks for the account's home when the env names none
@@ -120,10 +124,16 @@ async function findProjectDir(
 		for (const marker of markers) {
 			const candidate = path.join(current, marker);
 			if (!(await exists(candidate))) continue;
-			if (
-				marker === ".hobo" &&
-				!(await isProjectState(candidate, userHomes, options))
-			)
+			if (marker === ".hobo" && userHomes.has(await canonical(candidate)))
+				continue;
+			const untrusted = await untrustedMarker(current, candidate, options.uid);
+			if (untrusted !== null) {
+				options.warn(
+					`hobo: ignoring ${candidate} as a project marker: ${untrusted}`,
+				);
+				continue;
+			}
+			if (marker === ".hobo" && !(await isProjectState(candidate, options)))
 				continue;
 			return current;
 		}
@@ -186,32 +196,20 @@ async function userHoboHomes(
 }
 
 /**
- * Whether the `.hobo` at `dir` is a project's state rather than a user-level
- * HoBo home. Not when it is the user's own home; not when another uid owns it
- * or it cannot be read (anyone can make `/tmp/.hobo` and plant a
- * `session.json` in it, so, as git's `safe.directory` does, only this uid's own
- * is trusted; the skip is reported in one line); not when everything in it
- * (dotfiles aside) is user-level state (`HOBO_HOME_ENTRIES`). An empty `.hobo`,
- * or a file named `.hobo` this uid owns, still marks a project.
+ * Whether the `.hobo` at `dir` (one `untrustedMarker` passed, and not the
+ * user's own HoBo home) is a project's state rather than a user-level HoBo
+ * home. Each entry discovery reads in it must be this uid's own as well
+ * (`untrustedEntry`): anything else is ignored, in one line each, and a `.hobo`
+ * holding only such entries marks nothing, since a planted `session.json` in a
+ * directory anyone can write proves nothing about whose project it is. Not a
+ * project's either when everything in it (dotfiles aside) is user-level state
+ * (`HOBO_HOME_ENTRIES`). An empty `.hobo`, or a file named `.hobo`, still
+ * marks a project.
  */
 async function isProjectState(
 	dir: string,
-	userHomes: ReadonlySet<string>,
 	options: DiscoveryOptions,
 ): Promise<boolean> {
-	if (userHomes.has(await canonical(dir))) return false;
-	let owner: number;
-	try {
-		owner = (await stat(dir)).uid;
-	} catch {
-		return false; // gone since the walk saw it
-	}
-	if (options.uid !== undefined && owner !== options.uid) {
-		options.warn(
-			`hobo: ignoring ${dir} as a project marker: owned by uid ${owner}, not ${options.uid}`,
-		);
-		return false;
-	}
 	let entries: string[];
 	try {
 		entries = await readdir(dir);
@@ -220,14 +218,26 @@ async function isProjectState(
 			error instanceof Error && "code" in error ? String(error.code) : "";
 		if (code === "ENOTDIR") return true;
 		options.warn(
-			`hobo: ignoring ${dir} as a project marker: cannot read it (${code || String(error)}); owned by uid ${owner}`,
+			`hobo: ignoring ${dir} as a project marker: cannot read it (${code || String(error)})`,
 		);
 		return false;
 	}
 	// Dotfiles (`.DS_Store`, an editor's swap file) say nothing about whose it is.
 	const named = entries.filter((entry) => !entry.startsWith("."));
+	const trusted: string[] = [];
+	for (const entry of named) {
+		const untrusted = await untrustedEntry(path.join(dir, entry), options.uid);
+		if (untrusted === null) {
+			trusted.push(entry);
+			continue;
+		}
+		options.warn(
+			`hobo: ignoring ${path.join(dir, entry)} in a project marker: ${untrusted}`,
+		);
+	}
+	if (trusted.length < named.length && trusted.length === 0) return false;
 	return !(
-		named.length > 0 && named.every((entry) => HOBO_HOME_ENTRIES.has(entry))
+		trusted.length > 0 && trusted.every((entry) => HOBO_HOME_ENTRIES.has(entry))
 	);
 }
 

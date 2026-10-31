@@ -105,13 +105,33 @@ user-level state: dotfiles aside, only names in `HOBO_HOME_ENTRIES`
 `connections/`, `claims/`, `auth-md/`, `evidence/`, `trust-roots/`,
 `identity-migrations/`, `profile.json`, `yard.json`, `installed-runtimes.json`,
 `hobo.broker.json`, `broker-runtime.json`). `test/hobo-home-entries.test.ts`
-fails when a package joins a name under a HoBo home that the list lacks. A
-`.hobo` also counts only when the current uid owns it and can read it, as git's
-`safe.directory` trusts only a repository its user owns: anyone can create
-`/tmp/.hobo` and plant a `session.json` in it. Discovery skips any other `.hobo`
-and prints one line on stderr naming the path and its owner. Before
-this rule, every directory under `$HOME` resolved to `$HOME`, and a stray
-`/tmp/.hobo` made `/tmp` the project of every temp dir.
+fails when a package joins a name under a HoBo home that the list lacks.
+
+Every marker, not only `.hobo/`, counts only when it is the current uid's own,
+because discovery decides which `app.ts` or `bindle.ts` `hobo` loads and runs:
+a marker a stranger could plant or swap is code execution as the user. Like
+git's `safe.directory`, and stricter, discovery checks each marker with
+`lstat` (`src/shell/marker-trust.ts`) and trusts it only when:
+
+- it is not a symlink (a symlink is never followed);
+- the current uid owns it, and it is neither group- nor world-writable;
+- the directory holding it (for `src/bindle.ts`, `src/` and the project
+  directory) is owned by the current uid or by root and is not
+  world-writable, so `/tmp/app.ts`, or a stranger's `bindle.ts` in a 1777
+  scratch directory, never counts;
+- for a `.hobo/`, each entry discovery reads in it (`session.json`,
+  `generated/`, …) passes the same check as the marker. A `.hobo/` whose
+  entries all fail marks nothing: a `session.json` someone else wrote proves
+  nothing about whose project it is.
+
+Anything that fails is skipped with one line on stderr naming the path, why,
+its owner and its mode, for example
+`hobo: ignoring /tmp/scratch/app.ts as a project marker: not owned by uid 1000 (owner uid 4242, mode 0644)`,
+and the walk goes on to the next marker. A file that is group-writable only
+because of a `umask` of `002` is skipped too; `chmod g-w` it. Where there is
+no uid (Windows) nothing is checked. Before these rules, every directory under
+`$HOME` resolved to `$HOME`, and a stray `/tmp/.hobo` or `/tmp/app.ts` made
+`/tmp` the project of every temp dir.
 
 `HOBO_CEILING_DIRECTORIES` bounds the walk the way `GIT_CEILING_DIRECTORIES`
 bounds git's: a `:`-separated (`;` on Windows) list of absolute paths. A ceiling

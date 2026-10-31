@@ -19,6 +19,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	rmSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -188,6 +189,7 @@ describe("a .hobo is trusted only from its owner, like git's safe.directory", ()
 		// Anyone can make /tmp/.hobo and plant a session.json in it.
 		const top = root("tmp/.hobo", "tmp/scratch-1");
 		chmodSync(path.join(top, "tmp"), 0o1777);
+		chmodSync(path.join(top, "tmp", ".hobo"), 0o755);
 		writeFileSync(path.join(top, "tmp", ".hobo", "session.json"), "{}");
 		const warnings: string[] = [];
 		expect(
@@ -198,7 +200,7 @@ describe("a .hobo is trusted only from its owner, like git's safe.directory", ()
 			),
 		).toBe(null);
 		expect(warnings).toEqual([
-			`hobo: ignoring ${path.join(top, "tmp", ".hobo")} as a project marker: owned by uid ${me}, not ${someoneElse}`,
+			`hobo: ignoring ${path.join(top, "tmp", ".hobo")} as a project marker: not owned by uid ${someoneElse} (owner uid ${me}, mode 0755)`,
 		]);
 	});
 
@@ -214,7 +216,105 @@ describe("a .hobo is trusted only from its owner, like git's safe.directory", ()
 			),
 		).toBe(null);
 		expect(warnings).toHaveLength(1);
-		expect(warnings[0]).toContain(`owned by uid ${me}`);
+		expect(warnings[0]).toContain(`(owner uid ${me}, mode 0700)`);
+	});
+});
+
+describe("every marker is trusted only from its owner", () => {
+	// Discovery's answer decides what `hobo` imports (cloud/loader.ts loads the
+	// project's app.ts or bindle.ts), so a marker a stranger could have put
+	// there is code execution as the user. Only a marker this uid owns, that no
+	// one else can write, in a directory no one else can write, counts.
+	const discover = async (top: string, cwd: string, uid: number) => {
+		const warnings: string[] = [];
+		const found = await projectDirFrom(
+			cwd,
+			{ [CEILING_DIRECTORIES_ENV]: path.dirname(top) },
+			{ uid, warn: (line) => warnings.push(line) },
+		);
+		return { found, warnings };
+	};
+
+	it.each([
+		"app.ts",
+		"bindle.ts",
+	])("ignores a stranger's %s in a 1777 directory, and says whose it is", async (marker) => {
+		const top = root("shared/scratch-1");
+		chmodSync(path.join(top, "shared"), 0o1777);
+		writeFileSync(path.join(top, "shared", marker), "export default {};\n");
+		chmodSync(path.join(top, "shared", marker), 0o644);
+		const { found, warnings } = await discover(
+			top,
+			path.join(top, "shared", "scratch-1"),
+			someoneElse,
+		);
+		expect(found).toBe(null);
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toContain(path.join(top, "shared", marker));
+		expect(warnings[0]).toContain(`owner uid ${me}`);
+		expect(warnings[0]).toContain("mode 0644");
+	});
+
+	it("ignores the user's own marker in a world-writable directory", async () => {
+		const top = root("shared/scratch-1");
+		chmodSync(path.join(top, "shared"), 0o1777);
+		writeFileSync(path.join(top, "shared", "app.ts"), "export default {};\n");
+		const { found, warnings } = await discover(
+			top,
+			path.join(top, "shared", "scratch-1"),
+			me,
+		);
+		expect(found).toBe(null);
+		expect(warnings.join("\n")).toMatch(/world-writable/u);
+	});
+
+	it("ignores a symlinked .hobo, whoever it points at", async () => {
+		const top = root("elsewhere/.hobo", "app/sub");
+		writeFileSync(path.join(top, "elsewhere", ".hobo", "session.json"), "{}");
+		symlinkSync(
+			path.join(top, "elsewhere", ".hobo"),
+			path.join(top, "app", ".hobo"),
+		);
+		const { found, warnings } = await discover(
+			top,
+			path.join(top, "app", "sub"),
+			me,
+		);
+		expect(found).toBe(null);
+		expect(warnings.join("\n")).toMatch(/symlink/u);
+	});
+
+	it("ignores a 0777 .hobo, and a session.json anyone can write", async () => {
+		const open = root("open/.hobo", "open/sub");
+		chmodSync(path.join(open, "open", ".hobo"), 0o777);
+		writeFileSync(path.join(open, "open", ".hobo", "session.json"), "{}");
+		expect(
+			(await discover(open, path.join(open, "open", "sub"), me)).found,
+		).toBe(null);
+		const planted = root("app/.hobo", "app/sub");
+		writeFileSync(path.join(planted, "app", ".hobo", "session.json"), "{}");
+		chmodSync(path.join(planted, "app", ".hobo", "session.json"), 0o666);
+		const { found, warnings } = await discover(
+			planted,
+			path.join(planted, "app", "sub"),
+			me,
+		);
+		expect(found).toBe(null);
+		expect(warnings.join("\n")).toContain(
+			path.join(planted, "app", ".hobo", "session.json"),
+		);
+	});
+
+	it("still finds a normal project", async () => {
+		const top = root("app/src/deep");
+		writeFileSync(path.join(top, "app", "bindle.ts"), "export default {};\n");
+		const { found, warnings } = await discover(
+			top,
+			path.join(top, "app", "src", "deep"),
+			me,
+		);
+		expect(found).toBe(path.join(top, "app"));
+		expect(warnings).toEqual([]);
 	});
 });
 

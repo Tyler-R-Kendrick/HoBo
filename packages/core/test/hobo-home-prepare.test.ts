@@ -145,6 +145,25 @@ prepareHoboHome({
 		expect(notices).toHaveLength(1);
 	});
 
+	it("neither throws nor prints when the marker cannot be written", () => {
+		// The notice is advisory. A home where nothing can be created (here a
+		// link to /proc/self, a directory no one can add a file to) must not
+		// turn it into a failure, and without its marker it is not printed,
+		// so it could not repeat on every run.
+		const { user, legacy } = layout();
+		symlinkSync("/proc/self", join(user, ".hobo"));
+		const lines: string[] = [];
+		expect(
+			prepareHoboHome({
+				env: { HOME: user },
+				legacyHomes: [legacy],
+				uid: me,
+				warn: (line) => lines.push(line),
+			}),
+		).toBe(join(user, ".hobo"));
+		expect(lines).toEqual([]);
+	});
+
 	it("says nothing about another uid's directory", () => {
 		const { user, legacy } = layout();
 		const lines: string[] = [];

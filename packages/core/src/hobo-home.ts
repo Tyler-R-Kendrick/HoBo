@@ -216,12 +216,13 @@ function noticeLegacyHomes(home: string, options: PrepareHoboHomeOptions) {
 	if (ours.length === 0) return;
 	// Claim the notice before printing it: of several processes starting on
 	// one fresh home, only the one whose exclusive create succeeds prints.
+	// The notice is advisory, so any failure to claim it (the marker exists, or
+	// the home will not take it) skips it rather than failing the command; a
+	// notice printed without its marker would repeat on every run.
 	try {
 		writeFileSync(marker, `${ours.join("\n")}\n`, { mode: 0o600, flag: "wx" });
-	} catch (error) {
-		if (error instanceof Error && "code" in error && error.code === "EEXIST")
-			return;
-		throw error;
+	} catch {
+		return;
 	}
 	const warn =
 		options.warn ?? ((line: string) => process.stderr.write(`${line}\n`));

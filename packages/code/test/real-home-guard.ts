@@ -23,8 +23,10 @@
  * and recorded as gone if not, so one vanished `sandboxes/<runId>` never turns
  * the rest of the home into "new" entries. It still reports any entry that was
  * not there when its first walk passed.
- * It only looks for new entries: a file that was already there and changed is
- * not reported. It cannot tell who wrote an entry, so a HoBo session, or
+ * It reports entries that appeared, files whose size or modification time
+ * changed (a directory's own mtime moves with its entries, so only those are
+ * reported), and entries that were removed. It cannot tell who wrote an
+ * entry, so a HoBo session, or
  * another checkout's suite without this isolation, writing there during the
  * run fails it too; the chat and session files it names carry the `cwd` of
  * the process that wrote them.
@@ -183,17 +185,72 @@ export function gainedEntries(
 	return gained.sort();
 }
 
-/** How many gained paths the failure names before it summarises the rest. */
+/** Files whose size or modification time changed, or that changed kind. */
+export function changedEntries(
+	before: HomeSnapshot,
+	after: HomeSnapshot,
+): string[] {
+	const changed: string[] = [];
+	for (const [home, now] of after) {
+		const was = before.get(home) ?? null;
+		if (now === null || was === null) continue;
+		for (const [path, entry] of now) {
+			const old = was.get(path);
+			if (old === undefined || old.kind === "gone" || entry.kind === "gone")
+				continue;
+			const kindChanged = old.kind !== entry.kind;
+			const fileChanged =
+				entry.kind === "file" &&
+				(old.size !== entry.size || old.mtimeMs !== entry.mtimeMs);
+			if (kindChanged || fileChanged) changed.push(join(home, path));
+		}
+	}
+	return changed.sort();
+}
+
+/** Paths that were there before the run and are not after it (a home included). */
+export function removedEntries(
+	before: HomeSnapshot,
+	after: HomeSnapshot,
+): string[] {
+	const removed: string[] = [];
+	for (const [home, was] of before) {
+		if (was === null) continue;
+		const now = after.get(home) ?? null;
+		if (now === null) {
+			removed.push(home);
+			continue;
+		}
+		for (const [path, entry] of was) {
+			if (entry.kind !== "gone" && !now.has(path))
+				removed.push(join(home, path));
+		}
+	}
+	return removed.sort();
+}
+
+/** How many paths of each kind the failure names before it summarises the rest. */
 const LISTED = 20;
 
-export function describeGained(gained: readonly string[]): string {
-	const listed = gained.slice(0, LISTED).map((path) => `  ${path}`);
-	if (gained.length > LISTED)
-		listed.push(`  … and ${gained.length - LISTED} more`);
+function section(title: string, paths: readonly string[]): string[] {
+	if (paths.length === 0) return [];
+	const listed = paths.slice(0, LISTED).map((path) => `  ${path}`);
+	if (paths.length > LISTED)
+		listed.push(`  … and ${paths.length - LISTED} more`);
+	return [`${title}:`, ...listed];
+}
+
+export function describeChanges(changes: {
+	readonly gained: readonly string[];
+	readonly changed: readonly string[];
+	readonly removed: readonly string[];
+}): string {
 	return [
 		"packages/code tests wrote into a real HoBo home. Give the test its own",
-		"hoboHome (or HOME) in a temp dir it removes; these appeared during the run:",
-		...listed,
+		"hoboHome (or HOME) in a temp dir it removes. During the run:",
+		...section("appeared", changes.gained),
+		...section("changed", changes.changed),
+		...section("removed", changes.removed),
 	].join("\n");
 }
 
@@ -204,11 +261,21 @@ export default function setup(): () => void {
 	process.env[HOMES_ROOT_ENV] = root;
 	return () => {
 		rmSync(root, { recursive: true, force: true });
-		const gained = gainedEntries(before, snapshotHomes(homes));
-		if (gained.length === 0) return;
-		const message = describeGained(gained);
+		const after = snapshotHomes(homes);
+		const changes = {
+			gained: gainedEntries(before, after),
+			changed: changedEntries(before, after),
+			removed: removedEntries(before, after),
+		};
+		if (
+			changes.gained.length +
+				changes.changed.length +
+				changes.removed.length ===
+			0
+		)
+			return;
 		// Vitest logs a teardown error but keeps the exit status it already had.
 		process.exitCode = 1;
-		throw new Error(message);
+		throw new Error(describeChanges(changes));
 	};
 }

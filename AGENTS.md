@@ -570,8 +570,9 @@ point them at throwaway directories. The root config does it for HOBO_HOME
 (`packages/code/test/isolate-user-home.ts`, with a test git identity) and runs
 `packages/code/test/real-home-guard.ts` as global setup: it lists `/tmp/.hobo`,
 `$(os.tmpdir())/.hobo`, `$HOME/.hobo` and the account's `~/.hobo` before the
-run and fails the run naming every entry that appeared, against that snapshot
-(those directories may already exist). A child process given an environment
+run and fails the run naming every entry that appeared, every file that
+changed and every entry that was removed, against that snapshot (those
+directories may already exist). A child process given an environment
 with no HOME falls back to the account's home, which only the guard catches:
 pass the child the test's `HOME` or `HOBO_HOME`. The guard cannot tell who
 wrote an entry, so another checkout's suite or a HoBo session writing there at

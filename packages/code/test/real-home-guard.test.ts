@@ -26,7 +26,12 @@ import { fileURLToPath } from "node:url";
 import { resolveHoboHome } from "@hobo/core/hobo-home";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { gainedEntries, snapshotHomes } from "./real-home-guard.js";
+import {
+	changedEntries,
+	gainedEntries,
+	removedEntries,
+	snapshotHomes,
+} from "./real-home-guard.js";
 
 describe("the homes a test in this package sees", () => {
 	it("HOME is a directory of the run's, not the account's", () => {
@@ -51,6 +56,24 @@ afterAll(() => {
 });
 
 describe("comparing snapshots", () => {
+	it("names files that changed or were removed, but not a directory's own mtime", () => {
+		const home = join(scratch, "edited");
+		mkdirSync(join(home, "durable"), { recursive: true });
+		writeFileSync(join(home, "durable", "kept.json"), "{}");
+		writeFileSync(join(home, "durable", "edited.json"), "{}");
+		writeFileSync(join(home, "durable", "deleted.json"), "{}");
+		const before = snapshotHomes([home]);
+		writeFileSync(join(home, "durable", "edited.json"), '{"more":true}');
+		rmSync(join(home, "durable", "deleted.json"));
+		const after = snapshotHomes([home]);
+		expect(changedEntries(before, after)).toEqual([
+			join(home, "durable", "edited.json"),
+		]);
+		expect(removedEntries(before, after)).toEqual([
+			join(home, "durable", "deleted.json"),
+		]);
+	});
+
 	it("names what appeared, including a home that did not exist before", () => {
 		const kept = join(scratch, "kept");
 		const fresh = join(scratch, "fresh");
@@ -91,7 +114,7 @@ function runUnderGuard(
 	prepare({ home, temp });
 	writeFileSync(
 		join(project, "probe.test.mjs"),
-		`import { mkdirSync, writeFileSync } from "node:fs";\nimport { join } from "node:path";\nit("probes", () => {\n${probe}\n});\n`,
+		`import { mkdirSync, rmSync, writeFileSync } from "node:fs";\nimport { join } from "node:path";\nit("probes", () => {\n${probe}\n});\n`,
 	);
 	writeFileSync(
 		join(project, "vitest.config.mjs"),
@@ -184,6 +207,36 @@ describe("the guard", () => {
 		expect(run.status).toBe(1);
 		expect(run.output).toContain(
 			join(run.home, ".hobo", "durable", "leak.json"),
+		);
+	});
+
+	it("fails a run that overwrote a file already in HOME's .hobo, and names it", () => {
+		const run = runUnderGuard(
+			`writeFileSync(join(process.env.HOME, ".hobo", "durable", "chat.json"), "{\\"messages\\":[1]}");`,
+			({ home }) => {
+				mkdirSync(join(home, ".hobo", "durable"), { recursive: true });
+				writeFileSync(join(home, ".hobo", "durable", "chat.json"), "{}");
+			},
+		);
+		expect(run.status).toBe(1);
+		expect(run.output).toMatch(/changed:/u);
+		expect(run.output).toContain(
+			join(run.home, ".hobo", "durable", "chat.json"),
+		);
+	});
+
+	it("fails a run that removed a file from HOME's .hobo, and names it", () => {
+		const run = runUnderGuard(
+			`rmSync(join(process.env.HOME, ".hobo", "durable", "session.json"));`,
+			({ home }) => {
+				mkdirSync(join(home, ".hobo", "durable"), { recursive: true });
+				writeFileSync(join(home, ".hobo", "durable", "session.json"), "{}");
+			},
+		);
+		expect(run.status).toBe(1);
+		expect(run.output).toMatch(/removed:/u);
+		expect(run.output).toContain(
+			join(run.home, ".hobo", "durable", "session.json"),
 		);
 	});
 

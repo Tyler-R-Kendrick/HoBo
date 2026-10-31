@@ -121,6 +121,8 @@ export function createPrivilegedAccessGateway(
 	const keys = options.keys ?? createSessionBrokerKeys({ useEs256: false });
 	const now = options.now ?? (() => new Date().toISOString());
 	const sessions = new Map<string, SessionHandle & { remoteId?: string }>();
+	/** Endings being recorded: a second end of the same session waits for the first. */
+	const ending = new Map<string, Promise<void>>();
 	const targets = new Map<string, SessionTarget>();
 	let running = false;
 	let ctx: StationContext | null = null;
@@ -165,6 +167,36 @@ export function createPrivilegedAccessGateway(
 				{ code: verified.code },
 			);
 		}
+	}
+
+	async function endLive(
+		sessionId: string,
+		prev: SessionHandle & { remoteId?: string },
+		reason: string | undefined,
+	): Promise<void> {
+		if (remote && prev.remoteId) {
+			await remote.revokeSession(prev.remoteId).catch(() => {});
+		}
+		const verified = verifySessionToken({
+			token: prev.sessionToken.split("~")[0] ?? prev.sessionToken,
+			keys,
+		});
+		await sink.append({
+			type: "pam.SessionEnded",
+			time: now(),
+			stationId: ctx?.stationId ?? "unknown",
+			tenant: ctx?.tenant ?? "unknown",
+			sessionId,
+			subject: verified.ok ? verified.claims.sub : "unknown",
+			target: prev.targetId,
+			isolationClass: options.isolationClass,
+			kind: options.kind,
+			credentialRef: prev.credentialRef,
+			...(reason !== undefined ? { reason } : undefined),
+		});
+		// Dropped only once its end is recorded: an audit that could not be
+		// written leaves the session live, so a retried close records it.
+		sessions.delete(sessionId);
 	}
 
 	return {
@@ -240,7 +272,10 @@ export function createPrivilegedAccessGateway(
 			});
 		},
 		async stop() {
-			// End all live sessions.
+			await Promise.allSettled(ending.values());
+			// End all live sessions. Each is dropped once its pam.SessionEnded is
+			// written: a stop whose audit failed part way, retried, records the
+			// sessions still left, and none twice.
 			for (const [id, session] of sessions) {
 				if (remote && session.remoteId) {
 					await remote.revokeSession(session.remoteId).catch(() => {});
@@ -258,8 +293,8 @@ export function createPrivilegedAccessGateway(
 					reason: "gateway-stop",
 					credentialRef: session.credentialRef,
 				});
+				sessions.delete(id);
 			}
-			sessions.clear();
 			if (ctx) {
 				await sink.append({
 					type: "pam.GatewayStopped",
@@ -458,29 +493,15 @@ export function createPrivilegedAccessGateway(
 			return handle;
 		},
 		async endSession(sessionId, reason) {
+			const inFlight = ending.get(sessionId);
+			if (inFlight) return inFlight;
 			const prev = sessions.get(sessionId);
 			if (!prev) return;
-			if (remote && prev.remoteId) {
-				await remote.revokeSession(prev.remoteId).catch(() => {});
-			}
-			sessions.delete(sessionId);
-			const verified = verifySessionToken({
-				token: prev.sessionToken.split("~")[0] ?? prev.sessionToken,
-				keys,
+			const recorded = endLive(sessionId, prev, reason).finally(() => {
+				ending.delete(sessionId);
 			});
-			await sink.append({
-				type: "pam.SessionEnded",
-				time: now(),
-				stationId: ctx?.stationId ?? "unknown",
-				tenant: ctx?.tenant ?? "unknown",
-				sessionId,
-				subject: verified.ok ? verified.claims.sub : "unknown",
-				target: prev.targetId,
-				isolationClass: options.isolationClass,
-				kind: options.kind,
-				credentialRef: prev.credentialRef,
-				...(reason !== undefined ? { reason } : undefined),
-			});
+			ending.set(sessionId, recorded);
+			return recorded;
 		},
 		listSessions() {
 			return Object.freeze([...sessions.values()]);

@@ -2,7 +2,8 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
 	test: {
-		setupFiles: ["test/isolate-git-env.ts"],
+		// isolate-tmux: a tmux server per test file, and no agent CLIs seated in it.
+		setupFiles: ["test/isolate-git-env.ts", "test/isolate-tmux.ts"],
 		// Optimizexp feature binding tests live under .optimizexp/ and run via root test:file
 		exclude: ["**/node_modules/**", "**/dist/**", "**/.optimizexp/**"],
 		// This suite drives real subprocesses — `git init`, commit, `worktree

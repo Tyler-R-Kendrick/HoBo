@@ -4,7 +4,7 @@
 // HOME was unset. That state is never read now, so a user who has some is told
 // once where it lives now. Only their own: another uid's directory, a symlink,
 // or the very directory that is now the home says nothing. And a home that
-// cannot be created (the account `nobody`, whose home is `/nonexistent`) fails
+// cannot be created (the account `nobody`, whose passwd home does not exist) fails
 // with a message naming HOBO_HOME rather than with EACCES from a later write.
 import {
 	existsSync,
@@ -134,7 +134,7 @@ describe("prepareHoboHome", () => {
 	});
 
 	it("fails with HoboHomeUnavailable naming HOBO_HOME when the home cannot be made", () => {
-		// A file where a directory must go: as `nobody` under `/nonexistent`,
+		// A file where a directory must go: as `nobody`, under its missing home,
 		// the same call fails with EACCES instead.
 		const { root } = layout();
 		writeFileSync(join(root, "file"), "");

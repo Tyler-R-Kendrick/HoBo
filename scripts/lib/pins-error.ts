@@ -24,6 +24,10 @@ export type PinsErrorCode =
 	| "INTERRUPTED"
 	| "NET_TIMEOUT"
 	| "GITMODULES_AMBIGUOUS"
+	| "ARCHIVE_MALFORMED"
+	| "ARCHIVE_UNSUPPORTED"
+	| "ARCHIVE_MEMBER_MISSING"
+	| "ARCHIVE_UNSAFE"
 	| "USAGE";
 
 /** Every refusal is named; a bare Error would be untraceable. */

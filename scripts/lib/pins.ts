@@ -14,9 +14,18 @@
  */
 import { isAbsolute } from "node:path";
 
-import { PinsError } from "./pins-error.ts";
+import {
+	isArray,
+	isCount,
+	type Json,
+	malformed,
+	readObject,
+	readOnly,
+	readString,
+} from "./pins-json.ts";
 
 export { PinsError, type PinsErrorCode } from "./pins-error.ts";
+export type { Json, JsonObject } from "./pins-json.ts";
 
 /** Where the manifest lives, relative to the repository root. */
 export const PINS_FILE = "tools/pins/siblings.json";
@@ -28,12 +37,26 @@ export interface GitPin {
 	readonly sparse: readonly string[] | null;
 }
 
+/**
+ * The release file is an archive, and what runs is one member of it. The pin's
+ * `sha256` and `size` are the archive's: they are what is verified before the
+ * member is unpacked (`pins-archive.ts`).
+ */
+export interface AssetArchive {
+	/** Gzip-compressed ustar, what mirror.cloud publishes; the only one read. */
+	readonly format: "tar.gz";
+	/** The member to unpack: a relative path of plain segments. */
+	readonly member: string;
+}
+
 export interface AssetFile {
 	readonly url: string;
 	readonly sha256: string;
 	readonly size: number;
 	/** File name the verified bytes are stored (and run) under in the cache. */
 	readonly entry: string;
+	/** Present when `url` is an archive; absent for a bare executable. */
+	readonly archive?: AssetArchive;
 }
 
 export interface AssetPin {
@@ -61,47 +84,6 @@ export interface ParseOptions {
 	readonly allowLocal?: boolean;
 }
 
-export type Json =
-	| null
-	| boolean
-	| number
-	| string
-	| readonly Json[]
-	| JsonObject;
-export interface JsonObject {
-	readonly [key: string]: Json;
-}
-
-// The repo bans `typeof` for narrowing (anti-slop/no-runtime-typeof); a JSON
-// value's kind is read from its tag instead, as in packages/cli/src/json.ts.
-const tagOf = Object.prototype.toString;
-
-function isObject(value: Json | undefined): value is JsonObject {
-	return (
-		value !== undefined &&
-		value !== null &&
-		!Array.isArray(value) &&
-		tagOf.call(value) === "[object Object]"
-	);
-}
-function isString(value: Json | undefined): value is string {
-	return tagOf.call(value) === "[object String]";
-}
-function isArray(value: Json | undefined): value is readonly Json[] {
-	return Array.isArray(value);
-}
-function isCount(value: Json | undefined): value is number {
-	return (
-		tagOf.call(value) === "[object Number]" &&
-		Number.isInteger(value) &&
-		Number(value) > 0
-	);
-}
-
-function malformed(where: string, message: string): never {
-	throw new PinsError("PINS_MALFORMED", `${where}: ${message}`);
-}
-
 const NAME = /^[a-z0-9][a-z0-9-]*$/u;
 const TARGET = /^[a-z0-9]+-[a-z0-9_]+$/u;
 const SHA256 = /^[0-9a-f]{64}$/u;
@@ -113,12 +95,22 @@ const TAG = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/u;
 const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]"]);
 const MAX_ASSET_BYTES = 2 * 1024 ** 3;
 
+// One archive member path: plain segments, none of them "." or "..".
+const MEMBER =
+	/^(?!.*(?:^|\/)\.\.?(?:\/|$))[A-Za-z0-9._@+-]+(?:\/[A-Za-z0-9._@+-]+)*$/u;
+const ARCHIVE_SUFFIX = /\.(?:tar\.gz|tgz)$/u;
+
 /** A branch, tag or commit id that can never be read as a git option. */
 export function isSafeRef(value: string): boolean {
 	return REF.test(value) && !value.includes("..") && !value.includes("//");
 }
 
 /** A file name, not a path, of at most 200 bytes: what `entry` and a release asset are called. */
+/** A relative archive member path of plain segments, none of them `.` or `..`. */
+export function isArchiveMember(value: string): boolean {
+	return MEMBER.test(value);
+}
+
 export function isFileName(value: string): boolean {
 	return FILE_NAME.test(value) && value !== "." && value !== "..";
 }
@@ -172,23 +164,6 @@ export function assertAllowedUrl(
 	return url;
 }
 
-function readObject(value: Json | undefined, where: string): JsonObject {
-	return isObject(value) ? value : malformed(where, "must be an object");
-}
-function readString(value: Json | undefined, where: string): string {
-	return isString(value) && value !== ""
-		? value
-		: malformed(where, "must be a non-empty string");
-}
-function readOnly(
-	value: JsonObject,
-	allowed: readonly string[],
-	where: string,
-): void {
-	for (const key of Object.keys(value)) {
-		if (!allowed.includes(key)) malformed(where, `unknown key "${key}"`);
-	}
-}
 function readPath(value: Json | undefined, where: string): string {
 	const path = readString(value, where);
 	return isRepoPath(path)
@@ -272,7 +247,7 @@ function parseAssetFile(
 	options: ParseOptions,
 ): AssetFile {
 	const object = readObject(value, where);
-	readOnly(object, ["url", "sha256", "size", "entry"], where);
+	readOnly(object, ["url", "sha256", "size", "entry", "archive"], where);
 	const sha256 = readString(object.sha256, `${where}.sha256`);
 	if (!SHA256.test(sha256))
 		malformed(`${where}.sha256`, "must be 64 lowercase hex characters");
@@ -285,7 +260,41 @@ function parseAssetFile(
 	}
 	const url = readString(object.url, `${where}.url`);
 	assertAllowedUrl(url, options.allowLocal === true, `${where}.url`);
-	return Object.freeze({ url, sha256, size, entry });
+	if (object.archive === undefined) {
+		return Object.freeze({ url, sha256, size, entry });
+	}
+	const archive = parseAssetArchive(object.archive, `${where}.archive`);
+	const published = new URL(url).pathname.split("/").pop() ?? "";
+	if (!isFileName(published) || !ARCHIVE_SUFFIX.test(published)) {
+		malformed(
+			`${where}.url`,
+			`an archive pin's file must be a plain .tar.gz file name, got ${published}`,
+		);
+	}
+	return Object.freeze({ url, sha256, size, entry, archive });
+}
+
+function parseAssetArchive(
+	value: Json | undefined,
+	where: string,
+): AssetArchive {
+	const object = readObject(value, where);
+	readOnly(object, ["format", "member"], where);
+	const format = readString(object.format, `${where}.format`);
+	if (format !== "tar.gz") {
+		malformed(
+			`${where}.format`,
+			`${format} is not an archive format the pins read (tar.gz)`,
+		);
+	}
+	const member = readString(object.member, `${where}.member`);
+	if (!isArchiveMember(member)) {
+		malformed(
+			`${where}.member`,
+			`${JSON.stringify(member)} must be a relative path of plain segments, none of them . or ..`,
+		);
+	}
+	return Object.freeze({ format: "tar.gz", member });
 }
 
 function parseAssetPin(

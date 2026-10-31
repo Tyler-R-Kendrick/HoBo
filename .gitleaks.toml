@@ -1,11 +1,14 @@
 title = "HoBo gitleaks"
 
 [allowlist]
-description = "Adversarial CI contract tests reference GitHub secret syntax without real credentials; contract-harness commits two test-only TLS keys (SECURITY.md, Committed test-only keys)"
+description = 'Adversarial CI contract tests reference GitHub secret syntax without real credentials; contract-harness commits two test-only TLS keys (SECURITY.md, section "Committed test-only keys")'
 paths = [
   '''packages/ci-guard/test/''',
-  # Exactly the two test-only keys of exchangeHttp's TLS identity test, never
-  # their directory: their CA permits only .test names and loopback, and no
-  # code outside that test trusts it (packages/contract-harness/test/fixtures/tls/README.md).
+  # Exactly the two test-only TLS keys, never their directory. Their CA permits
+  # only .test names and loopback, and only tests use them: contract-harness's
+  # exchangeHttp TLS test, and the mirror lane's stand-in mirror
+  # (scripts/test/support/mirror-fakes.ts), which serves loopback.* and hands
+  # out ca.pem for the lane's tests to trust. The fixtures' README lists every
+  # user (packages/contract-harness/test/fixtures/tls/README.md).
   '''^packages/contract-harness/test/fixtures/tls/(hostname|loopback)\.key$''',
 ]

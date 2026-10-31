@@ -1,11 +1,19 @@
 # Test-only TLS fixtures
 
-**Test-only.** These certificates and keys exist so `test/http-provider.test.ts`
-can pin which name `exchangeHttp` verifies a TLS answer against, with no network
-and no clock, and so that the stand-in mirror in `scripts/test/mirror-lane.test.ts`
-can serve `--tls-self-signed` the way mirror does. They protect nothing: the
-private keys are committed on purpose, were made for these tests alone, and
-`.gitleaks.toml` exempts exactly the two key files (SECURITY.md says so).
+**Test-only.** These certificates and keys protect nothing: the private keys
+are committed on purpose, were made for these tests alone, and `.gitleaks.toml`
+exempts exactly the two key files (SECURITY.md, "Committed test-only keys").
+Everything that reads this directory is a test, and is listed here
+(`test/gitleaks-test-keys.test.ts` fails on one that is not):
+
+- `packages/contract-harness/test/http-provider.test.ts` pins which name
+  `exchangeHttp` verifies a TLS answer against, with no network and no clock.
+- `packages/contract-harness/test/tls-fixtures.test.ts` checks the constraints
+  below.
+- `scripts/test/support/mirror-fakes.ts` is the mirror lane's stand-in mirror:
+  for `--tls-self-signed` it serves `loopback.pem` and `loopback.key` and
+  writes `ca.pem` where mirror writes its CA, which the lane's code then trusts,
+  as `scripts/test/mirror-lane.test.ts` runs it.
 
 They can only ever vouch for names nobody can own. The CA's critical
 `nameConstraints` extension permits `DNS:test` (the `.test` top-level domain

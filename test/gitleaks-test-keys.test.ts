@@ -56,6 +56,49 @@ describe("committed test-only keys", () => {
 		}
 	});
 
+	it("cite a SECURITY.md section that exists", () => {
+		const toml = readFileSync(`${ROOT}.gitleaks.toml`, "utf8");
+		const cited = /SECURITY\.md, section "([^"]+)"/u.exec(toml)?.[1];
+		expect(cited, ".gitleaks.toml cites no SECURITY.md section").toBeDefined();
+		const headings = readFileSync(`${ROOT}SECURITY.md`, "utf8")
+			.split("\n")
+			.filter((line) => line.startsWith("## "))
+			.map((line) => line.slice(3).trim());
+		expect(headings).toContain(cited);
+	});
+
+	it("are used only by the code their README names", () => {
+		// `--cached`: the index, so a sparse checkout is searched whole.
+		const search = spawnSync(
+			"git",
+			[
+				"grep",
+				"-l",
+				"--cached",
+				"-e",
+				"fixtures/tls",
+				"--",
+				"*.ts",
+				"*.mts",
+				"*.mjs",
+				"*.js",
+			],
+			{ cwd: ROOT, encoding: "utf8" },
+		);
+		expect(search.status, search.stderr).toBe(0);
+		const users = search.stdout
+			.split("\n")
+			.filter(
+				(file) => file !== "" && file !== "test/gitleaks-test-keys.test.ts",
+			);
+		const readme = readFileSync(
+			`${ROOT}packages/contract-harness/test/fixtures/tls/README.md`,
+			"utf8",
+		);
+		expect(users.length).toBeGreaterThan(0);
+		for (const file of users) expect(readme, file).toContain(`\`${file}\``);
+	});
+
 	it("are named as the exception in SECURITY.md", () => {
 		const security = readFileSync(`${ROOT}SECURITY.md`, "utf8");
 		expect(security).toContain("packages/contract-harness/test/fixtures/tls/");

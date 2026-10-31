@@ -10,11 +10,15 @@ Only the default branch and active pull requests are supported. Archived require
 
 Please report:
 
-- Secrets, tokens, credentials, or private keys committed to the repo. The one exception is the two test-only TLS keys `packages/contract-harness/test/fixtures/tls/hostname.key` and `loopback.key`, whose CA can only vouch for `.test` names and loopback (see that directory's README); `.gitleaks.toml` exempts exactly those two files.
+- Secrets, tokens, credentials, or private keys committed to the repo, except the two test-only keys below ("Committed test-only keys").
 - CI workflow changes that could exfiltrate secrets or run untrusted code unsafely.
 - Agent-tooling configuration that causes unexpected data egress or unsafe command execution.
 - Draft contract code that contradicts documented deny-by-default, secretless, tenant-isolation, provenance, or no-egress claims.
 - Dependency or script behavior that materially changes the trust boundary documented in `docs/agent-tooling.md`.
+
+## Committed test-only keys
+
+The repository commits two private keys on purpose: `packages/contract-harness/test/fixtures/tls/hostname.key` and `loopback.key`. They and their certificates exist only for tests, which the fixtures' README lists (`packages/contract-harness/test/fixtures/tls/README.md`): `@hobo/contract-harness`'s own TLS tests, and the mirror lane's stand-in mirror (`scripts/test/support/mirror-fakes.ts`), which serves `loopback.pem` and `loopback.key` and hands out `ca.pem` as its CA for the lane's tests to trust. Their CA can only vouch for `.test` names and loopback, and its key was not kept. `.gitleaks.toml` exempts exactly those two files, never their directory, so a key added beside them is still reported (`test/gitleaks-test-keys.test.ts`). Anything else that trusts that CA, or any other committed key, is in scope above.
 
 ## How to report (public repository)
 

@@ -2803,58 +2803,63 @@ export async function runHoboCodeCli(
 		let brokered: Awaited<ReturnType<typeof brokerPanes>> | undefined;
 		let brokerAudit: readonly string[] = [];
 		let resolvedIdentities: readonly ResolvedSshIdentity[] = [];
-		if (resolvedMachine) {
-			const gateway = await (deps.openStationGateway ?? openStationGateway)({
-				hoboHome,
-				stationId: platform.station.stationId,
-				isolationClass: resolvedMachine.isolationClass,
-			});
-			try {
-				brokered = await brokerPanes(
-					placeable.map((a) => ({ machine: resolvedMachine, agentId: a.id })),
-					{ broker: gateway.broker, subject: "hobo-code", ttlSeconds: 3600 },
-				);
-				if (brokered.panes.length > 0) {
-					if (flags["dry-run"] === true) {
-						resolvedIdentities = brokered.panes.map((pane) => ({
-							pane: { ...pane, identityAgent: "<station-agent-socket>" },
-							stop: async () => {},
-						}));
-					} else {
-						const identities: ResolvedSshIdentity[] = [];
-						try {
-							for (const pane of brokered.panes) {
-								identities.push(await gateway.handoffSshIdentity(pane));
-							}
-						} catch (error) {
-							await Promise.all(identities.map((identity) => identity.stop()));
-							throw error;
-						}
-						resolvedIdentities = identities;
-					}
-				}
-				brokerAudit = gateway.auditTypes();
-			} finally {
-				await gateway.close();
-			}
-			if (brokered.panes.length === 0) {
-				return fail(
-					"HOBO_CODE_MUX_SESSION_DENIED",
-					panel("✕ mux", [
-						`the Station refused every session on ${resolvedMachine.id}.`,
-						...brokered.failures
-							.slice(0, 3)
-							.map((f) => `${f.agentId} · ${f.reason}`),
-						"Panes are not opened on a host the Station did not authorise;",
-						"there is no fallback to an ambient key.",
-					]),
-					["hobo-code machines", "hobo-code auth"],
-					{ machine: resolvedMachine, failures: brokered.failures },
-				);
-			}
-		}
 		const retainedIdentityAgents = new Set<string>();
+		// Every pane identity handed off is stopped below unless its pane was
+		// created, whatever ends the verb: a gateway that fails to close
+		// included, which used to skip this and leave the proxy running.
 		try {
+			if (resolvedMachine) {
+				const gateway = await (deps.openStationGateway ?? openStationGateway)({
+					hoboHome,
+					stationId: platform.station.stationId,
+					isolationClass: resolvedMachine.isolationClass,
+				});
+				try {
+					brokered = await brokerPanes(
+						placeable.map((a) => ({ machine: resolvedMachine, agentId: a.id })),
+						{ broker: gateway.broker, subject: "hobo-code", ttlSeconds: 3600 },
+					);
+					if (brokered.panes.length > 0) {
+						if (flags["dry-run"] === true) {
+							resolvedIdentities = brokered.panes.map((pane) => ({
+								pane: { ...pane, identityAgent: "<station-agent-socket>" },
+								stop: async () => {},
+							}));
+						} else {
+							const identities: ResolvedSshIdentity[] = [];
+							try {
+								for (const pane of brokered.panes) {
+									identities.push(await gateway.handoffSshIdentity(pane));
+								}
+							} catch (error) {
+								await Promise.all(
+									identities.map((identity) => identity.stop()),
+								);
+								throw error;
+							}
+							resolvedIdentities = identities;
+						}
+					}
+					brokerAudit = gateway.auditTypes();
+				} finally {
+					await gateway.close();
+				}
+				if (brokered.panes.length === 0) {
+					return fail(
+						"HOBO_CODE_MUX_SESSION_DENIED",
+						panel("✕ mux", [
+							`the Station refused every session on ${resolvedMachine.id}.`,
+							...brokered.failures
+								.slice(0, 3)
+								.map((f) => `${f.agentId} · ${f.reason}`),
+							"Panes are not opened on a host the Station did not authorise;",
+							"there is no fallback to an ambient key.",
+						]),
+						["hobo-code machines", "hobo-code auth"],
+						{ machine: resolvedMachine, failures: brokered.failures },
+					);
+				}
+			}
 			const allocation = await allocateAgentWorkspaces({
 				workspaceRoot: workspace.path,
 				agentIds: agents.map((a) => a.id),

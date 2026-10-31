@@ -119,7 +119,11 @@ stops only a walk that starts below it: the walk examines the starting
 directory, then each parent, and stops before it would move into a listed
 directory, so a ceiling and everything above it go unexamined. As in git, a
 ceiling equal to the starting directory does not stop the walk above it; list
-its parent for that. Empty and relative entries are ignored. The CLI's own tests set it to their temp root.
+its parent for that. Empty and relative entries are ignored. The tests that
+need a walk to find nothing set it to their temp root: the no-Bindle test in
+`test/shell.test.ts` and the cases in `test/project-discovery*.test.ts`. The
+other cli tests put a marker in their own temp project, so the walk stops
+there.
 
 | Variable | Default | Effect |
 | --- | --- | --- |

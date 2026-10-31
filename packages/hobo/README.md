@@ -159,8 +159,9 @@ lives only in another scope, so a missing `teamId`, or a wrong one the token can
 still deploy to, does not fail: it creates a second project of that name there
 and deploys to it. Set `teamId` (`createVercelDeployProvider({ token, teamId })`)
 for a project that lives in a team. `selectIacProvider`, and so `hobo up`, reads
-it from `VERCEL_TEAM_ID`, beside `VERCEL_TOKEN`; unset, empty or blank, the
-deploy and any create are in the token's own scope. The resolver plane
+it from `VERCEL_TEAM_ID`, beside `VERCEL_TOKEN`. Both take it trimmed, and take
+an empty or blank one as none: the deploy and any create are then in the
+token's own scope. The resolver plane
 (`HOBO_DEPLOY_RESOLVERS=1`) reads it the same way, and its project lookups and
 creates carry the same `teamId`. A run whose credentials come from OpenSesame
 (`HOBO_CREDENTIALS=opensesame`) keeps it too: the relaunched `hobo` starts from

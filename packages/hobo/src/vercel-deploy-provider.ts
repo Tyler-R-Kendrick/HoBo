@@ -88,6 +88,15 @@ function readVercelFileTree(rootDir: string): VercelDeploymentFile[] {
 	return files;
 }
 
+// A team id as both entry points take it (this provider's `teamId`, and
+// `selectIacProvider`'s environment): trimmed, and empty or blank as none.
+export function normalizeVercelTeamId(
+	teamId: string | undefined,
+): string | undefined {
+	const trimmed = teamId?.trim();
+	return trimmed === undefined || trimmed === "" ? undefined : trimmed;
+}
+
 export interface VercelDeployProviderOptions {
 	// The Vercel access token (forwarded to `createVercelClient` as the Bearer).
 	readonly token: string;
@@ -97,7 +106,8 @@ export interface VercelDeployProviderOptions {
 	// project is created when a deploy finds the account has none by that name.
 	readonly projectName?: string;
 	// The team id, when the project lives in a team. Without it, every request
-	// (and a project create) is in the token's own scope.
+	// (and a project create) is in the token's own scope. Trimmed, and blank
+	// taken as none (`normalizeVercelTeamId`).
 	readonly teamId?: string;
 	// The artifact directory to deploy. Defaults to
 	// packages/hobo/fixtures/deploy/vercel.
@@ -114,11 +124,12 @@ export function createVercelDeployProvider(
 	const projectName = options.projectName ?? "hobo-hello-bindle";
 	const target = options.target ?? "production";
 	const templateDir = options.templateDir ?? defaultTemplateDir();
-	const scope = options.teamId ?? "token-default";
+	const teamId = normalizeVercelTeamId(options.teamId);
+	const scope = teamId ?? "token-default";
 	const client = createVercelClient({
 		token: options.token,
 		...(options.fetch !== undefined ? { fetch: options.fetch } : undefined),
-		...(options.teamId !== undefined ? { teamId: options.teamId } : undefined),
+		...(teamId !== undefined ? { teamId } : undefined),
 	});
 
 	// One Vercel deployment realizes the whole bindle. The Executor drives the port

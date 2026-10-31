@@ -137,7 +137,10 @@ function asFetchHandler(
 }
 
 import type { VercelFetch } from "./vercel-client.js";
-import { createVercelDeployProvider } from "./vercel-deploy-provider.js";
+import {
+	createVercelDeployProvider,
+	normalizeVercelTeamId,
+} from "./vercel-deploy-provider.js";
 
 // @hobo/hobo — the composition root (apps layer). It wires HoBo's default
 // runtimes so the composed `hobo` binary runs the cloud verbs end to end in the
@@ -445,12 +448,13 @@ function hostCredentialResolver(
 
 // The Vercel team the environment names in `VERCEL_TEAM_ID`, trimmed, or
 // `undefined` when it is unset or blank (the name and the trim
-// `scripts/staging-cutover-demo.mts` already use). Both Vercel lanes read it.
+// `scripts/staging-cutover-demo.mts` already use, and the rule
+// `createVercelDeployProvider` applies to its own `teamId`). Both Vercel lanes
+// read it.
 function vercelTeamIdOf(
 	env: Record<string, string | undefined>,
 ): string | undefined {
-	const teamId = env.VERCEL_TEAM_ID?.trim();
-	return teamId === undefined || teamId === "" ? undefined : teamId;
+	return normalizeVercelTeamId(env.VERCEL_TEAM_ID);
 }
 
 // Build the OPT-IN resolver-backed deploy provider for whichever cloud the

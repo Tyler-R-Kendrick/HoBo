@@ -178,6 +178,31 @@ describe("createVercelDeployProvider deploys first (scripted transport, no netwo
 		});
 	});
 
+	it.each([
+		["blank", "", "", "token-default"],
+		["spaces only", "   ", "", "token-default"],
+		["padded", " team_x ", "?teamId=team_x", "team_x"],
+	])("takes a %s teamId the way selectIacProvider does: trimmed, and blank as none", async (_case, teamId, query, scope) => {
+		const { fetch, sent } = scripted({
+			[DEPLOY]: [PROJECT_NOT_FOUND, DEPLOYED],
+			[CREATE]: [CREATED],
+		});
+		const provider = createVercelDeployProvider({
+			token: "tok",
+			fetch,
+			teamId,
+		});
+
+		const outputs = await provider.apply(programFor("dep-1"));
+
+		expect(sent.map(({ url }) => new URL(url).search)).toEqual([
+			query,
+			query,
+			query,
+		]);
+		expect(outputs.scope).toBe(scope);
+	});
+
 	// The project lives in team_acme, but the provider was given no teamId, so
 	// Vercel looks for it in the token's own scope, answers "Project not found",
 	// and the create makes a second project of that name there. That does not

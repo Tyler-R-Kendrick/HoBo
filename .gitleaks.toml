@@ -1,7 +1,10 @@
 title = "HoBo gitleaks"
 
 [allowlist]
-description = "Adversarial CI contract tests reference GitHub secret syntax without real credentials"
+description = "Adversarial CI contract tests reference GitHub secret syntax without real credentials; contract-harness commits test-only TLS keys (test/fixtures/tls/README.md)"
 paths = [
   '''packages/ci-guard/test/''',
+  # Test-only certificates and keys for exchangeHttp's TLS identity test. They
+  # protect nothing and are trusted by no code outside that test.
+  '''packages/contract-harness/test/fixtures/tls/''',
 ]

@@ -1,10 +1,13 @@
+import { readFileSync } from "node:fs";
 import {
 	createServer,
 	type IncomingMessage,
 	type Server,
 	type ServerResponse,
 } from "node:http";
+import { createServer as createTlsServer } from "node:https";
 import type { AddressInfo } from "node:net";
+import type { TLSSocket } from "node:tls";
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -278,6 +281,73 @@ describe("exchangeHttp", () => {
 				body: "Action=CreateQueue&QueueName=q",
 			},
 		]);
+	});
+});
+
+describe("TLS is verified against the address dialled, never the Host header", () => {
+	// Test-only certificates (test/fixtures/tls/README.md): a throwaway CA and
+	// two server certificates it signed, valid 2000-2125.
+	const fixture = (name: string) =>
+		readFileSync(new URL(`./fixtures/tls/${name}`, import.meta.url), "utf8");
+	const ca = fixture("ca.pem");
+	const AWS_HOST = "s3.us-east-1.amazonaws.com";
+
+	type TlsSeen = { readonly host: string; readonly servername: string | false };
+
+	/** An HTTPS server on 127.0.0.1 presenting `name`'s certificate. */
+	async function listenTls(
+		name: "loopback" | "hostname",
+	): Promise<{ readonly baseUrl: string; readonly seen: TlsSeen[] }> {
+		const seen: TlsSeen[] = [];
+		const server = createTlsServer(
+			{ key: fixture(`${name}.key`), cert: fixture(`${name}.pem`) },
+			(request, response) => {
+				// SAFETY: an https server's request socket is a TLSSocket.
+				const socket = request.socket as TLSSocket;
+				seen.push({
+					host: request.headers.host ?? "",
+					servername: socket.servername,
+				});
+				response.writeHead(200, { "content-type": "text/plain" });
+				response.end("ok");
+			},
+		);
+		servers.push(server);
+		await new Promise<void>((resolve) =>
+			server.listen(0, "127.0.0.1", () => resolve()),
+		);
+		// SAFETY: a server listening on a TCP port reports an AddressInfo, never a pipe name.
+		const { port } = server.address() as AddressInfo;
+		return { baseUrl: `https://127.0.0.1:${port}`, seen };
+	}
+
+	it("accepts a certificate for the dialled 127.0.0.1, sends the provider's Host and no SNI", async () => {
+		const server = await listenTls("loopback");
+
+		const answer = await exchangeHttp(
+			{ baseUrl: server.baseUrl, host: AWS_HOST, ca },
+			{ method: "GET", path: "/bucket" },
+		);
+
+		expect(answer.status).toBe(200);
+		// No SNI: a name the certificate never carried is not offered either.
+		expect(server.seen).toEqual([{ host: AWS_HOST, servername: false }]);
+	});
+
+	it("refuses a certificate that names only the Host header's name, with ERR_TLS_CERT_ALTNAME_INVALID", async () => {
+		const server = await listenTls("hostname");
+
+		const refused = exchangeHttp(
+			{ baseUrl: server.baseUrl, host: AWS_HOST, ca },
+			{ method: "GET", path: "/bucket" },
+		);
+
+		await expect(refused).rejects.toMatchObject({
+			code: "HTTP_PROVIDER_UNREACHABLE",
+			cause: { code: "ERR_TLS_CERT_ALTNAME_INVALID" },
+		});
+		await expect(refused).rejects.toThrow(/ERR_TLS_CERT_ALTNAME_INVALID/u);
+		expect(server.seen).toEqual([]);
 	});
 });
 

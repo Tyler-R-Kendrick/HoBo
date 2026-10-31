@@ -1,7 +1,9 @@
 /**
  * Stand-ins for the processes the mirror lane runs, for
  * scripts/test/mirror-lane*.test.ts: a `mirror` that behaves as mirror.cloud
- * does at start-up (its banner, then its bind; `--tls-self-signed`), and a
+ * does at start-up (its bind, then its banner, as since mirror.cloud#442, or
+ * the older order in the `pre-442` and `banner-before-bind` modes;
+ * `--tls-self-signed`), and a
  * `pnpm` that starts a worker which ignores SIGTERM, the way a package run
  * starts vitest and its workers. Each can report its pid to a beacon, a
  * loopback socket a test listens on; the socket's close is how the test learns
@@ -89,6 +91,12 @@ if (mode === "pre-442") {
 	// here happens only when the test orders it.
 	announce();
 	onOrder("bind", () => server.listen(Number(port), host));
+} else if (mode === "banner-before-bind") {
+	// A mirror older than mirror.cloud#442 whose port is free: the banner, and
+	// the bind 300 ms later, so health asked right after the banner is refused
+	// until the bind (the lane retries 40 times, 25 ms apart).
+	announce();
+	setTimeout(() => server.listen(Number(port), host), 300);
 } else {
 	// Like mirror since mirror.cloud#442: the banner only once the port is bound.
 	server.listen(Number(port), host, announce);

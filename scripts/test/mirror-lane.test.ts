@@ -400,6 +400,20 @@ describe("startMirror", () => {
 		assert.equal(existsSync(mark), true);
 	});
 
+	it("keeps asking for health while a mirror built before mirror.cloud#442 binds after its banner", async () => {
+		// Its health is refused for 300 ms after the banner, then answers.
+		const mirror = await startMirror({
+			bin: fakeMirror(),
+			env: laneEnv({ FAKE_MIRROR_MODE: "banner-before-bind" }),
+		});
+		try {
+			const seen = await getJson(`${mirror.url}/argv`);
+			assert.equal(seen.clock, "controllable");
+		} finally {
+			await mirror.stop();
+		}
+	});
+
 	it("trusts no health answer before mirror's own listening banner", async () => {
 		await refusedStart(
 			{

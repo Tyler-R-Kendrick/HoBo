@@ -2661,6 +2661,12 @@ export interface ShellHost {
 	readonly aboutLines?: readonly string[];
 	/** Release long-lived local dev sessions owned by this shell. */
 	readonly dispose?: () => Promise<void>;
+	/**
+	 * The ending signal that came while one of this shell's verbs held a Station
+	 * authorization (opening it, or a forward over it), if any: the shell then
+	 * ends by that signal, once `dispose` has closed what was open.
+	 */
+	readonly exitSignal?: () => NodeJS.Signals | undefined;
 }
 
 export interface RunInteractiveShellOptions {

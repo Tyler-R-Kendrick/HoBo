@@ -160,8 +160,15 @@ async function runHoboCommand(
 
 /** A forward-sessions action the CLI handed over, with the authorization it holds. */
 interface HandedForward extends SessionForward {
-	readonly closeAuthorization?: () => Promise<void>;
+	readonly closeAuthorization?: (reason?: string) => Promise<void>;
 }
+
+/**
+ * The reason recorded on `pam.SessionEnded` when the shell closes a Station
+ * authorization because it is quitting: on its own quit, or on an ending
+ * signal while one of its verbs held the authorization.
+ */
+const SHELL_QUIT = "shell-quit";
 
 /** The CLI's serve-sessions action, which the shell runs itself. */
 function servedAction(
@@ -231,6 +238,7 @@ interface ShellForward {
 function startShellForward(
 	forward: HandedForward,
 	env: NodeJS.ProcessEnv,
+	closingReason: () => string | undefined,
 	ended: () => void,
 ): ShellForward {
 	const own = new EventEmitter();
@@ -249,7 +257,7 @@ function startShellForward(
 		.catch(() => 1)
 		.finally(async () => {
 			try {
-				await forward.closeAuthorization?.();
+				await forward.closeAuthorization?.(closingReason());
 			} finally {
 				signals.release();
 				ended();
@@ -315,6 +323,33 @@ export function createDefaultShellHost(
 	const forwards = new Set<ShellForward>();
 	const servedSessions = new Set<ServedSessions>();
 	let disposed = false;
+	// The process's ending signals, held from just before a verb opens a
+	// Station authorization (the CLI asks, `signals.hold()`), as the hobo-code
+	// entry holds them: the shell still quits on one, its dispose then closes
+	// what was open, and the shell ends by that signal (`exitSignal`).
+	const signals = endingSignalHold();
+	/**
+	 * Verbs that have opened, or are opening, an authorization they have not
+	 * yet handed on: each settles when its verb returns. The shell's dispose waits
+	 * for them, so a verb in flight closes what it opened before the shell ends.
+	 */
+	const authorizing = new Set<Promise<void>>();
+	let endedBy: NodeJS.Signals | undefined;
+	let watching = false;
+	const holdForVerb = (): void => {
+		signals.hold();
+		if (watching) return;
+		watching = true;
+		signals.whileHeld((signal) => {
+			if (authorizing.size > 0 || forwards.size > 0) endedBy ??= signal;
+		});
+	};
+	const releaseSignals = (): void => {
+		signals.release();
+		watching = false;
+	};
+	const closingReason = (): string | undefined =>
+		disposed || endedBy !== undefined ? SHELL_QUIT : undefined;
 	const cliDeps: DefaultShellHostOptions = {
 		...deps,
 		onDevSession: (session) => {
@@ -510,43 +545,77 @@ export function createDefaultShellHost(
 				return runHoboCommand(argv.slice(1), deps);
 			}
 			const codeArgv = argv[0] === "hobo" ? argv.slice(1) : argv;
-			const result = await runHoboCodeCli([...codeArgv], {
-				...cliDeps,
-				json: false,
-			});
-			const text = formatHoboCodeResult(result, {
-				json: false,
-				dense: deps.dense === true,
-			});
-			const forward = handedForward(result);
-			if (forward !== undefined) {
-				// Handed over after the shell began to close: nothing will stop
-				// a forward now, so none is started, and the authorization goes.
-				if (disposed) {
-					await forward.closeAuthorization?.();
-					return `${text}\nnot forwarded: the shell is closing; the Station authorization is closed`;
+			let authorization: Promise<void> | undefined;
+			let settle = (): void => {};
+			try {
+				const result = await runHoboCodeCli([...codeArgv], {
+					...cliDeps,
+					json: false,
+					signals: {
+						hold: () => {
+							if (authorization === undefined) {
+								authorization = new Promise<void>((resolve) => {
+									settle = resolve;
+								});
+								authorizing.add(authorization);
+							}
+							holdForVerb();
+						},
+						get first() {
+							return signals.first;
+						},
+					},
+				});
+				const text = formatHoboCodeResult(result, {
+					json: false,
+					dense: deps.dense === true,
+				});
+				const forward = handedForward(result);
+				if (forward !== undefined) {
+					// Handed over once the shell has begun to close, or after a
+					// signal it quits on: nothing will stop a forward now, so none
+					// is started, and the authorization goes.
+					if (disposed || signals.first !== undefined) {
+						await forward.closeAuthorization?.(SHELL_QUIT);
+						return `${text}\nnot forwarded: the shell is closing; the Station authorization is closed`;
+					}
+					const running = startShellForward(
+						forward,
+						deps.env ?? process.env,
+						closingReason,
+						() => forwards.delete(running),
+					);
+					forwards.add(running);
+					return `${text}\n${forwardBanner(forward).trimEnd()}`;
 				}
-				const running = startShellForward(
-					forward,
-					deps.env ?? process.env,
-					() => forwards.delete(running),
-				);
-				forwards.add(running);
-				return `${text}\n${forwardBanner(forward).trimEnd()}`;
+				const local = servedAction(result);
+				if (local !== undefined) return `${text}\n${await serveLocally(local)}`;
+				await executeResidentTerminalAction(result, deps.env ?? process.env);
+				return text;
+			} finally {
+				if (authorization !== undefined) {
+					authorizing.delete(authorization);
+					settle();
+					// A verb that held the signals only once the shell had begun
+					// to close lets them go itself, its authorization closed.
+					if (disposed && authorizing.size === 0 && forwards.size === 0)
+						releaseSignals();
+				}
 			}
-			const local = servedAction(result);
-			if (local !== undefined) return `${text}\n${await serveLocally(local)}`;
-			await executeResidentTerminalAction(result, deps.env ?? process.env);
-			return text;
 		},
 		dispose: async () => {
 			disposed = true;
+			// A verb still opening its authorization finishes first: the shell
+			// is closing, so it closes what it opened rather than forward it.
+			await Promise.all(authorizing);
 			await Promise.all([...forwards].map((forward) => forward.stop()));
 			await Promise.all([...servedSessions].map((served) => served.close()));
 			servedSessions.clear();
 			await Promise.all([...devSessions].map((session) => session.close()));
 			devSessions.clear();
+			if (authorizing.size === 0) releaseSignals();
 		},
+		exitSignal: () => endedBy,
 		tryWorkspaceAction,
 		async sendToAgent(agent, text) {
 			const { IN_SESSION_MUX, sendToInSessionPane } = await import(

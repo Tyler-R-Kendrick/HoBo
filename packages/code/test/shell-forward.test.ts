@@ -104,18 +104,25 @@ function audit(hoboHome: string): readonly string[] {
 		);
 }
 
-const CLOSED = [
-	"pam.GatewayStarted",
-	"pam.SessionStarted",
-	"pam.SessionEnded(gateway-stop)",
-	"pam.GatewayStopped",
-];
+/** The audit of a session closed, saying `reason` (the gateway's own stop: gateway-stop). */
+function closedWith(reason = "gateway-stop"): readonly string[] {
+	return [
+		"pam.GatewayStarted",
+		"pam.SessionStarted",
+		`pam.SessionEnded(${reason})`,
+		"pam.GatewayStopped",
+	];
+}
 
 /**
  * A shell host over a real local Station, a declared machine `box`, and a
  * stand-in `ssh` on its PATH that runs until it is released or signalled.
+ * With `holdOpening`, the gateway, once open, is handed to the verb only at
+ * `letOpen()`: the verb is still opening the authorization until then.
  */
-async function shell(options: { readonly ssh?: boolean } = {}) {
+async function shell(
+	options: { readonly ssh?: boolean; readonly holdOpening?: boolean } = {},
+) {
 	const root = mkdtempSync(join(tmpdir(), "s"));
 	roots.push(root);
 	const hoboHome = join(root, "h");
@@ -146,6 +153,14 @@ async function shell(options: { readonly ssh?: boolean } = {}) {
 	servers.push(agent);
 	await new Promise<void>((resolve) => agent.listen(agentSocket, resolve));
 	const closes: (string | undefined)[] = [];
+	let opened = false;
+	let letOpen = (): void => {};
+	const opening =
+		options.holdOpening === true
+			? new Promise<void>((resolve) => {
+					letOpen = resolve;
+				})
+			: Promise.resolve();
 	const host = createDefaultShellHost({
 		hoboHome,
 		cwd: project,
@@ -159,6 +174,8 @@ async function shell(options: { readonly ssh?: boolean } = {}) {
 				...context,
 				sshAuthSock: agentSocket,
 			});
+			opened = true;
+			await opening;
 			return {
 				...gateway,
 				close: async (reason) => {
@@ -179,7 +196,16 @@ async function shell(options: { readonly ssh?: boolean } = {}) {
 		if (!standIns.includes(pid)) standIns.push(pid);
 		return pid;
 	};
-	return { host, hoboHome, closes, release, sockets, sshPid };
+	return {
+		host,
+		hoboHome,
+		closes,
+		release,
+		sockets,
+		sshPid,
+		opened: () => opened,
+		letOpen: () => letOpen(),
+	};
 }
 
 async function serveInShell(host: ShellHost): Promise<string> {
@@ -208,8 +234,8 @@ describe("the shell's /sessions serve --host", () => {
 		const ssh = s.sshPid() ?? 0;
 		expect(running(ssh)).toBe(true);
 		await s.host.dispose?.();
-		expect(s.closes).toEqual([undefined]);
-		expect(audit(s.hoboHome)).toEqual(CLOSED);
+		expect(s.closes).toEqual(["shell-quit"]);
+		expect(audit(s.hoboHome)).toEqual(closedWith("shell-quit"));
 		expect(await until(() => !running(ssh), 10_000)).toBe(true);
 		expect(s.sockets()).toEqual([]);
 	}, 60_000);
@@ -220,17 +246,33 @@ describe("the shell's /sessions serve --host", () => {
 		expect(await until(() => s.sshPid() !== undefined, 30_000)).toBe(true);
 		writeFileSync(s.release, "");
 		expect(await until(() => s.closes.length > 0, 30_000)).toBe(true);
-		expect(audit(s.hoboHome)).toEqual(CLOSED);
+		expect(audit(s.hoboHome)).toEqual(closedWith());
 		expect(s.sockets()).toEqual([]);
 		await s.host.dispose?.();
 		expect(s.closes).toEqual([undefined]);
+	}, 60_000);
+
+	it("quit while the verb opens the authorization: waits for the verb, which closes it saying shell-quit", async () => {
+		const s = await shell({ holdOpening: true });
+		const verb = serveInShell(s.host);
+		expect(await until(s.opened, 30_000)).toBe(true);
+		const quitting = s.host.dispose?.();
+		await sleep(100);
+		s.letOpen();
+		await quitting;
+		// Closed before the shell's dispose was done, never left to its lease.
+		expect(s.closes).toEqual(["shell-quit"]);
+		expect(audit(s.hoboHome)).toEqual(closedWith("shell-quit"));
+		expect(s.sockets()).toEqual([]);
+		expect(await verb).toMatch(/^not forwarded: the shell is closing/mu);
+		expect(s.sshPid()).toBeUndefined();
 	}, 60_000);
 
 	it("closes the authorization when the forward cannot start ssh", async () => {
 		const s = await shell({ ssh: false });
 		await serveInShell(s.host);
 		expect(await until(() => s.closes.length > 0, 30_000)).toBe(true);
-		expect(audit(s.hoboHome)).toEqual(CLOSED);
+		expect(audit(s.hoboHome)).toEqual(closedWith());
 		expect(s.sockets()).toEqual([]);
 	}, 60_000);
 });

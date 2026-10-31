@@ -141,7 +141,10 @@ async function launchProductShell(options: {
 			`sandbox kept: ${engine.sandboxRoot}\npromote (audited): hobo-code promote --run ${engine.runId}\n`,
 		);
 	}
-	return code;
+	// A signal that came while a verb held a Station authorization ends the
+	// shell by that signal, now that dispose has closed what was open.
+	const signal = host.exitSignal?.();
+	return signal !== undefined ? signalStatus(signal) : code;
 }
 
 function launchPiHarness(): Promise<number> {

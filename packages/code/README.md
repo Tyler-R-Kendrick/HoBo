@@ -914,7 +914,12 @@ the forward, it closes it itself, and the Station's `pam.SessionEnded` says
 `session-serve-failed`. The interactive shell's `/sessions serve --host
 <machine>` runs the same forward behind its screen (ssh gets no terminal),
 and closes the authorization when the forward ends, when it cannot start, and
-when the shell quits. Its `/sessions serve` without `--host` starts the
+when the shell quits. The shell holds the same four signals from just before
+one of its verbs opens an authorization: one that comes while that verb or its
+forward runs quits the shell, which waits for a verb still opening the
+authorization, stops ssh, closes the authorization with the reason
+`shell-quit` (as quitting the shell any other way does), and ends hobo-code
+with 128+n. Its `/sessions serve` without `--host` starts the
 loopback session browser as `hobo-code session serve` does, shows where it is,
 and closes it when the shell quits.
 

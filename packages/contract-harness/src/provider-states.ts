@@ -87,6 +87,26 @@ function parseState(value: PactJsonValue, where: string): PactProviderState {
 	return Object.freeze({ name: value.name, params: Object.freeze(params) });
 }
 
+/**
+ * One interaction's `providerStates` (`where` names the interaction), none
+ * when it has none; a malformed one is `ProviderStateError`. `parsePactDocument`
+ * reads them with this too.
+ */
+export function readProviderStates(
+	declared: PactJsonValue | undefined,
+	where: string,
+): readonly PactProviderState[] {
+	if (declared === undefined) return Object.freeze([]);
+	if (!Array.isArray(declared)) {
+		throw new ProviderStateError(`${where}.providerStates must be a list`);
+	}
+	return Object.freeze(
+		declared.map((state: PactJsonValue, at) =>
+			parseState(state, `${where}.providerStates[${at}]`),
+		),
+	);
+}
+
 /** The provider states of every interaction in a raw pact document, in its order. */
 export function parseProviderStates(
 	document: PactJsonValue,
@@ -106,19 +126,9 @@ export function parseProviderStates(
 					`${where}.request needs a method and a path`,
 				);
 			}
-			const declared = interaction.providerStates;
-			let list: readonly PactJsonValue[] = [];
-			if (Array.isArray(declared)) list = declared;
-			else if (declared !== undefined) {
-				throw new ProviderStateError(`${where}.providerStates must be a list`);
-			}
 			return Object.freeze({
 				request: Object.freeze({ method, path }),
-				states: Object.freeze(
-					list.map((state, at) =>
-						parseState(state, `${where}.providerStates[${at}]`),
-					),
-				),
+				states: readProviderStates(interaction.providerStates, where),
 			});
 		}),
 	);

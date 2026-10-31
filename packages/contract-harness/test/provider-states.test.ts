@@ -241,3 +241,46 @@ describe("parseProviderStates", () => {
 		expect(() => parseProviderStates(raw)).toThrow(ProviderStateError);
 	});
 });
+
+describe("parsePactDocument with provider states", () => {
+	const base = {
+		consumer: { name: "TestConsumer" },
+		provider: { name: "VercelApi" },
+		metadata: { pactSpecification: { version: "3.0.0" } },
+	};
+	const interaction = {
+		description: "ok",
+		request: { method: "GET", path: "/x" },
+		response: { status: 200 },
+	};
+
+	it("carries each interaction's Pact v3 providerStates, with their params", () => {
+		const pact = parsePactDocument({
+			...base,
+			interactions: [
+				{
+					...interaction,
+					providerStates: [
+						{ name: "a project exists", params: { name: "site" } },
+						{ name: "the user is signed in" },
+					],
+				},
+				{ ...interaction, description: "stateless" },
+			],
+		});
+		expect(pact.interactions[0]?.providerStates).toEqual([
+			{ name: "a project exists", params: { name: "site" } },
+			{ name: "the user is signed in", params: {} },
+		]);
+		expect(pact.interactions[1]?.providerStates).toBeUndefined();
+	});
+
+	it("reports a malformed provider state as an issue", () => {
+		expect(() =>
+			parsePactDocument({
+				...base,
+				interactions: [{ ...interaction, providerStates: [{ name: "" }] }],
+			}),
+		).toThrow(/interactions\[0\]\.providerStates\[0\] needs a non-empty name/u);
+	});
+});

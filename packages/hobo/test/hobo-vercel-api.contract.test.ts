@@ -19,6 +19,7 @@ import {
 	type PactRequest,
 	type PactResponse,
 	parsePactDocument,
+	parseProviderStates,
 	parseResponseMatchingRules,
 } from "@hobo/contract-harness";
 import type { HttpTransport, TransportResponse } from "@hobo/core";
@@ -169,6 +170,49 @@ describe("hobo-vercel-api.pact.json, consumer side", () => {
 				target: "production",
 			}),
 		).rejects.toThrow(/HTTP 404.*not_found/u);
+	});
+
+	it("the pact parses through the shapes the harness's records admit", () => {
+		// `cue vet` of the file against data-models/contract-harness.cue is not
+		// run here; these are the same shapes, held by the TypeScript parsers and
+		// by the closed key sets of #PactDocument, #PactInteraction,
+		// #PactResponse and #PactMetadata.
+		expect(Object.keys(pactJson).sort()).toEqual(
+			["consumer", "interactions", "metadata", "provider"].sort(),
+		);
+		expect(
+			Object.keys(pactJson.metadata).every((key) =>
+				["pactSpecification", "verifiedAgainst"].includes(key),
+			),
+		).toBe(true);
+		for (const interaction of pactJson.interactions) {
+			expect(
+				Object.keys(interaction).every((key) =>
+					["description", "providerStates", "request", "response"].includes(
+						key,
+					),
+				),
+				interaction.description,
+			).toBe(true);
+			expect(
+				Object.keys(interaction.response).every((key) =>
+					["status", "headers", "body", "matchingRules"].includes(key),
+				),
+				interaction.description,
+			).toBe(true);
+		}
+		expect(
+			pact.interactions.map((interaction) =>
+				interaction.providerStates?.map((state) => state.name),
+			),
+		).toEqual([
+			["no project hobo-pact-site exists"],
+			["no project hobo-pact-site exists"],
+			["project hobo-pact-site exists"],
+			["no project hobo-pact-missing exists"],
+		]);
+		expect(parseProviderStates(pactJson)).toHaveLength(4);
+		expect(parseResponseMatchingRules(pactJson)).toHaveLength(4);
 	});
 
 	it("every interaction was exercised, and each generated id has a matching rule", () => {

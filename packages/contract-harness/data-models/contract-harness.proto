@@ -13,6 +13,15 @@ message PactResponse {
   uint32 status = 1;
   map<string, string> headers = 2;
   google.protobuf.Struct body = 3;
+  PactMatchingRules matching_rules = 4;
+}
+// Pact v3 response matchingRules as a pact file carries them: body rules keyed by path.
+message PactMatchingRules {
+  map<string, PactMatchingRule> body = 1;
+}
+message PactMatchingRule {
+  string combine = 1;
+  repeated ResponseMatcher matchers = 2;
 }
 // A Pact v3 provider state an interaction needs (src/provider-states.ts).
 message PactProviderState {
@@ -26,7 +35,10 @@ message PactInteraction {
   repeated PactProviderState provider_states = 4;
 }
 message PactSpecification { string version = 1; }
-message PactMetadata { PactSpecification pact_specification = 1; }
+message PactMetadata {
+  PactSpecification pact_specification = 1;
+  string verified_against = 2;
+}
 message PactDocument {
   PactParticipant consumer = 1;
   PactParticipant provider = 2;

@@ -23,7 +23,7 @@ Status progresses `consumer_tested` → `provider_verified`.
 
 ## Public API
 
-- `parsePactDocument` — parse-don't-validate entry for pact JSON (mirrors `data-models/contract-harness.cue`)
+- `parsePactDocument` — parse-don't-validate entry for pact JSON (mirrors `data-models/contract-harness.cue`); each interaction carries its Pact v3 `providerStates` when it names any. The CUE records also admit a response's `matchingRules` (`#PactMatchingRules`, keyed by path) and metadata's `verifiedAgainst`. `cue vet` does not run in this package's tests; the TypeScript parsers hold the same shapes
 - `loadPactDirectory` — load non-recursive `*.pact.json` from a directory
 - `createMockProviderFromPact` — consumer-side in-process mock
 - `verifyPact` — provider verification (exact provider identity/status/headers; response body recursive-subset)

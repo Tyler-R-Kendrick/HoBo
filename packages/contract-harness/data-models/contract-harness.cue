@@ -17,6 +17,19 @@ package contract_harness
 	status: int & >=100 & <=599
 	headers?: {[string]: string}
 	body?: _
+	matchingRules?: #PactMatchingRules
+}
+
+// Pact v3 response matchingRules as a pact file carries them (src/matching.ts):
+// body rules only, each keyed by its path; #ResponseMatchingRule is the same
+// rule parsed, its path a field.
+#PactMatchingRules: {
+	body?: {[=~"^\\$((\\.[A-Za-z_$][A-Za-z0-9_$-]*)|(\\[[0-9]+\\]))*$"]: #PactMatchingRule}
+}
+
+#PactMatchingRule: {
+	combine?: "AND" | "OR"
+	matchers: [#ResponseMatcher, ...#ResponseMatcher]
 }
 
 // Pact v3 "Allow multiple provider states with parameters" (src/provider-states.ts).
@@ -38,6 +51,8 @@ package contract_harness
 
 #PactMetadata: {
 	pactSpecification: #PactSpecification
+	// What the provider side was verified against, in words (the hobo-vercel-api pact names the emulator).
+	verifiedAgainst?: string & !=""
 }
 
 #PactDocument: {

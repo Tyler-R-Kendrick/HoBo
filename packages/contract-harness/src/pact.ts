@@ -1,6 +1,14 @@
+/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: parsePactDocument is the package's public parse boundary for untyped pact JSON (every package's pact tests hand it JSON.parse output); its typeof checks and narrowing casts are that boundary's contract, unchanged since it was written. */
 import type { Dirent } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+
+import type { PactJsonValue } from "./matching.js";
+import {
+	type PactProviderState,
+	ProviderStateError,
+	readProviderStates,
+} from "./provider-states.js";
 
 const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 const PARTICIPANT_NAME = /^[A-Z][A-Za-z0-9]*$/;
@@ -28,6 +36,8 @@ export interface PactResponse {
 // domain-view: readonly parse target; data-models/contract-harness.proto PactInteraction is its wire form.
 export interface PactInteraction {
 	readonly description: string;
+	/** Pact v3 provider states, when the interaction names any. */
+	readonly providerStates?: readonly PactProviderState[];
 	readonly request: PactRequest;
 	readonly response: PactResponse;
 }
@@ -174,12 +184,34 @@ function parseInteraction(
 
 	const request = parseRequest(record.request, `${prefix}.request`, issues);
 	const response = parseResponse(record.response, `${prefix}.response`, issues);
+	const providerStates = parseProviderStateList(
+		record.providerStates,
+		prefix,
+		issues,
+	);
 
 	return {
 		description: typeof description === "string" ? description : "",
+		...(providerStates === undefined ? undefined : { providerStates }),
 		request: request ?? { method: "GET", path: "/" },
 		response: response ?? { status: 200 },
 	};
+}
+
+function parseProviderStateList(
+	value: unknown,
+	prefix: string,
+	issues: string[],
+): readonly PactProviderState[] | undefined {
+	if (value === undefined) return undefined;
+	try {
+		// SAFETY: a pact document is parsed JSON, so each of its values is a JSON value.
+		return readProviderStates(value as PactJsonValue, prefix);
+	} catch (error) {
+		if (!(error instanceof ProviderStateError)) throw error;
+		issues.push(error.message.replace(/^PROVIDER_STATE_INVALID: /u, ""));
+		return undefined;
+	}
 }
 
 function parseRequest(

@@ -835,6 +835,11 @@ describe("DeletedDate as a provider answers it", () => {
 			"1969-12-31T23:59:59.000Z",
 			"a negative half, rounded toward +∞",
 		],
+		[
+			"-1.0006",
+			"1969-12-31T23:59:58.999Z",
+			"a negative value just past a half, floored before it is rounded",
+		],
 		["-62167219200", "0000-01-01T00:00:00.000Z", "the first second of 0000"],
 		[
 			"253402300799.9994",

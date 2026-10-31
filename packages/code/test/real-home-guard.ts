@@ -42,7 +42,7 @@ import {
 	rmSync,
 	type Stats,
 } from "node:fs";
-import { homedir, tmpdir, userInfo } from "node:os";
+import { tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { HOMES_ROOT_ENV } from "../../../test/setup/hobo-test-homes.js";
 
@@ -70,13 +70,28 @@ function canonical(path: string): string {
 	}
 }
 
+/**
+ * The account's home from the password database, or none: a uid with no
+ * passwd entry (a container's `--user 4242`) has no account home to watch
+ * beyond HOME, and `os.userInfo()` throws for it.
+ */
+function accountHome(): string | undefined {
+	try {
+		return userInfo().homedir || undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 /** The real HoBo homes a stray write lands in, for this process's environment. */
 export function watchedHomes(env: NodeJS.ProcessEnv = process.env): string[] {
+	const account = accountHome();
+	const home = env.HOME?.trim() ? env.HOME : account;
 	const candidates = [
 		"/tmp/.hobo",
 		join(tmpdir(), ".hobo"),
-		join(env.HOME && env.HOME.length > 0 ? env.HOME : homedir(), ".hobo"),
-		join(userInfo().homedir, ".hobo"),
+		...(home ? [join(home, ".hobo")] : []),
+		...(account ? [join(account, ".hobo")] : []),
 	].map(canonical);
 	const chosen =
 		env.HOBO_HOME && env.HOBO_HOME.length > 0

@@ -408,11 +408,15 @@ function refused(error: Error): boolean {
 }
 
 /**
- * Ask the health route, after the banner, whether the process answering is
- * the one that printed it: status ok, the banner's version, and an uptime no
- * longer than the child has existed (`spawnedAt`). A mirror of the same build
- * that was already on the port has been up longer than this child; one that
- * gives no uptime cannot be told apart and is not taken for it.
+ * Ask the health route, after the banner, for status ok, the banner's
+ * version, and an uptime no longer than the child has existed (`spawnedAt`,
+ * read from the monotonic `performance.now()`, so a wall clock set meanwhile
+ * changes nothing). These are consistency checks: they turn away another
+ * build, or a process up for longer, and an answer that gives no uptime. They
+ * cannot prove the answer is the child's (a mirror of the same build on a
+ * controllable clock answers uptime 0 too); the banner coming after the bind
+ * (mirror.cloud#442) does that, and `lost` fails the lane when a mirror built
+ * before it announced, could not bind, and exited.
  */
 async function confirmHealth(
 	url: string,
@@ -430,7 +434,7 @@ async function confirmHealth(
 					detail: `answered ${health.status} ${health.body.slice(0, 200)}`,
 				};
 			}
-			const age = Date.now() - spawnedAt;
+			const age = performance.now() - spawnedAt;
 			return answer.version === version &&
 				answer.uptimeMs !== undefined &&
 				answer.uptimeMs <= age + UPTIME_SLACK_MS
@@ -477,7 +481,7 @@ async function startOnce(
 	let child: ChildProcess;
 	let spawnedAt = 0;
 	try {
-		spawnedAt = Date.now();
+		spawnedAt = performance.now();
 		child = children.spawn(options.bin, args, {
 			cwd,
 			env: mirrorEnv(options.env),

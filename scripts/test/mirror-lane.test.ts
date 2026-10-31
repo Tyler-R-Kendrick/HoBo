@@ -487,6 +487,22 @@ describe("startMirror", () => {
 		}
 	});
 
+	it("measures the child's age on a monotonic clock: the wall clock set back while mirror starts is no reason to refuse it", async (t) => {
+		// Each read of the wall clock is an hour earlier than the one before,
+		// as if the clock were being set back; a child's age read from it is
+		// negative, shorter than any uptime.
+		const realNow = Date.now.bind(Date);
+		let reads = 0;
+		t.mock.method(Date, "now", () => {
+			reads += 1;
+			return realNow() - reads * 3_600_000;
+		});
+		const mirror = await startMirror({ bin: fakeMirror(), env: process.env });
+		t.mock.restoreAll();
+		await mirror.stop();
+		assert.match(mirror.url, /^http:\/\/127\.0\.0\.1:\d+$/u);
+	});
+
 	it("a stopped mirror is not reported lost", async () => {
 		const mirror = await startMirror({ bin: fakeMirror(), env: process.env });
 		const lost = mirror.lost.then(() => "lost");

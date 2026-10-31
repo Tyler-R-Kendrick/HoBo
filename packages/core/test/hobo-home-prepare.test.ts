@@ -82,7 +82,9 @@ describe("prepareHoboHome", () => {
 			`HoBo state now lives in ${join(user, ".hobo")}`,
 		);
 		expect(lines[0]).toContain(`${legacy} holds state`);
-		expect(lines[0]).toContain(`HOBO_HOME=${legacy}`);
+		// It suggests only homes under the user's own: never the temp dir.
+		expect(lines[0]).not.toContain(`HOBO_HOME=${legacy}`);
+		expect(lines[0]?.startsWith("hobo: ")).toBe(true);
 		expect(existsSync(join(user, ".hobo", LEGACY_NOTICE_MARKER))).toBe(true);
 		// Nothing is read from, or moved out of, the legacy home.
 		expect(existsSync(join(legacy, "durable", "code", "chat.json"))).toBe(true);
@@ -143,6 +145,23 @@ prepareHoboHome({
 			.flatMap((out) => out.split("\n"))
 			.filter((line) => line.startsWith("notice "));
 		expect(notices).toHaveLength(1);
+	});
+
+	it("names the program that printed it, and offers XDG_STATE_HOME/hobo", () => {
+		const { root, user, legacy } = layout();
+		const state = join(root, "state");
+		const lines: string[] = [];
+		prepareHoboHome({
+			env: { HOME: user, XDG_STATE_HOME: state },
+			legacyHomes: [legacy],
+			uid: me,
+			program: "hobo-code",
+			warn: (line) => lines.push(line),
+		});
+		expect(lines).toHaveLength(1);
+		expect(lines[0]?.startsWith("hobo-code: ")).toBe(true);
+		expect(lines[0]).toContain(`HOBO_HOME=${join(state, "hobo")}`);
+		expect(lines[0]).not.toContain(`HOBO_HOME=${legacy}`);
 	});
 
 	it("neither throws nor prints when the marker cannot be written", () => {

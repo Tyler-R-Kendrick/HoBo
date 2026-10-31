@@ -59,7 +59,7 @@ const asksForHelp = process.argv
 	.some((arg) => arg === "--help" || arg === "-h" || arg === "help");
 if (!asksForHelp) {
 	try {
-		prepareHoboHome();
+		prepareHoboHome({ program: "hobo-code" });
 	} catch (error) {
 		if (!(error instanceof HoboHomeUnavailable)) throw error;
 		process.stderr.write(`hobo-code: ${error.message}\n`);

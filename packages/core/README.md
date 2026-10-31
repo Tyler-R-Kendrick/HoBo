@@ -107,9 +107,13 @@ they write. It creates the home (mode 0700), and a home that cannot be created
 Earlier versions kept state in `/tmp/.hobo` or `$(os.tmpdir())/.hobo` when HOME
 was unset. That state is never read now. When such a directory exists, is
 owned by the current uid, is not a symlink, is not the resolved home, and
-`HOBO_HOME` is unset, the entry point prints a one-time stderr notice saying
-where state lives now and how to move it or point `HOBO_HOME` at it. The
-dotfile `.legacy-home-notice` in the new home records that it was shown.
+`HOBO_HOME` is unset, the entry point prints a one-time stderr notice, prefixed
+with its own name (`hobo:` or `hobo-code:`), saying where state lives now and
+how to move it there (or under `$XDG_STATE_HOME/hobo`); it never suggests
+keeping a temp directory. The dotfile `.legacy-home-notice` in the new home is
+claimed with an exclusive create before the notice prints, so of several
+processes starting together only one prints it, and a home that will not take
+the marker skips the notice rather than failing.
 
 ## Position in the event architecture
 

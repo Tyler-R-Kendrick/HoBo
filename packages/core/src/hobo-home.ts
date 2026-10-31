@@ -174,6 +174,8 @@ export interface PrepareHoboHomeOptions {
 	readonly uid?: number;
 	/** The legacy homes to look for; `legacyHoboHomes()` by default. */
 	readonly legacyHomes?: readonly string[];
+	/** The binary the notice names, as `hobo` or `hobo-code`; `hobo` by default. */
+	readonly program?: string;
 }
 
 /**
@@ -202,11 +204,15 @@ export function prepareHoboHome(options: PrepareHoboHomeOptions = {}): string {
 			{ cause: error, remedy: "set HOBO_HOME to a directory you can write" },
 		);
 	}
-	if (!isSet(env.HOBO_HOME)) noticeLegacyHomes(home, options);
+	if (!isSet(env.HOBO_HOME)) noticeLegacyHomes(home, env, options);
 	return home;
 }
 
-function noticeLegacyHomes(home: string, options: PrepareHoboHomeOptions) {
+function noticeLegacyHomes(
+	home: string,
+	env: HoboHomeEnv,
+	options: PrepareHoboHomeOptions,
+) {
 	const marker = join(home, LEGACY_NOTICE_MARKER);
 	if (existsQuietly(marker)) return;
 	const uid = options.uid ?? process.getuid?.();
@@ -226,9 +232,16 @@ function noticeLegacyHomes(home: string, options: PrepareHoboHomeOptions) {
 	}
 	const warn =
 		options.warn ?? ((line: string) => process.stderr.write(`${line}\n`));
+	const program = options.program ?? "hobo";
+	// Somewhere else to keep it, if the user prefers: only under their own home.
+	const state = env.XDG_STATE_HOME?.trim();
+	const elsewhere =
+		state && isAbsolute(state)
+			? ` (or into ${join(state, "hobo")}, with HOBO_HOME=${join(state, "hobo")})`
+			: "";
 	for (const legacy of ours) {
 		warn(
-			`hobo: HoBo state now lives in ${home}. ${legacy} holds state an earlier HoBo kept there when HOME was unset, and it is no longer read. To keep it, move its contents into ${home}, or set HOBO_HOME=${legacy} to go on using it (a temp directory is a riskier home).`,
+			`${program}: HoBo state now lives in ${home}. ${legacy} holds state an earlier HoBo kept there when HOME was unset, and it is no longer read. To keep it, move its contents into ${home}${elsewhere}. A temp directory is not a safe HoBo home.`,
 		);
 	}
 }

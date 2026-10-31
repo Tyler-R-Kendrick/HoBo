@@ -68,7 +68,7 @@ async function runComposed(
 	// a user whose state an earlier HoBo kept in /tmp/.hobo hears where it went.
 	let hoboHome: string;
 	try {
-		hoboHome = prepareHoboHome();
+		hoboHome = prepareHoboHome({ program: "hobo" });
 	} catch (error) {
 		if (!(error instanceof HoboHomeUnavailable)) throw error;
 		process.stderr.write(`hobo: ${error.message}\n`);

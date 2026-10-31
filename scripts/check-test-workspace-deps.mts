@@ -71,7 +71,15 @@
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
-import { dirname, join, posix, resolve } from "node:path";
+import {
+	dirname,
+	isAbsolute,
+	join,
+	posix,
+	relative,
+	resolve,
+	sep,
+} from "node:path";
 import { fileURLToPath } from "node:url";
 
 import ts from "typescript";
@@ -155,6 +163,8 @@ interface Manifest {
 export interface WorkspacePackage extends GraphPackage {
 	/** Repository-relative, `/`-separated. */
 	readonly dir: string;
+	/** Its `build` script, if it has one. */
+	readonly build: string | undefined;
 	/** Workspace packages it declares in an ordering field with a specifier turbo does not count, and why. */
 	readonly unordered: ReadonlyMap<string, string>;
 }
@@ -380,6 +390,7 @@ export function readWorkspace(
 		return {
 			name: manifest.name!,
 			dir,
+			build: manifest.scripts?.build,
 			scripts: new Set(Object.keys(manifest.scripts ?? {})),
 			dependencies,
 			unordered,
@@ -467,6 +478,55 @@ function isRelative(specifier: string): boolean {
 		specifier.startsWith("./") ||
 		specifier.startsWith("../")
 	);
+}
+
+/** Reads a tsconfig and what it extends, listing no files: only its options are wanted. */
+const OPTIONS_ONLY: ts.ParseConfigHost = {
+	...ts.sys,
+	readDirectory: () => [],
+};
+
+/** The tsconfig files a build script compiles with (`tsc -p <file>`), else `tsconfig.json`. */
+function buildProjects(build: string | undefined): string[] {
+	const named = [
+		...(build ?? "").matchAll(
+			/(?:^|\s)(?:-p|--project|-b|--build)\s+([^\s&|;-][^\s&|;]*)/gu,
+		),
+	].map((match) => match[1]!);
+	return named.length > 0 ? named : ["tsconfig.json"];
+}
+
+/**
+ * A package's build output directories, each one segment under it: the first
+ * segment of the `outDir` of each tsconfig its build compiles with (following
+ * `extends`), else `dist`, the default of tsc's configs here, vite and astro.
+ */
+function outputDirs(
+	root: string,
+	dir: string,
+	build: string | undefined,
+): string[] {
+	const base = join(root, dir);
+	const out = new Set<string>();
+	for (const project of buildProjects(build)) {
+		const path = resolve(
+			base,
+			project.endsWith(".json") ? project : join(project, "tsconfig.json"),
+		);
+		const read = ts.readConfigFile(path, ts.sys.readFile);
+		if (read.config === undefined) continue;
+		const outDir = ts.parseJsonConfigFileContent(
+			read.config,
+			OPTIONS_ONLY,
+			dirname(path),
+			undefined,
+			path,
+		).options.outDir;
+		if (outDir === undefined) continue;
+		const first = relative(base, outDir).split(sep)[0];
+		if (first && first !== ".." && !isAbsolute(first)) out.add(first);
+	}
+	return out.size > 0 ? [...out] : ["dist"];
 }
 
 /** Whether the package's tsconfig compiles `file` (an absolute path). */
@@ -690,7 +750,11 @@ export function scanTestWorkspaceDeps(
 		registry.reaches.map((entry) => [entry.from, entry]),
 	);
 	const readReaches = runtimeReachReader(
-		packages.map(({ name, dir }) => ({ name, dir })),
+		packages.map(({ name, dir, build }) => ({
+			name,
+			dir,
+			out: outputDirs(root, dir, build),
+		})),
 	);
 	const reachedBy = new Map<string, RuntimeReaches>();
 	const reachesOf = (file: string) => {

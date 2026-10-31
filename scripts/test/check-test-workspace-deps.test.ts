@@ -1100,6 +1100,63 @@ describe("checkTestWorkspaceDeps", () => {
 		);
 	});
 
+	it("reads a package's build output directory from the tsconfig its build compiles with, else dist", () => {
+		const reach = (path: string) =>
+			`${SPAWN}${JOIN}spawn(process.execPath, [join(process.cwd(), ${path})]);\n`;
+		within(
+			grouped({
+				// web compiles to build/, so its build/ is a reach and its dist/ is not.
+				"packages/web/package.json": manifest("@s/web"),
+				"packages/web/tsconfig.json": JSON.stringify({
+					compilerOptions: { outDir: "build" },
+				}),
+				// wk's build names a project, which extends a base that sets outDir.
+				"packages/wk/package.json": manifest("@s/wk", {
+					scripts: { build: "tsc -p tsconfig.build.json", test: "vitest run" },
+				}),
+				"packages/wk/tsconfig.base.json": JSON.stringify({
+					compilerOptions: { outDir: "out/esm" },
+				}),
+				"packages/wk/tsconfig.build.json": JSON.stringify({
+					extends: "./tsconfig.base.json",
+				}),
+				"packages/wk/tsconfig.json": JSON.stringify({
+					compilerOptions: { outDir: "dist" },
+				}),
+				"packages/app/test/a-build.test.ts": reach(
+					'"packages", "web", "build", "x.js"',
+				),
+				"packages/app/test/b-dist.test.ts": reach(
+					'"packages", "web", "dist", "x.js"',
+				),
+				"packages/app/test/c-project.test.ts": reach(
+					'"packages", "wk", "out", "esm", "x.js"',
+				),
+				"packages/app/test/d-default.test.ts": reach(
+					'"packages", "lib", "dist", "x.js"',
+				),
+			}),
+			(dir) =>
+				assert.deepEqual(unmodelledIn(dir), [
+					reaching(
+						"packages/app/test/a-build.test.ts",
+						"@s/web",
+						"*/packages/web/build/x.js",
+					),
+					reaching(
+						"packages/app/test/c-project.test.ts",
+						"@s/wk",
+						"*/packages/wk/out/esm/x.js",
+					),
+					reaching(
+						"packages/app/test/d-default.test.ts",
+						"@s/lib",
+						"*/packages/lib/dist/x.js",
+					),
+				]),
+		);
+	});
+
 	it("checks a declared runtime reach: each need must be ordered for every test task that loads it", () => {
 		const run = [
 			'import { spawn } from "node:child_process";',

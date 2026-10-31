@@ -12,8 +12,9 @@
  * `new URL(…, import.meta.url)` resolves it: from `packages/cli/test/`,
  * `../../core` is `packages/core`. The file reaches P at run time when the
  * path:
- * - goes on into `dist/` (`join(dir, "packages", "hobo", "dist", "bin",
- *   "hobo.js")`, `"../../bindles/dist/index.js"`); or
+ * - goes on into P's build output directory, the first segment of the
+ *   `outDir` its build compiles with, else `dist/` (`join(dir, "packages",
+ *   "hobo", "dist", "bin", "hobo.js")`, `"../../bindles/dist/index.js"`); or
  * - ends at P's directory or name, or goes on into a computed segment
  *   (`join(hoboDir, file)`), in a file that runs or loads something by a
  *   computed path (`spawn`, `import()` of a non-literal, `createRequire`,
@@ -26,19 +27,20 @@
  *   One segment after a computed root (`join(evidence, "events")`) is a name,
  *   not a path to P; so is a package name at a string's start
  *   (`"@hobo/bindles"`, `` `@hobo/app-${name}` ``), unless it goes on into
- *   `dist/`.
+ *   its build output directory.
  *
  * A path that names a package by a computed segment reaches a package the
  * check cannot name, and counts the same way: a directory that holds workspace
  * packages (`packages`, `packages/runtimes`, or `runtimes` after an anchor) or
- * a scope they are under (`@hobo`), then a computed segment, then `dist/`, the
- * end, or another computed segment (`join(root, "packages", name, "dist")`,
+ * a scope they are under (`@hobo`), then a computed segment, then any
+ * workspace package's build output directory, the end, or another computed
+ * segment (`join(root, "packages", name, "dist")`,
  * `` `node_modules/@hobo/${name}` ``, `` new URL(`../../${name}`, …) ``).
  * `join(root, "packages", name, "package.json")` reads a tracked file and does
  * not count.
  *
- * A path that goes on into P's tracked source, or its `node_modules`, needs no
- * build of P and is not a reach; nor is one that names P only in the middle of
+ * A path that goes on into anything else of P's (its source, `bin/`,
+ * `package.json`, its `node_modules`) needs no build of P and is not a reach; nor is one that names P only in the middle of
  * another directory (`…/s0-04-protobuf-cue-codegen/packages/schema-tools`).
  *
  * The check cannot see what such a reach loads, so an undeclared one fails.
@@ -59,6 +61,8 @@ export interface PackageDir {
 	readonly name: string;
 	/** Repository-relative, `/`-separated. */
 	readonly dir: string;
+	/** Its build output directories, each one segment under `dir` (`dist`). */
+	readonly out: readonly string[];
 }
 
 /** What a file reaches at run time through the paths it assembles. */
@@ -73,6 +77,8 @@ export interface RuntimeReaches {
 interface Form {
 	/** The package; undefined for a group of packages. */
 	readonly name: string | undefined;
+	/** The package's build output directories; for a group, every package's. */
+	readonly out: ReadonlySet<string>;
 	readonly parts: readonly string[];
 	/** It is the package's name, not its directory. */
 	readonly byName: boolean;
@@ -134,12 +140,20 @@ export function runtimeReachReader(
 		const key = parts.join("/");
 		groups.set(key, whole || groups.get(key) === true);
 	};
-	for (const { name, dir } of packages) {
+	const every = new Set(packages.flatMap((pkg) => pkg.out));
+	for (const { name, dir, out: outputs } of packages) {
 		const parts = dir.split("/");
-		add({ name, parts, byName: false, whole: parts.length > 1 });
-		add({ name, parts: name.split("/"), byName: true, whole: false });
+		const out = new Set(outputs);
+		add({ name, out, parts, byName: false, whole: parts.length > 1 });
+		add({ name, out, parts: name.split("/"), byName: true, whole: false });
 		parts.slice(1).forEach((_, k) => {
-			add({ name, parts: parts.slice(k + 1), byName: false, whole: false });
+			add({
+				name,
+				out,
+				parts: parts.slice(k + 1),
+				byName: false,
+				whole: false,
+			});
 		});
 		const holder = parts.slice(0, -1);
 		holder.forEach((_, k) => {
@@ -151,6 +165,7 @@ export function runtimeReachReader(
 	for (const [key, whole] of groups)
 		add({
 			name: undefined,
+			out: every,
 			parts: key.split("/"),
 			byName: key.startsWith("@"),
 			whole,
@@ -177,7 +192,7 @@ export function runtimeReachReader(
 								continue;
 							const then = parts[i + form.parts.length + 1];
 							if (
-								then === "dist" ||
+								(then !== undefined && form.out.has(then)) ||
 								((then === undefined || isComputed(then)) &&
 									(anchor !== undefined || !form.byName) &&
 									facts.loadsComputed)
@@ -191,7 +206,7 @@ export function runtimeReachReader(
 								(anchor !== undefined && form.parts.length > 1)
 							: form.parts.length > 1 || anchor === "..";
 						if (
-							next === "dist" ||
+							(next !== undefined && form.out.has(next)) ||
 							((next === undefined || isComputed(next)) &&
 								ends &&
 								facts.loadsComputed)

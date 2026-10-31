@@ -275,6 +275,13 @@ export function parseResolveOutcome(
  * ordered so a catalog dump is a function of its contents; a duplicate
  * `productId` is refused rather than last-write-wins, because a silently
  * shadowed resolver is a deploy calling a provider nobody reviewed.
+ *
+ * Identity: `get(id)` and `list()` return the registered object itself for a
+ * resolver that declares no directives. For one that does, they return a
+ * frozen view, not the registered object: it carries the directive list as
+ * parsed at registration (read once) and delegates every call to the
+ * resolver. So a later change to the resolver's list, or a getter answering
+ * differently, changes nothing the registry hands out.
  */
 export function createResolverRegistry(
 	resolvers: readonly ResourceResolver[],
@@ -342,7 +349,6 @@ function assertResolverContract(value: ResourceResolver): void {
 			value.productId,
 		);
 	}
-	parseResolverDirectives(value);
 }
 
 /** The directives of a resolver that names none. */
@@ -361,7 +367,14 @@ const NO_DIRECTIVES: readonly string[] = Object.freeze([]);
 export function parseResolverDirectives(
 	resolver: ResourceResolver,
 ): readonly string[] {
-	const { directives } = resolver;
+	return directiveList(resolver.directives, resolver.productId);
+}
+
+/** A directive list already read off its resolver, parsed (see above). */
+function directiveList(
+	directives: ResourceResolver["directives"],
+	productId: string,
+): readonly string[] {
 	if (directives === undefined) return NO_DIRECTIVES;
 	// By index, not with every(): every() skips the holes of a sparse array,
 	// and a list with a hole names nothing in that slot.
@@ -381,8 +394,8 @@ export function parseResolverDirectives(
 	if (!wellFormed) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
-			`resolver ${JSON.stringify(resolver.productId)} directives: expected distinct parameter names matching ${DIRECTIVE_PATTERN.source}, with no holes, received ${JSON.stringify(directives)}`,
-			resolver.productId,
+			`resolver ${JSON.stringify(productId)} directives: expected distinct parameter names matching ${DIRECTIVE_PATTERN.source}, with no holes, received ${JSON.stringify(directives)}`,
+			productId,
 		);
 	}
 	return Object.freeze(names);
@@ -391,10 +404,13 @@ export function parseResolverDirectives(
 /**
  * The resolver as registered: unchanged when it names no directives, else a
  * frozen view that carries the parsed copy and delegates every call to it.
+ * `directives` is read off the resolver exactly once, here, so a getter cannot
+ * answer the check one list and the registry another.
  */
 function registered(resolver: ResourceResolver): ResourceResolver {
-	const directives = parseResolverDirectives(resolver);
-	if (resolver.directives === undefined) return resolver;
+	const declared = resolver.directives;
+	if (declared === undefined) return resolver;
+	const directives = directiveList(declared, resolver.productId);
 	const view: ResourceResolver = {
 		providerId: resolver.providerId,
 		productId: resolver.productId,

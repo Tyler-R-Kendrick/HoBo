@@ -489,6 +489,30 @@ describe("createResolverRegistry", () => {
 		).toBe("RESOLVER_PRODUCT_UNSUPPORTED");
 	});
 
+	it("reads a resolver's directives once, and hands out a frozen view that keeps them", () => {
+		let reads = 0;
+		const lists = [["forceDelete"], ["forceDelete", "restoreScheduled"]];
+		const registry = createResolverRegistry([
+			Object.defineProperty(resolver(), "directives", {
+				enumerable: true,
+				get: () => lists[Math.min(reads++, 1)],
+			}),
+		]);
+
+		expect(reads).toBe(1);
+		const view = registry.get("vercel.postgres");
+		expect(view?.directives).toEqual(["forceDelete"]);
+		expect(registry.list()[0]).toBe(view);
+		expect(Object.isFrozen(view)).toBe(true);
+		expect(reads).toBe(1);
+	});
+
+	it("hands out the registered object itself when it declares no directives", () => {
+		const plain = resolver();
+
+		expect(createResolverRegistry([plain]).get("vercel.postgres")).toBe(plain);
+	});
+
 	it("refuses a sparse directive list, which names nothing in its hole", () => {
 		const holes: string[] = [];
 		holes[1] = "size";

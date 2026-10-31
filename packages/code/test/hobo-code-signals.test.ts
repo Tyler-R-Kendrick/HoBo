@@ -35,6 +35,7 @@ const SHELL_DRAWN = `${ESC}[?1049h`;
 const VERB_ENDED = "hobo recipes:";
 /** Terminal control sequences, left out of the screen a failure shows. */
 const CONTROL_SEQUENCES = new RegExp(`${ESC}\\[[0-9;?]*[a-zA-Z]`, "gu");
+/** A bound on a failure, never a wait to sit out: each case goes on at its event. */
 const VERB_DEADLINE_MS = 150_000;
 const SIGNAL_GRACE_MS = 30_000;
 /** How long hobo-code's child gets to end once hobo-code has. */
@@ -176,10 +177,10 @@ function stores(dir: string): string[] {
 }
 
 /**
- * Start hobo-code's shell and run `/hobo recipes` in it, which fails outside a
- * HoBo project once the composition and its store are made. With the shell
- * idle again, end hobo-code as `ending` says, and give the child that holds
- * the store time to end while the terminal stays open.
+ * Start hobo-code's shell in a fixture HoBo project and run `/hobo recipes`
+ * in it, which composes HoBo (making its store) and lists the recipes. When
+ * the shell shows that list, end hobo-code as `ending` says, and give the
+ * child that holds the store time to end while the terminal stays open.
  */
 async function endTheShell(ending: Ending, run: Run = {}): Promise<Ended> {
 	const root = mkdtempSync(join(tmpdir(), "hobo-code-signals-"));
@@ -189,6 +190,19 @@ async function endTheShell(ending: Ending, run: Run = {}): Promise<Ended> {
 	const at = (name: string): string => join(root, name);
 	const tmuxDir = at("tmux");
 	mkdirSync(tmuxDir);
+	// The shell works in a HoBo project, as a person's would, so `/hobo recipes`
+	// answers. Run from packages/code it answered "No Bindle here".
+	const project = at("project");
+	mkdirSync(project);
+	writeFileSync(
+		join(project, "hobo.bindle.json"),
+		`${JSON.stringify({
+			schemaVersion: "hobo.bindle/v1",
+			name: "signals-fixture",
+			resources: [],
+			handlers: [],
+		})}\n`,
+	);
 	const busyHobo = at("busy-hobo.mjs");
 	if (run.busyVerb === true) {
 		writeFileSync(
@@ -231,6 +245,7 @@ async function endTheShell(ending: Ending, run: Run = {}): Promise<Ended> {
 	};
 	if (run.busyVerb === true) env.HOBO_CODE_HOBO_BIN = busyHobo;
 	const script = spawn("script", ["-qfec", command, "/dev/null"], {
+		cwd: project,
 		env,
 		stdio: ["pipe", "pipe", "pipe"],
 	});
@@ -264,37 +279,37 @@ async function endTheShell(ending: Ending, run: Run = {}): Promise<Ended> {
 				? existsSync(at("grandchild"))
 				: stores(tmp).length > 0 &&
 					screen.replace(CONTROL_SEQUENCES, "").includes(VERB_ENDED);
-		await until(() => closed || ready(), VERB_DEADLINE_MS);
-		const made = stores(tmp);
 		const readyToEnd =
-			!closed &&
-			(run.busyVerb === true ? existsSync(at("grandchild")) : made.length > 0);
-		if (readyToEnd) {
-			if (run.busyVerb === true) {
-				grandchild = Number(readFileSync(at("grandchild"), "utf8"));
-				children.push(grandchild);
-			}
-			const hoboCode = Number(readFileSync(at("pid"), "utf8"));
-			child = childrenOf(hoboCode)[0];
-			if (child !== undefined) {
-				children.push(child);
-				writeFileSync(at("child"), String(child));
-			}
-			if (ending === "close the terminal") script.kill("SIGKILL");
-			else {
-				const target = ending.to === "hobo-code" ? hoboCode : child;
-				if (target === undefined) throw new Error("hobo-code has no child");
-				process.kill(target, ending.signal);
-			}
-			await until(() => closed || existsSync(at("status")), SIGNAL_GRACE_MS);
-			await until(() => child === undefined || !running(child), CHILD_GRACE_MS);
-			await until(
-				() => grandchild === undefined || !running(grandchild),
-				CHILD_GRACE_MS,
+			(await until(() => closed || ready(), VERB_DEADLINE_MS)) && !closed;
+		const made = stores(tmp);
+		if (!readyToEnd) {
+			throw new Error(
+				`hobo-code never got to where this case ends it:\n${screen.replace(CONTROL_SEQUENCES, "").slice(-2000)}`,
 			);
 		}
+		if (run.busyVerb === true) {
+			grandchild = Number(readFileSync(at("grandchild"), "utf8"));
+			children.push(grandchild);
+		}
+		const hoboCode = Number(readFileSync(at("pid"), "utf8"));
+		child = childrenOf(hoboCode)[0];
+		if (child !== undefined) {
+			children.push(child);
+			writeFileSync(at("child"), String(child));
+		}
+		if (ending === "close the terminal") script.kill("SIGKILL");
+		else {
+			const target = ending.to === "hobo-code" ? hoboCode : child;
+			if (target === undefined) throw new Error("hobo-code has no child");
+			process.kill(target, ending.signal);
+		}
+		await until(() => closed || existsSync(at("status")), SIGNAL_GRACE_MS);
+		await until(() => child === undefined || !running(child), CHILD_GRACE_MS);
+		await until(
+			() => grandchild === undefined || !running(grandchild),
+			CHILD_GRACE_MS,
+		);
 		if (
-			readyToEnd &&
 			ending !== "close the terminal" &&
 			ending.to === "hobo-code" &&
 			ending.signal !== "SIGKILL"

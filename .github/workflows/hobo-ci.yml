@@ -17,79 +17,55 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' && !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
 
 jobs:
-  artifact-trust:
-    # Hosted Actions runners are disabled until explicitly re-enabled.
-    if: ${{ false }}
-    name: artifact signing and install verification
-    needs: pr-gate
-    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - run: corepack enable pnpm
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
-      - name: Verify signed hello-bindle and refuse stripped signatures
-        run: pnpm test:file src/draft/technical-proofs/componentize-artifact-trust-contract/test/publish-verify.test.ts
-
   pr-gate:
     name: PR impact gate
-    # The weekly schedule exists for main-gate and the fixture lanes; a
-    # scheduled pr-gate diffs main against itself and checks nothing.
-    # Hosted Actions runners are disabled until explicitly re-enabled.
-    if: ${{ false }}
-    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
+    if: github.event_name == 'pull_request'
+    runs-on: hobo
     timeout-minutes: 25
     permissions:
       contents: read
+    env:
+      GITHUB_EVENT_MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
           fetch-depth: 0
       - run: corepack enable pnpm
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: 24
+          node-version: "24"
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      - name: Restore Turbo cache
-        uses: actions/cache@v4
+      - name: Turbo cache
+        uses: ./.github/actions/turbo-cache
         with:
-          path: .turbo/cache
-          key: turbo-${{ runner.os }}-${{ github.sha }}
-          restore-keys: |
-            turbo-${{ runner.os }}-
+          turbo-token: ${{ github.event.pull_request.head.repo.fork && '' || secrets.TURBO_TOKEN }}
+          turbo-team: ${{ vars.TURBO_TEAM }}
+          remote-mode: ${{ github.event.pull_request.head.repo.fork && 'remote:ro' || 'remote:rw' }}
       - name: Check the sibling pins (gitlink against checkout, offline)
         run: node --experimental-strip-types scripts/bootstrap-siblings.mts --status --offline
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
-      # The same pair agent:check selects (scripts/relevant-check-policy.ts):
-      # the imported names, and granular.ts's copy of grounding's fields.
       - name: Every name HoBo imports from ts-autocode exists at the pin, and its grounding fields are still checked
         run: node --import tsx --test scripts/test/ts-autocode-consumer-surface.test.ts scripts/test/ts-autocode-grounding-drift.test.ts
-      - name: Fetch base branch for Turbo affected
-        run: git fetch origin "${{ github.event_name == 'pull_request' && github.base_ref || 'main' }}"
+      - name: Resolve Turbo SCM base
+        id: scm-base
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          BASE="$(node --import tsx scripts/ci/turbo-scm-base.mts)"
+          echo "base=${BASE}" >> "$GITHUB_OUTPUT"
+          git fetch origin "${{ github.base_ref }}"
       - uses: cue-lang/setup-cue@v1.0.0
         with:
           version: v0.14.0
-      # Inbound=outbound licensing: every commit on a PR carries a DCO
-      # sign-off (CONTRIBUTING.md, docs/plans/0009-legal-compliance-audit.md
-      # finding 7). Advisory for now so existing branches are not stranded;
-      # flip continue-on-error off once contributors are signing off.
       - name: DCO sign-off check
-        if: github.event_name == 'pull_request'
         continue-on-error: true
         env:
           DCO_BASE: origin/${{ github.base_ref }}
@@ -108,15 +84,17 @@ jobs:
             exit 1
           fi
           echo "All commits carry a matching DCO sign-off."
-
       - name: Code format gate
         run: pnpm run lint:code
       - name: Relevant checks only
-        run: pnpm agent:check -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main' }}
+        run: pnpm agent:check -- --base=origin/${{ github.base_ref }}
+      - name: Dagger checks plan (native CI parity)
+        run: pnpm --filter @hobo/ci-dagger checks --plan --config .hobo/dagger.json
       - name: Affected package lanes
         env:
-          TURBO_SCM_BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main' }}
+          TURBO_SCM_BASE: ${{ steps.scm-base.outputs.base }}
         run: |
+          set -euo pipefail
           mapfile -t PKG_FILTERS < <(
             git diff --name-only "${TURBO_SCM_BASE}"...HEAD \
               | rg '^packages/([^/]+)/' -or '$1' \
@@ -142,57 +120,90 @@ jobs:
 
   main-gate:
     name: Main full gate
-    # Full gate on path into main and already on main: merge queue, direct push
-    # to main, weekly schedule, and manual dispatch. PR events stay on pr-gate.
-    # Hosted Actions runners are disabled until explicitly re-enabled.
-    if: ${{ false }}
-    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
+    if: >-
+      github.event_name == 'merge_group' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: hobo
     timeout-minutes: 40
     permissions:
       contents: read
+    env:
+      GITHUB_EVENT_MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
           fetch-depth: 0
       - run: corepack enable pnpm
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: 24
+          node-version: "24"
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      - name: Restore Turbo cache
-        uses: actions/cache@v4
+      - name: Turbo cache
+        uses: ./.github/actions/turbo-cache
         with:
-          path: .turbo/cache
-          key: turbo-${{ runner.os }}-${{ github.sha }}
-          restore-keys: |
-            turbo-${{ runner.os }}-
+          turbo-token: ${{ secrets.TURBO_TOKEN }}
+          turbo-team: ${{ vars.TURBO_TEAM }}
+          remote-mode: remote:rw
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Resolve Turbo SCM base
+        id: scm-base
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          BASE="$(node --import tsx scripts/ci/turbo-scm-base.mts)"
+          echo "base=${BASE}" >> "$GITHUB_OUTPUT"
+          git fetch origin main
       - name: Full S0 gate set
         run: pnpm run check:all
       - name: Architecture guard (full repo)
-        # A fresh checkout has no diff; the bare diff-mode invocation would
-        # pass vacuously here. --all evaluates every production package.
         run: pnpm run architecture:guard:all
       - name: Full workspace tests
+        env:
+          TURBO_SCM_BASE: ${{ steps.scm-base.outputs.base }}
         run: pnpm exec turbo run test --concurrency=100%
 
-  dev-cold-loop-gate:
-    # Hosted Actions runners are disabled until explicitly re-enabled.
-    if: ${{ false }}
-    name: hobo dev cold loop (offline <=60s)
+  artifact-trust:
+    name: artifact signing and install verification
     needs: pr-gate
-    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
-    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+    runs-on: hobo
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
       - run: corepack enable pnpm
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: 24
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Verify signed hello-bindle and refuse stripped signatures
+        run: pnpm test:file src/draft/technical-proofs/componentize-artifact-trust-contract/test/publish-verify.test.ts
+
+  dev-cold-loop-gate:
+    name: hobo dev cold loop (offline <=60s)
+    needs: pr-gate
+    if: github.event_name == 'pull_request'
+    runs-on: hobo
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          submodules: recursive
+      - run: corepack enable pnpm
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24"
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
@@ -204,21 +215,19 @@ jobs:
             node --import tsx scripts/ci/dev-cold-loop-timing.mts
 
   ci-guard:
-    # Hosted Actions runners are disabled until explicitly re-enabled.
-    if: ${{ false }}
     name: CI fabric contract guard
-    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
+    runs-on: hobo
     timeout-minutes: 10
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
       - run: corepack enable pnpm
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: 24
+          node-version: "24"
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
@@ -226,16 +235,14 @@ jobs:
         run: node --import tsx packages/ci-guard/bin/assert-ci-contract.ts
 
   secret-scan:
-    # Hosted Actions runners are disabled until explicitly re-enabled.
-    if: ${{ false }}
     name: Secret scan
-    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
+    runs-on: hobo
     timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
           fetch-depth: 0

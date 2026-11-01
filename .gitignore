@@ -38,6 +38,8 @@ sandboxes/
 .tools/
 # Local yard/broker tooling installs (prefer $HOBO_HOME; belt-and-suspenders)
 .hobo/
+# Committed Dagger check config for CI/local parity (see packages/ci/README.md)
+!.hobo/dagger.json
 # OS-released codegen/build lock database, sidecars and interrupted staging trees.
 .hobo-codegen.lock
 .hobo-codegen.lock-*

@@ -101,7 +101,9 @@ function lintWorkflowYaml(
 		for (const [index, line] of lines.entries()) {
 			const match = line.match(/^\s*-?\s*uses:\s*([^@\s]+)@(\S+)\s*$/);
 			if (!match) continue;
-			const [, action, ref] = match;
+			const action = match[1];
+			const ref = match[2];
+			if (!action || !ref) continue;
 			if (ref.startsWith("./")) continue;
 			if (!/^[0-9a-f]{40}$/.test(ref)) {
 				errors.push(

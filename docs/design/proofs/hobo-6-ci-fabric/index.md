@@ -37,7 +37,8 @@ native merge queue on `main` in the **Hobo-Labs/HoBo** org so landing PRs use
 `pnpm agent:check -- --base=origin/<base-ref>`; merge-queue candidates run the
 full gate (`check:all`, architecture guard, full `turbo run test`). Event-aware
 concurrency cancels stale PR runs but never cancels `merge_group` or `push` to
-`main`.
+`main`. Runs that stay **`queued`** with no runner name indicate missing JIT
+**`hobo`** registration—see [`packages/ci/RUNNER-QUEUE.md`](../../../../packages/ci/RUNNER-QUEUE.md).
 The `pr-gate` job resolves `TURBO_SCM_BASE` via
 [`scripts/ci/turbo-scm-base.mts`](../../../../scripts/ci/turbo-scm-base.mts):
 `merge_group.base_sha` for merge queue events, `origin/<base-ref>` on PRs (stack

@@ -152,7 +152,7 @@ export function ciProjectJsonSchema() {
 			target: "draft-2020-12",
 			reused: "ref",
 		}),
-		$id: "https://raw.githubusercontent.com/Tyler-R-Kendrick/HoBo/main/packages/ci-gh-actions/schema/ci-project.schema.json",
+		$id: "https://raw.githubusercontent.com/Hobo-Labs/HoBo/main/packages/ci-gh-actions/schema/ci-project.schema.json",
 		title: "HoBo CI project configuration",
 	};
 }

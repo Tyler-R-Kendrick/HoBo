@@ -62,7 +62,7 @@ jobs:
           BASE="$(node --import tsx scripts/ci/turbo-scm-base.mts)"
           echo "base=${BASE}" >> "$GITHUB_OUTPUT"
           git fetch origin "${{ github.base_ref }}"
-      - uses: cue-lang/setup-cue@v1.0.0
+      - uses: cue-lang/setup-cue@1713281ae501e533ff06108005dffeab9e2e5203
         with:
           version: v0.14.0
       - name: DCO sign-off check
@@ -246,6 +246,6 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -390,7 +390,9 @@ Production workflows live under [`.github/workflows/hobo-ci.yml`](../../.github/
 and [`.github/workflows/examples-e2e.yml`](../../.github/workflows/examples-e2e.yml).
 They run on self-hosted **`hobo`** JIT runners and declare `merge_group` for
 GitHub's native merge queue on `main`. Optional local signoff (`gh-signoff`,
-Basecamp) does not replace the authoritative CI gate.
+Basecamp) does not replace the authoritative CI gate. Third-party actions pin
+full commit SHAs (catalog: [`.github/action-pins.env`](../../.github/action-pins.env);
+enforced by `pnpm run actions:lint`).
 
 One-time org transfer steps:
 

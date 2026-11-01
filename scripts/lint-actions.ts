@@ -97,6 +97,19 @@ function lintWorkflowYaml(
 			`${file}: authoritative CI jobs must run on self-hosted hobo runners`,
 		);
 	}
+	if (!requireDisabledJobs) {
+		for (const [index, line] of lines.entries()) {
+			const match = line.match(/^\s*-?\s*uses:\s*([^@\s]+)@(\S+)\s*$/);
+			if (!match) continue;
+			const [, action, ref] = match;
+			if (ref.startsWith("./")) continue;
+			if (!/^[0-9a-f]{40}$/.test(ref)) {
+				errors.push(
+					`${file}:${index + 1}: ${action} must pin a full commit SHA, not @${ref}`,
+				);
+			}
+		}
+	}
 }
 
 for (const file of recognizedFiles) {

@@ -62,6 +62,7 @@
     "@hobo/ci-dagger": "workspace:*",
     "@pact-foundation/pact": "17.1.4",
     "@types/pg": "8.15.5",
+    "testcontainers": "11.8.1",
     "yaml": "2.9.0"
   }
 }

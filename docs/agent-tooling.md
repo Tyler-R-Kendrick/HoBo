@@ -14,6 +14,9 @@ OptimizeXP native captures persist the replay command's exit code, mark nonzero 
 > **Note:** this is *tooling* config, not part of the HoBo product design (`docs/design/`). It was added on request to make the agents productive in this repo.
 
 The [default dev container](../.devcontainer/devcontainer.json) also installs
+helper tooling on a **digest-pinned** Node 24 Bookworm base (see
+[`.devcontainer/Dockerfile`](../.devcontainer/Dockerfile)); `post-create.sh` enables
+Corepack into `.tools/ci` and runs `pnpm install --frozen-lockfile`. It includes
 GitHub CLI, Docker in Docker, native Actions runner dependencies and pinned act.
 It starts the local CI runner controller on every container start. Missing
 credentials/configuration leave it waiting while offline checks remain usable.

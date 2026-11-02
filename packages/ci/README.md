@@ -402,4 +402,10 @@ One-time org transfer steps:
 
 If CI runs stay **`queued`** with no runner name, see **[RUNNER-QUEUE.md](./RUNNER-QUEUE.md)** (relay webhook, isolated onboarding, Sandbox host, JIT label contract).
 
+Probe the production relay (default `https://hobo-ci.vercel.app`):
+
+```sh
+node --import tsx scripts/ci/verify-relay-dispatch.mts
+```
+
 Native Dagger checks use [`.hobo/dagger.json`](../../.hobo/dagger.json); see [`@hobo/ci-dagger`](../ci-dagger/README.md). Manual runner acceptance: [`.github/workflows/hobo-ci-acceptance.yml`](../../.github/workflows/hobo-ci-acceptance.yml) (optional `dagger_acceptance` input).

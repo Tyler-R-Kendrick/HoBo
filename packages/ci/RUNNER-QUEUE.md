@@ -83,3 +83,12 @@ These require org admin / platform operator action, not a workflow edit:
 - Org/repo **Actions** permissions for fork PRs if you expect fork contributions to run CI.
 
 Workflow YAML in this repository is already **`runs-on: hobo`**; a permanently **`queued`** run means **no JIT runner registered**, almost always because the relay did not admit or launch the job.
+
+## Quick probe (repo script)
+
+```sh
+node --import tsx scripts/ci/verify-relay-dispatch.mts
+# optional: --relay https://hobo-ci.vercel.app --repository Hobo-Labs/HoBo
+```
+
+Exit **0** only when **`GET /readyz`** returns JSON **`{"ready":true}`** (HTTP 200). As of the last operator check, **`https://hobo-ci.vercel.app/healthz`** was **`{"ok":true}`** while **`/readyz`** returned **`{"ready":false}`** — isolated JIT dispatch stays off until readiness clears (Sandbox env, worker health, database — see [`packages/ci-vercel/README.md`](../ci-vercel/README.md)).

@@ -1,0 +1,28 @@
+[tools]
+cue = "0.14.0"
+node = "24"
+pnpm = "10.33.4"
+turbo = "2.11.10"
+
+[env]
+HOBO_MISE = "1"
+
+[tasks.install]
+description = "Install workspace dependencies (frozen lockfile)"
+run = "pnpm install --frozen-lockfile --config.confirmModulesPurge=false"
+
+[tasks.build]
+description = "Build all production packages (turbo)"
+run = "pnpm run build"
+
+[tasks."test:unit"]
+description = "Unit test lane"
+run = "pnpm run test:unit"
+
+[tasks."agent:check"]
+description = "Impact-scoped agent validation"
+run = "pnpm run agent:check"
+
+[tasks.doctor]
+description = "Environment doctor"
+run = "pnpm run doctor"

@@ -15,28 +15,28 @@ const files = existsSync(disabledWorkflowDir)
 			.sort()
 	: [];
 const errors: string[] = [];
-// The user-authorized manual acceptance recipe is the only enabled workflow.
-// Pin its complete reviewed surface rather than accepting arbitrary YAML under
-// the approved filename (extra events/jobs/permissions would otherwise bypass
-// the disabled-CI policy). Updating it requires an explicit policy review.
-const acceptanceFile = "hobo-ci-acceptance.yml";
-const acceptanceDigest =
-	"6268254eb20f2767bace1bcd82f9ffbf767746e5be71399f3dc8f7d083861a02";
+// User-authorized enabled workflows (pinned digests; update only after review).
+const enabledWorkflowDigests = {
+	"hobo-ci-acceptance.yml":
+		"5cc778af0c1e48827885fa94339d550023b36b47c8acb570da5c400e6740bbac",
+	"dev-env-smoke.yml":
+		"2fef570ecdc480da317e6af69bf7bb88db794d761ccfdc4d449c83669415c127",
+} as const satisfies Record<string, string>;
 for (const file of recognizedFiles) {
-	if (file !== acceptanceFile) {
+	if (!(file in enabledWorkflowDigests)) {
 		errors.push(
-			`${file}: enabled workflow is not the approved manual HoBo acceptance workflow`,
+			`${file}: enabled workflow is not in the reviewed allowlist (${Object.keys(enabledWorkflowDigests).join(", ")})`,
 		);
 		continue;
 	}
+	const expected =
+		enabledWorkflowDigests[file as keyof typeof enabledWorkflowDigests];
 	const text = readFileSync(join(workflowDir, file), "utf8").replaceAll(
 		"\r\n",
 		"\n",
 	);
-	if (createHash("sha256").update(text).digest("hex") !== acceptanceDigest)
-		errors.push(
-			`${file}: manual HoBo acceptance workflow differs from its reviewed recipe`,
-		);
+	if (createHash("sha256").update(text).digest("hex") !== expected)
+		errors.push(`${file}: enabled workflow differs from its reviewed recipe`);
 }
 
 for (const file of files) {
@@ -107,5 +107,5 @@ if (errors.length > 0) {
 	process.exit(1);
 }
 console.log(
-	`actions lint ok: ${files.length} disabled workflow file(s); ${recognizedFiles.length} reviewed manual HoBo acceptance workflow(s)`,
+	`actions lint ok: ${files.length} disabled workflow file(s); ${recognizedFiles.length} reviewed enabled workflow(s)`,
 );

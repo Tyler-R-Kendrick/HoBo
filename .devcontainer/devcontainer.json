@@ -4,11 +4,7 @@
   "build": { "dockerfile": "Dockerfile" },
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.12",
-      "installTools": true
-    }
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
   "customizations": {
     "vscode": {
@@ -22,7 +18,8 @@
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "postStartCommand": "bash .devcontainer/post-start.sh",
   "remoteEnv": {
-    "PATH": "${containerWorkspaceFolder}/.tools/ci:${containerEnv:PATH}",
+    "PATH": "${containerEnv:HOME}/.local/bin:${containerWorkspaceFolder}/.tools/ci:${containerEnv:PATH}",
+    "MISE_TRUSTED_CONFIG_PATHS": "${containerWorkspaceFolder}:${containerEnv:HOME}/.hobo-dotfiles",
     "HOBO_CI_LOCAL_RUNNER": "${localEnv:HOBO_CI_LOCAL_RUNNER}",
     "HOBO_CI_LOCAL_REPOSITORY": "${localEnv:HOBO_CI_LOCAL_REPOSITORY}",
     "HOBO_CI_LOCAL_TRUSTED": "${localEnv:HOBO_CI_LOCAL_TRUSTED}"

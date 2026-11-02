@@ -784,7 +784,9 @@ Run the smallest sufficient lane through `pnpm agent:check`; no-arg mode validat
 
 ## Cursor Cloud specific instructions
 
-Durable, non-obvious notes for this environment. The startup update script already runs `corepack enable pnpm` + `pnpm install --frozen-lockfile`, so dependencies are ready; do not re-add install steps here.
+Durable, non-obvious notes for this environment. The startup update script runs `bash scripts/bootstrap-dev.sh --project-only` (mise installs pinned Node/pnpm/cue/turbo from `mise.toml`) and `pnpm install --frozen-lockfile`; do not re-add Corepack-only install steps here.
+
+- **Dev tools via mise.** Project pins live in [`mise.toml`](mise.toml) + [`mise.lock`](mise.lock). Personal shell/agent prefs come from [`Hobo-Labs/dotfiles`](https://github.com/Hobo-Labs/dotfiles) via `bash scripts/bootstrap-dev.sh` (seed: [`contrib/hobo-dotfiles-seed/`](contrib/hobo-dotfiles-seed/)). See [`docs/dev-env/mise.md`](docs/dev-env/mise.md).
 
 - **No sudo.** `sudo` is never available and never allowed. Do not run it, do not ask the user to run it, do not suggest root apt/system Docker installs. Prefer `$HOME/.local/bin`, npx/pnpm, remote anon APIs. Host is **aarch64** — download ARM64 binaries only. No `/var/run/docker.sock` here.
 - **Examples Temporary = browser-only.** End users never run CLI setup (docker/wrangler/openpouch/crane). Ship is browser → same-origin `/api/cf-temp/*` → remote HTTPS APIs. Do not treat local CLI image push/deploy as a product fallback.

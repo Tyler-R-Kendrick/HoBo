@@ -10,6 +10,7 @@ import {
 	CiRelayClientError,
 	createCiRelayClient,
 } from "@hobo/ci-gh-actions/client";
+import { loadCiProjectFromDirectory } from "@hobo/ci-gh-actions/cli-serve";
 import {
 	type CommandModule,
 	type CommandResult,
@@ -18,36 +19,21 @@ import {
 import { CiRepositoryLinkSchema } from "./_generated/composition_pb.js";
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import { runCiRuns } from "./ci-runs.js";
+import { runCiServe, type CiServeOptions } from "./ci-serve.js";
 
 const execute = promisify(execFile);
 type CiLink = ReturnType<typeof create<typeof CiRepositoryLinkSchema>>;
 type CiOptions = Record<string, string | boolean | string[] | undefined>;
 
-class CiSetupUsage extends Error {}
+import { ciRepositoryFromRemote, validRepository } from "./ci-repository.js";
+export { ciRepositoryFromRemote };
+import { CiSetupUsage } from "./ci-command-errors.js";
 class CiLinkSaveError extends Error {}
 
 export const CI_HELP = verbHelpText("ci", { implemented: true });
 
 function usage(message: string): CommandResult {
 	return { ok: false, status: "usage", code: "HOBO_CLI_USAGE", message };
-}
-
-/** Parse GitHub remotes without executing a shell or accepting another host. */
-export function ciRepositoryFromRemote(remote: string): string {
-	const match =
-		/^(?:git@github\.com:|ssh:\/\/git@github\.com\/|https:\/\/github\.com\/)([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?)\/?$/.exec(
-			remote.trim(),
-		);
-	const repository = match?.[1]?.replace(/\.git$/, "");
-	if (!repository || !validRepository(repository))
-		throw new CiSetupUsage("Select a GitHub remote or pass --repo owner/name.");
-	return repository;
-}
-
-function validRepository(value: string): boolean {
-	return /^[A-Za-z0-9_][A-Za-z0-9_.-]*\/[A-Za-z0-9_][A-Za-z0-9_.-]*$/.test(
-		value,
-	);
 }
 
 function trustedOrigin(value: string): string {
@@ -69,6 +55,39 @@ function trustedOrigin(value: string): string {
 			"Select an HTTPS relay origin without a path or credentials.",
 		);
 	return url.origin;
+}
+
+function relayOriginFromProject(value: string, allowInsecureLoopback: boolean): string {
+	let url: URL;
+	try {
+		url = new URL(value);
+	} catch {
+		throw new CiSetupUsage("Select a valid relay origin from CI project config.");
+	}
+	const loopback =
+		allowInsecureLoopback &&
+		url.protocol === "http:" &&
+		(url.hostname === "localhost" || url.hostname === "127.0.0.1");
+	if (
+		(!loopback && url.protocol !== "https:") ||
+		url.username ||
+		url.password ||
+		url.pathname !== "/" ||
+		url.search ||
+		url.hash
+	)
+		throw new CiSetupUsage(
+			"CI project relay origin must be HTTPS or loopback HTTP with allowInsecureLoopback.",
+		);
+	return url.origin;
+}
+
+function parseSavedRelayOrigin(value: string): string {
+	try {
+		return trustedOrigin(value);
+	} catch {
+		return relayOriginFromProject(value, true);
+	}
 }
 
 async function boundedText(path: string, limit: number): Promise<string> {
@@ -96,7 +115,7 @@ async function readLink(path: string): Promise<CiLink | undefined> {
 			CiRepositoryLinkSchema,
 			await boundedText(path, 8192),
 		);
-		link.relayOrigin = trustedOrigin(link.relayOrigin);
+		link.relayOrigin = parseSavedRelayOrigin(link.relayOrigin);
 		if (
 			!/^[A-Za-z0-9_-]{1,80}$/.test(link.accountId) ||
 			!validRepository(link.repository)
@@ -144,6 +163,8 @@ function parseCiArgs(args: readonly string[]) {
 		strict: true,
 		options: {
 			relay: { type: "string" },
+			config: { type: "string" },
+			environment: { type: "string" },
 			repo: { type: "string" },
 			remote: { type: "string" },
 			"token-file": { type: "string" },
@@ -167,8 +188,58 @@ function parseCiArgs(args: readonly string[]) {
 			grep: { type: "string" },
 			follow: { type: "boolean", short: "f" },
 			runs: { type: "string" },
+			host: { type: "string" },
+			port: { type: "string" },
+			url: { type: "string" },
+			endpoint: { type: "string" },
+			admission: { type: "string" },
+			"allow-insecure": { type: "boolean" },
+			"with-worker": { type: "boolean" },
+			"print-config": { type: "boolean" },
+			origin: { type: "string" },
+			"base-url": { type: "string" },
+			"trust-proxy": { type: "boolean" },
+			db: { type: "string" },
+			engine: { type: "string", multiple: true },
 		},
 	});
+}
+
+function ciServeOptions(values: CiOptions): CiServeOptions {
+	const engines = values.engine;
+	return {
+		...(values.host !== undefined ? { host: String(values.host) } : {}),
+		...(values.port !== undefined ? { port: String(values.port) } : {}),
+		...(values.url !== undefined ? { url: String(values.url) } : {}),
+		...(values.endpoint !== undefined
+			? { endpoint: String(values.endpoint) }
+			: {}),
+		...(values.origin !== undefined ? { origin: String(values.origin) } : {}),
+		...(values["base-url"] !== undefined
+			? { baseUrl: String(values["base-url"]) }
+			: {}),
+		...(values["trust-proxy"] === true ? { trustProxy: true } : {}),
+		...(values.environment !== undefined
+			? { environment: String(values.environment) }
+			: {}),
+		...(values.config !== undefined ? { config: String(values.config) } : {}),
+		...(values.admission !== undefined
+			? { admission: String(values.admission) }
+			: {}),
+		...(values["allow-insecure"] === true ? { allowInsecure: true } : {}),
+		...(values["with-worker"] === true ? { withWorker: true } : {}),
+		...(values["print-config"] === true ? { printConfig: true } : {}),
+		...(values.repo !== undefined ? { repo: String(values.repo) } : {}),
+		...(values.remote !== undefined ? { remote: String(values.remote) } : {}),
+		...(values["installation-id"] !== undefined
+			? { installationId: String(values["installation-id"]) }
+			: {}),
+		...(values.home !== undefined ? { home: String(values.home) } : {}),
+		...(values.db !== undefined ? { db: String(values.db) } : {}),
+		...(Array.isArray(engines) && engines.length > 0
+			? { engines: engines.map(String) }
+			: {}),
+	};
 }
 
 export function createCiCommand(
@@ -205,9 +276,45 @@ export function createCiCommand(
 					"logs",
 					"grep",
 					"rerun",
+					"serve",
 				].includes(command)
 			)
 				return usage("Unknown CI command. Run hobo ci --help.");
+			if (command === "serve") {
+				if (positionals.length !== 1)
+					return usage("hobo ci serve takes no positional arguments.");
+				const env = deps.env ?? process.env;
+				const gitEnv = { ...env };
+				delete gitEnv.HOBO_CI_ACCOUNT_TOKEN;
+				delete gitEnv.HOBO_CI_ACCOUNT_TOKEN_FILE;
+				const git =
+					deps.git ??
+					(async (gitArgs: readonly string[], cwd: string) => {
+						const result = await execute("git", [...gitArgs], {
+							cwd,
+							timeout: 10000,
+							maxBuffer: 65536,
+							env: gitEnv,
+						});
+						return result.stdout.trim();
+					});
+				let root = flags.cwd;
+				try {
+					root = await git(["rev-parse", "--show-toplevel"], flags.cwd);
+				} catch {
+					if (!values.repo)
+						return usage(
+							"Run from a GitHub repository or pass --repo owner/name.",
+						);
+				}
+				return runCiServe({
+					cwd: root,
+					options: ciServeOptions(values),
+					env,
+					git,
+					emitProgress,
+				});
+			}
 			const setup = command === "enable" || command === "connect";
 			if ((setup || command === "status") && positionals.length !== 1)
 				return usage(
@@ -369,6 +476,28 @@ export function createCiCommand(
 					});
 				const link =
 					values.relay && values.repo ? undefined : await readLink(path);
+				let allowInsecureLoopback = false;
+				let selectedEnvironment: string | undefined;
+				let jobAdmission: "push" | "pull" | undefined;
+				if (!values.relay) {
+					try {
+						const projectLoad: Parameters<
+							typeof loadCiProjectFromDirectory
+						>[0] = { repositoryRoot: root, env };
+						if (typeof values.config === "string")
+							projectLoad.configPath = values.config;
+						if (typeof values.environment === "string")
+							projectLoad.environment = values.environment;
+						const project = await loadCiProjectFromDirectory(projectLoad);
+						selectedEnvironment = project.environmentName;
+						allowInsecureLoopback =
+							project.environment.allowInsecureLoopback;
+						jobAdmission = project.environment.jobAdmission ?? undefined;
+						values.relay = project.environment.relayOrigin;
+					} catch {
+						/* Fall back to saved link or explicit env relay URL. */
+					}
+				}
 				let relay =
 					values.relay ??
 					env.HOBO_CI_RELAY_URL ??
@@ -379,9 +508,11 @@ export function createCiCommand(
 					relay = (await ask("HoBo CI relay HTTPS origin: ")).trim();
 				if (!relay)
 					return usage(
-						"Select your CI relay with --relay <https-origin> or HOBO_CI_RELAY_URL. The selection is saved after setup.",
+						"Select your CI relay with --relay, HOBO_CI_RELAY_URL, or .hobo/ci.json (see hobo ci --help).",
 					);
-				const origin = trustedOrigin(relay);
+				const origin = allowInsecureLoopback
+					? relayOriginFromProject(relay, true)
+					: trustedOrigin(relay);
 				const tokenFile =
 					values["token-file"] ?? env.HOBO_CI_ACCOUNT_TOKEN_FILE;
 				if (tokenFile && env.HOBO_CI_ACCOUNT_TOKEN)
@@ -403,6 +534,7 @@ export function createCiCommand(
 					: (env.HOBO_CI_ACCOUNT_TOKEN ?? "");
 				const clientOptions: Parameters<typeof createCiRelayClient>[0] = {
 					origin,
+					allowInsecureLoopback,
 					accountToken: () => credential,
 				};
 				if (deps.fetch) clientOptions.fetch = deps.fetch;
@@ -443,6 +575,8 @@ export function createCiCommand(
 							revision: state.revision,
 							isolated: existing?.isolatedOnly ?? false,
 							installationId: existing?.installationId,
+							environment: selectedEnvironment,
+							jobAdmission,
 						},
 					};
 				if (existing) {
@@ -599,6 +733,8 @@ export function createCiCommand(
 						accountId: state.account.id,
 						enabled: true,
 						unchanged: false,
+						environment: selectedEnvironment,
+						jobAdmission,
 					},
 				};
 			} catch (error) {

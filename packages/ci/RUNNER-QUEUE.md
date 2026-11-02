@@ -17,7 +17,7 @@ Work through these on **Hobo-Labs/HoBo** after an org/repo transfer:
 
 - HoBo CI GitHub App must be **installed on the Hobo-Labs org** (or updated) with access to **Hobo-Labs/HoBo**.
 - App webhooks must target the **ingress front door** HTTPS origin (`workflow_job`, `workflow_run`), not a relay URL baked into the App settings. The front door reads **`.hobo/ci.json` at the event’s config ref** and forwards signed webhooks to the selected environment’s `relayOrigin`.
-- For **local dev and agents behind NAT**, set `jobAdmission: "pull"` on the `local` environment (or rely on default pull inference for loopback relays). Run `hobo ci enable` against `.hobo/ci.json` and start a poll worker (`createJobPollAdmissionWorker`) — no public URL on your laptop.
+- For **local dev and agents behind NAT**, set `jobAdmission: "pull"` on the `local` environment (or rely on default pull inference for loopback relays). Run `hobo ci enable` against `.hobo/ci.json`, then **`hobo ci serve --environment local --installation-id <id>`** (or `createJobPollAdmissionWorker` in custom hosts) — no public URL on your laptop.
 - **Fork pull requests** never choose a contributor-controlled relay: routing uses the **base-branch** config ref and `selection.forkPullRequestEnvironment` when set.
 - Webhook deliveries should be **200/202** in the GitHub App settings; repeated **401/503** means wrong secret or ingress/relay down.
 
@@ -77,7 +77,7 @@ Set repository variables **`TURBO_TEAM`** and secret **`TURBO_TOKEN`** for remot
 
 ## Verify end-to-end
 
-1. **`curl --fail https://<relay-origin>/readyz`** — relay healthy.
+1. **`curl --fail https://<relay-origin>/readyz`** — relay healthy (local: `hobo ci serve` then `curl --fail http://127.0.0.1:8787/readyz` when using default local `relayOrigin`).
 2. **GitHub → App → Recent deliveries** — `workflow_job` **queued** events succeed when you re-run a stuck workflow.
 3. **Manual JIT smoke** (does not need checkout):
 

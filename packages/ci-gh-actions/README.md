@@ -77,6 +77,10 @@ Already running jobs retain their reservation and finish on their chosen host.
 
 ## Deploy the relay
 
+For **`hobo ci serve`** in a checkout (bind/public origin split, ingress HMAC,
+trust proxy) see [`REMOTE-RELAY-SERVE.md`](REMOTE-RELAY-SERVE.md). For the
+container image and Compose/Kubernetes manifests see [`deploy/README.md`](deploy/README.md).
+
 [Compose, Kubernetes, image build, TLS, backup and recovery](deploy/README.md)
 are included. The runtime uses Node 24, UID/GID 1000, a read-only root filesystem,
 a writable temporary directory and one persistent SQLite directory. A kernel

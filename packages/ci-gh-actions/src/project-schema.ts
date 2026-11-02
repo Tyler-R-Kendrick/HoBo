@@ -98,6 +98,22 @@ const partialPolicy = policy
 	})
 	.partial();
 const jobAdmission = z.enum(["push", "pull"]);
+const ciEngineId = z
+	.string()
+	.regex(/^[a-z][a-z0-9-]{0,62}$/)
+	.meta({ id: "CiEngineId" });
+const engineRelayOverride = z
+	.object({
+		relayOrigin: z.string().min(1).max(2048).optional(),
+	})
+	.strict()
+	.meta({ id: "EngineRelayOverride" });
+const environmentEngines = z.union([
+	z.array(ciEngineId).max(16),
+	z
+		.record(ciEngineId, engineRelayOverride.partial())
+		.refine((entries) => Object.keys(entries).length <= 16),
+]);
 const selectionMatch = z
 	.object({
 		refPrefix: z.string().min(1).max(200).optional(),
@@ -123,6 +139,11 @@ const fields = z
 		githubWebhookOrigin: z.string().min(1).max(2048).optional(),
 		allowInsecureLoopback: z.boolean().optional(),
 		jobAdmission: jobAdmission.optional(),
+		engines: environmentEngines.optional(),
+		engineRelays: z
+			.record(ciEngineId, engineRelayOverride)
+			.refine((entries) => Object.keys(entries).length <= 16)
+			.optional(),
 		secrets: z.union([secrets, reference("secrets")]).optional(),
 		policy,
 	})

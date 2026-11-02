@@ -5,7 +5,7 @@
     "forkPullRequestEnvironment": "ci",
     "rules": [
       {
-        "environment": "local",
+        "environment": "ci",
         "match": { "branch": "main" }
       },
       {
@@ -19,6 +19,7 @@
       "relayOrigin": "http://127.0.0.1:8787",
       "allowInsecureLoopback": true,
       "jobAdmission": "pull",
+      "engines": ["gh-actions"],
       "policy": {
         "accountId": "local-dev",
         "tenantId": "local-dev",
@@ -50,6 +51,7 @@
       "relayOrigin": "https://hobo-ci.vercel.app",
       "githubWebhookOrigin": "https://hobo-ci.vercel.app",
       "jobAdmission": "push",
+      "engines": ["gh-actions"],
       "policy": {
         "accountId": "hobo-labs",
         "tenantId": "hobo-labs",

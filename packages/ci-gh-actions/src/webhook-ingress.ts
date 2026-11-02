@@ -11,6 +11,7 @@ import {
 	parseCiProjectSelection,
 	resolveCiConfigRefForRun,
 	resolveCiRelayRoute,
+	relayWebhookPath,
 	type CiWebhookRoutingContext,
 } from "./relay-routing.js";
 
@@ -221,21 +222,34 @@ export function createWebhookIngressHandler(options: {
 			return;
 		}
 		const forward = signIngressForward(options.ingressForwardSecret, raw);
-		let relayResponse: Response;
-		try {
-			relayResponse = await fetchImpl(`${route.relayOrigin}/github/webhooks`, {
-				method: "POST",
-				headers: {
-					"content-type": "application/json",
-					"x-github-event": event,
-					"x-github-delivery": delivery,
-					"x-hobo-ingress-forward": forward,
-				},
-				body: new Uint8Array(raw),
-				redirect: "error",
-				signal: AbortSignal.timeout(120_000),
-			});
-		} catch {
+		const forwardTargets = [
+			`${route.relayOrigin}${relayWebhookPath(route.engine)}`,
+			`${route.relayOrigin}/github/webhooks`,
+		];
+		let relayResponse: Response | undefined;
+		for (const target of forwardTargets) {
+			try {
+				relayResponse = await fetchImpl(target, {
+					method: "POST",
+					headers: {
+						"content-type": "application/json",
+						"x-github-event": event,
+						"x-github-delivery": delivery,
+						"x-hobo-ingress-forward": forward,
+					},
+					body: new Uint8Array(raw),
+					redirect: "error",
+					signal: AbortSignal.timeout(120_000),
+				});
+			} catch {
+				json(502, '{"error":"relay forward failed"}');
+				return;
+			}
+			if (relayResponse.status !== 404) break;
+			void relayResponse.body?.cancel().catch(() => {});
+			relayResponse = undefined;
+		}
+		if (!relayResponse) {
 			json(502, '{"error":"relay forward failed"}');
 			return;
 		}

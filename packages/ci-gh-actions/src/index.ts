@@ -99,11 +99,21 @@ export {
 	loadCiProjectConfigDocument,
 	mergeCiProjectLocalOverlay,
 	parseCiProjectSelection,
+	relayWebhookPath,
 	resolveCiConfigRefForRun,
 	resolveCiRelayRoute,
 	resolveExplicitCiEnvironmentName,
 	selectEnvironmentForWebhook,
 } from "./relay-routing.js";
+export {
+	inventoryCiEnginesFromRepository,
+	knownEngineIds,
+} from "./ci-engine-inventory.js";
+export {
+	collectAllowedRelayOrigins,
+	resolveEngineRelayOrigin,
+	resolveEnvironmentEngines,
+} from "./engine-relay-routing.js";
 export { loadCiProjectFromDirectory } from "./project-config-loader.js";
 export {
 	createGithubCiProjectFetcher,

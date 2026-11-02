@@ -7,6 +7,10 @@ import {
 import { z } from "zod";
 import { createCiRelayClient } from "./client.js";
 import {
+	parseEnvironmentEngineList,
+	parseEnvironmentEngineRelays,
+} from "./engine-relay-routing.js";
+import {
 	CiProjectDocumentSchema,
 	resolveCiProjectReferences,
 } from "./project-schema.js";
@@ -30,12 +34,29 @@ const JsonValue = z.json();
 const JsonObject = z.record(z.string(), JsonValue);
 type JsonData = z.infer<typeof JsonValue>;
 const JobAdmission = z.enum(["push", "pull"]);
+const CiEngineId = z.string().regex(/^[a-z][a-z0-9-]{0,62}$/);
+const EngineRelayOverride = z
+	.object({
+		relayOrigin: z.string().min(1).max(2048).optional(),
+	})
+	.strict();
+const EnvironmentEngines = z.union([
+	z.array(CiEngineId).max(16),
+	z
+		.record(CiEngineId, EngineRelayOverride.partial())
+		.refine((entries) => Object.keys(entries).length <= 16),
+]);
 const EnvironmentFields = z
 	.object({
 		relayOrigin: z.string().min(1).max(2048),
 		githubWebhookOrigin: z.string().min(1).max(2048).optional(),
 		allowInsecureLoopback: z.boolean().optional(),
 		jobAdmission: JobAdmission.optional(),
+		engines: EnvironmentEngines.optional(),
+		engineRelays: z
+			.record(CiEngineId, EngineRelayOverride)
+			.refine((entries) => Object.keys(entries).length <= 16)
+			.optional(),
 		secrets: SecretDeclarations.optional(),
 		policy: JsonValue,
 	})
@@ -67,6 +88,12 @@ export interface CiProjectEnvironment {
 	readonly allowInsecureLoopback: boolean;
 	/** Push accepts signed GitHub webhooks at the relay; pull polls GitHub for queued jobs. */
 	readonly jobAdmission: "push" | "pull" | undefined;
+	/** Engines served from this environment profile (defaults to repository inventory). */
+	readonly engines: readonly string[] | undefined;
+	/** Per-engine relay origin overrides (falls back to environment relayOrigin). */
+	readonly engineRelays:
+		| Readonly<Record<string, { readonly relayOrigin?: string }>>
+		| undefined;
 	/** Logical names and required phases only; secret values are never configured here. */
 	readonly secrets: Readonly<Record<string, CiSecretRequirement>>;
 	readonly policy: ParsedCiPolicy;
@@ -155,9 +182,14 @@ function projectConfig(
 		throw new Error("invalid environment selection");
 	const targets = new Set<string>();
 	for (const entry of entries) {
-		const key = JSON.stringify([entry.relayOrigin, entry.policy.accountId]);
-		if (targets.has(key)) throw new Error("duplicate environment account");
-		targets.add(key);
+		const origins = [entry.relayOrigin];
+		for (const override of Object.values(entry.engineRelays ?? {}))
+			if (override.relayOrigin) origins.push(override.relayOrigin);
+		for (const origin of origins) {
+			const key = JSON.stringify([origin, entry.policy.accountId]);
+			if (targets.has(key)) throw new Error("duplicate environment account");
+			targets.add(key);
+		}
 	}
 	const config = Object.freeze({
 		defaultEnvironment,
@@ -256,6 +288,8 @@ export function parseCiProjectConfig(
 							: undefined,
 						allowInsecureLoopback,
 						jobAdmission: entry.jobAdmission,
+						engines: parseEnvironmentEngineList(entry.engines),
+						engineRelays: parseEnvironmentEngineRelays(entry.engineRelays),
 						secrets: Object.freeze(
 							Object.fromEntries(
 								Object.entries(entry.secrets ?? {}).map(

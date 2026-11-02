@@ -142,7 +142,7 @@ export function createHostedRelayRuntime(options: {
 		/** Process a bounded inbox batch, then drain and inspect known leases. */
 		async tick(tickOptions: { maxDeliveries?: number } = {}) {
 			const limit = tickOptions.maxDeliveries ?? 10;
-			if (!Number.isInteger(limit) || limit < 1 || limit > 50)
+			if (!Number.isInteger(limit) || limit < 0 || limit > 50)
 				throw new Error("invalid delivery batch size");
 			// A function can die after committing intent and before recording the
 			// external response. Old in-flight intent becomes uncertain, never retried.

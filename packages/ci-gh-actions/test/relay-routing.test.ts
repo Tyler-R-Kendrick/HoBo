@@ -8,6 +8,7 @@ import {
 } from "../src/project-config.js";
 import {
 	assertRelayOriginAllowed,
+	inferJobAdmission,
 	isForkPullRequestRun,
 	mergeCiProjectLocalOverlay,
 	parseCiProjectSelection,
@@ -15,6 +16,7 @@ import {
 	resolveCiRelayRoute,
 	type CiWebhookRoutingContext,
 } from "../src/relay-routing.js";
+import { selectCiEnvironment } from "../src/project-config.js";
 
 const basePolicy = () =>
 	JSON.parse(
@@ -50,10 +52,10 @@ function projectDocument() {
 	return {
 		defaultEnvironment: "ci",
 		selection: {
-			rules: [
-				{ environment: "local", match: { branch: "main" } },
-				{ environment: "production", match: { refPrefix: "refs/tags/" } },
-			],
+		rules: [
+			{ environment: "ci", match: { branch: "main" } },
+			{ environment: "production", match: { refPrefix: "refs/tags/" } },
+		],
 			forkPullRequestEnvironment: "ci",
 		},
 		environments: {
@@ -125,23 +127,11 @@ describe("relay routing from repository CI config", () => {
 		).toThrow(/not allowed/);
 	});
 
-	it("selects local pull admission for loopback relays", () => {
+	it("infers pull admission when local environment is selected explicitly", () => {
 		const config = defineCiProjectConfig(projectDocument());
-		const selection = parseCiProjectSelection(projectDocument());
-		const context: CiWebhookRoutingContext = {
-			repositoryFullName: "acme/demo",
-			repositoryId: 100,
-			installationId: 1,
-			workflowRunId: 9,
-			eventName: "push",
-			headBranch: "main",
-			headRef: "refs/heads/main",
-			isForkPullRequest: false,
-			configRef: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-		};
-		const route = resolveCiRelayRoute({ config, selection, context });
-		expect(route.environment.name).toBe("local");
-		expect(route.admission).toBe("pull");
+		const local = selectCiEnvironment(config, "local");
+		expect(local.relayOrigin).toBe("http://127.0.0.1:8787");
+		expect(inferJobAdmission(local, local.jobAdmission)).toBe("pull");
 	});
 
 	it("merges gitignored local overlay environments", () => {

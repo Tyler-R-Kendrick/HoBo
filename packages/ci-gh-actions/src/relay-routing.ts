@@ -1,6 +1,11 @@
 import { z } from "zod";
 import type { GithubRun } from "./github.js";
 import {
+	collectAllowedRelayOrigins,
+	defaultCiWebhookEngine,
+	resolveEngineRelayOrigin,
+} from "./engine-relay-routing.js";
+import {
 	type CiProjectConfig,
 	type CiProjectEnvironment,
 	parseCiProjectConfig,
@@ -48,6 +53,7 @@ export interface CiWebhookRoutingContext {
 }
 
 export interface ResolvedCiRelayRoute {
+	readonly engine: string;
 	readonly environment: CiProjectEnvironment;
 	readonly relayOrigin: string;
 	readonly admission: CiJobAdmission;
@@ -233,16 +239,19 @@ export function resolveCiRelayRoute(options: {
 	selection: z.infer<typeof CiProjectSelectionSchema>;
 	context: CiWebhookRoutingContext;
 	jobAdmission?: CiJobAdmission;
+	engine?: string;
 }): ResolvedCiRelayRoute {
 	const environment = selectEnvironmentForWebhook(
 		options.config,
 		options.selection,
 		options.context,
 	);
+	const engine = options.engine ?? defaultCiWebhookEngine();
 	const admission = inferJobAdmission(environment, options.jobAdmission);
 	return Object.freeze({
+		engine,
 		environment,
-		relayOrigin: environment.relayOrigin,
+		relayOrigin: resolveEngineRelayOrigin(environment, engine),
 		admission,
 		configRef: options.context.configRef,
 		isForkPullRequest: options.context.isForkPullRequest,
@@ -254,8 +263,12 @@ export function assertRelayOriginAllowed(
 	route: ResolvedCiRelayRoute,
 	config: CiProjectConfig,
 ): void {
-	const allowed = new Set(
-		Object.values(config.environments).map((entry) => entry.relayOrigin),
-	);
+	const allowed = new Set<string>();
+	for (const entry of Object.values(config.environments))
+		for (const origin of collectAllowedRelayOrigins(entry)) allowed.add(origin);
 	if (!allowed.has(route.relayOrigin)) throw new Error("relay origin not allowed");
+}
+
+export function relayWebhookPath(engine: string): string {
+	return `/engines/${engine}/github/webhooks`;
 }

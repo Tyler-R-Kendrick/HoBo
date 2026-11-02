@@ -34,7 +34,7 @@ const worker = createIsolatedContainerController({
 	publicOrigin,
 	docker: createCliDockerDriver({ env: process.env }),
 	workerAccountId: required("HOBO_CI_WORKER_PROVIDER_ACCOUNT_ID"),
-	workerImage: process.env.HOBO_CI_WORKER_IMAGE ?? "node:24-bookworm-slim",
+	workerImage: process.env.HOBO_CI_WORKER_IMAGE ?? "hobo-ci-worker:local",
 });
 const host = createCompositeIsolatedHost({ store, worker: worker.host });
 if (!host) throw new Error("worker host unavailable");

@@ -52,7 +52,14 @@ export HOBO_CI_WORKER_PROVIDER_ACCOUNT_ID=oracle-free-vm
 node --import tsx packages/ci-gh-actions/scripts/isolated-worker-daemon.mts
 ```
 
-Each job runs in a **fresh Docker container** with the official Actions runner JIT (`labels: [hobo]`). This preserves PR isolation without Sandbox spend.
+Each job runs in a **fresh Docker container** with the official Actions runner JIT (`labels: [hobo]`). Build the sidecar image once on the worker host (curl, git, ICU, UID 1000 — default tag `hobo-ci-worker:local`):
+
+```sh
+docker build -f packages/ci-gh-actions/deploy/worker/Dockerfile -t hobo-ci-worker:local .
+# optional: export HOBO_CI_WORKER_IMAGE=hobo-ci-worker:local
+```
+
+This preserves PR isolation without Sandbox spend.
 
 From [`packages/ci-gh-actions/ONBOARDING.md`](../ci-gh-actions/ONBOARDING.md):
 

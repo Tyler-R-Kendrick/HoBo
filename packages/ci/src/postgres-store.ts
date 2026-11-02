@@ -1096,6 +1096,29 @@ export class PostgresCiStore {
 			await this.queueInside(c, job, at);
 		});
 	}
+	abortIsolatedAndRequeue(id: string, job: Job, at: string) {
+		const recoverable = new Set([
+			"reserved",
+			"dispatching",
+			"claiming",
+			"dispatched",
+			"running",
+			"uncertain",
+		]);
+		const isolatedProviders = new Set([
+			"vercel",
+			"kubernetes",
+			"hobo-box-worker",
+		]);
+		return this.tx(async (c) => {
+			const lease = await this.readLease(c, id);
+			if (!lease || !recoverable.has(lease.state)) return;
+			if (!isolatedProviders.has(lease.provider)) return;
+			lease.state = "cancelled";
+			await this.append(c, lease, "ci.LeaseCancelled", at);
+			await this.queueInside(c, job, at);
+		});
+	}
 	private async settleInside(
 		c: PoolClient,
 		id: string,

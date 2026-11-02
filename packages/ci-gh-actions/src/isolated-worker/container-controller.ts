@@ -18,6 +18,27 @@ const jitResponse = z.object({
 	runner: z.object({ id: z.number().int().positive() }),
 });
 
+function requeueJob(lease: {
+	jobId: number;
+	originalRunId: number;
+	runAttempt: number;
+	repositoryId: number;
+	installationId: number;
+	repository: string;
+}) {
+	return create(JobSchema, {
+		id: lease.jobId,
+		runId: lease.originalRunId,
+		runAttempt: lease.runAttempt,
+		repositoryId: lease.repositoryId,
+		installationId: lease.installationId,
+		repository: lease.repository,
+		labels: ["hobo"],
+		action: "queued",
+		isolatedRequired: true,
+	});
+}
+
 export type IsolatedContainerController = {
 	host: IsolatedRunnerHost;
 	ready: () => Promise<boolean>;
@@ -102,19 +123,9 @@ export function createIsolatedContainerController(options: {
 			try {
 				auth = await authorize(id);
 			} catch {
-				await options.store.cancelAndRequeue(
+				await options.store.abortIsolatedAndRequeue(
 					id,
-					create(JobSchema, {
-						id: initial.jobId,
-						runId: initial.originalRunId,
-						runAttempt: initial.runAttempt,
-						repositoryId: initial.repositoryId,
-						installationId: initial.installationId,
-						repository: initial.repository,
-						labels: ["hobo"],
-						action: "queued",
-						isolatedRequired: true,
-					}),
+					requeueJob(initial),
 					now(),
 				);
 				return;
@@ -141,6 +152,7 @@ export function createIsolatedContainerController(options: {
 					name,
 					image: options.workerImage,
 					timeoutMs: planned.reservedMinutes * 60_000,
+					runAsUser: "1000:1000",
 					env: {
 						HOBO_CI_RELAY_ORIGIN: options.publicOrigin,
 						HOBO_CI_RUNNER_SHA256: RUNNER_SHA256,
@@ -228,19 +240,9 @@ exec ./runner/run.sh --jitconfig "$jit"`,
 						/* recovery will retry stop */
 					}
 				}
-				await options.store.cancelAndRequeue(
+				await options.store.abortIsolatedAndRequeue(
 					id,
-					create(JobSchema, {
-						id: planned.jobId,
-						runId: planned.originalRunId,
-						runAttempt: planned.runAttempt,
-						repositoryId: planned.repositoryId,
-						installationId: planned.installationId,
-						repository: planned.repository,
-						labels: ["hobo"],
-						action: "queued",
-						isolatedRequired: true,
-					}),
+					requeueJob(planned),
 					now(),
 				);
 			}
@@ -248,13 +250,36 @@ exec ./runner/run.sh --jitconfig "$jit"`,
 		async reconcile(id: string, forceStop?: boolean) {
 			const lease = await options.store.get(id);
 			if (!lease?.sandboxSessionId || !lease.sandboxName) return;
-			if (!forceStop && lease.state === "running") return;
+			let running = false;
 			try {
-				await options.docker.stop(lease.sandboxName, lease.sandboxSessionId);
+				running = await options.docker.isRunning(
+					lease.sandboxName,
+					lease.sandboxSessionId,
+				);
+			} catch {
+				running = false;
+			}
+			if (!forceStop && lease.state === "running" && running) return;
+			const deadWhileRunning =
+				!forceStop && lease.state === "running" && !running;
+			if (deadWhileRunning) {
+				await options.store.abortIsolatedAndRequeue(
+					id,
+					requeueJob(lease),
+					now(),
+				);
+			}
+			try {
+				if (running) {
+					await options.docker.stop(lease.sandboxName, lease.sandboxSessionId);
+				}
 				await options.docker.remove(lease.sandboxName, lease.sandboxSessionId);
 			} catch {
-				if (!forceStop) throw new Error("container stop uncertain");
+				if (!deadWhileRunning && !forceStop)
+					throw new Error("container stop uncertain");
 			}
+			if (deadWhileRunning) return;
+			if (!forceStop) return;
 			await options.store.settle(
 				id,
 				0,

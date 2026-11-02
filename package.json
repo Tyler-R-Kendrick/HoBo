@@ -65,7 +65,7 @@
 		"pins:bump": "node --experimental-strip-types scripts/bootstrap-siblings.mts --bump",
 		"pins:fetch": "node --experimental-strip-types scripts/bootstrap-siblings.mts --fetch",
 		"pins:status": "node --experimental-strip-types scripts/bootstrap-siblings.mts --status",
-		"prepare": "node --import tsx scripts/install-hooks.mts",
+		"prepare": "node --import tsx scripts/install-hooks.mts && node --import tsx scripts/ensure-ts-autocode-links.mts",
 		"prepare-hooks": "git config core.hooksPath .githooks",
 		"promotions:check": "node --import tsx scripts/check-promoted-proof-drift.mts",
 		"search": "node --import tsx scripts/search.mts",

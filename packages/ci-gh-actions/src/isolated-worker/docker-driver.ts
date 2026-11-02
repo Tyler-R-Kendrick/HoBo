@@ -4,6 +4,7 @@ export type IsolatedContainerSpec = Readonly<{
 	timeoutMs: number;
 	env: Record<string, string>;
 	command: readonly string[];
+	runAsUser?: string;
 }>;
 
 export type IsolatedContainerHandle = Readonly<{
@@ -22,4 +23,5 @@ export interface DockerDriver {
 	): Promise<{ exitCode: number }>;
 	stop(name: string, containerId: string): Promise<void>;
 	remove(name: string, containerId: string): Promise<void>;
+	isRunning(name: string, containerId: string): Promise<boolean>;
 }

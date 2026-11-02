@@ -76,6 +76,7 @@ export interface HostedRelayStore {
 		expectedRevision?: number,
 	): Promise<Lease | undefined>;
 	cancelAndRequeue(id: string, job: Job, at: string): Promise<void>;
+	abortIsolatedAndRequeue(id: string, job: Job, at: string): Promise<void>;
 	settleObserved(
 		id: string,
 		hostRunId: number,

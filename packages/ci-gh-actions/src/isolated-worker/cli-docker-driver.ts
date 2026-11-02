@@ -15,6 +15,7 @@ export function createCliDockerDriver(options: {
 		async create(spec: IsolatedContainerSpec) {
 			const args = [
 				"create",
+				"--rm",
 				"--name",
 				spec.name,
 				"--network",
@@ -24,6 +25,7 @@ export function createCliDockerDriver(options: {
 				"--label",
 				`hobo.ci/timeout-ms=${spec.timeoutMs}`,
 			];
+			if (spec.runAsUser) args.push("--user", spec.runAsUser);
 			for (const [key, value] of Object.entries(spec.env))
 				args.push("-e", `${key}=${value}`);
 			args.push(spec.image, ...spec.command);
@@ -41,14 +43,22 @@ export function createCliDockerDriver(options: {
 			await exec(docker, ["start", containerId], { env, timeout: 60_000 });
 		},
 		async exec(_name, containerId, argv) {
-			const { stdout, stderr } = await exec(
-				docker,
-				["exec", containerId, ...argv],
-				{ env, timeout: 3_600_000, maxBuffer: 16 * 1024 * 1024 },
-			);
-			void stdout;
-			void stderr;
-			return { exitCode: 0 };
+			try {
+				await exec(
+					docker,
+					["exec", containerId, ...argv],
+					{ env, timeout: 3_600_000, maxBuffer: 16 * 1024 * 1024 },
+				);
+				return { exitCode: 0 };
+			} catch (error) {
+				let exitCode = 1;
+				if (error instanceof Error) {
+					const candidate = Object.getOwnPropertyDescriptor(error, "code")
+						?.value;
+					if (Number.isInteger(candidate)) exitCode = candidate;
+				}
+				return { exitCode };
+			}
 		},
 		async stop(_name, containerId) {
 			await exec(docker, ["stop", "-t", "30", containerId], {
@@ -58,6 +68,19 @@ export function createCliDockerDriver(options: {
 		},
 		async remove(_name, containerId) {
 			await exec(docker, ["rm", "-f", containerId], { env, timeout: 120_000 });
+		},
+		async isRunning(_name, containerId) {
+			const { stdout } = await exec(
+				docker,
+				[
+					"inspect",
+					"-f",
+					"{{if .State.Running}}running{{else}}stopped{{end}}",
+					containerId,
+				],
+				{ env, timeout: 30_000, maxBuffer: 4096 },
+			);
+			return stdout.trim() === "running";
 		},
 	};
 }

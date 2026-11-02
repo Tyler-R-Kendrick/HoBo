@@ -17,7 +17,7 @@ Before making the repository public, prove the full git history does not contain
 
 ## Tooling
 
-Prefer **gitleaks** (repo CI already uses `gitleaks/gitleaks-action`).
+Prefer **gitleaks** CLI (HoBo CI `secret-scan` job installs a pinned release binary and runs `gitleaks git --redact`).
 
 ```sh
 # Install once (or use the binary from CI setup)

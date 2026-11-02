@@ -996,7 +996,7 @@ export class PostgresCiStore {
 					ACTIVE_STATES.has(lease.state),
 			);
 			if (existing) {
-				if (requiresIsolation && existing.provider !== "vercel") {
+				if (requiresIsolation && existing.provider !== "vercel" && existing.provider !== "kubernetes") {
 					if (existing.state === "reserved") {
 						existing.state = "cancelled";
 						await this.append(c, existing, "ci.LeaseCancelled", at);
@@ -1015,9 +1015,13 @@ export class PostgresCiStore {
 					...effective,
 					offers: effective.offers.filter((offer) =>
 						requiresIsolation
-							? offer.provider === "vercel" &&
-								offer.backend === "sandbox" &&
-								offer.freeMinutes === 0
+							? (offer.provider === "vercel" &&
+									offer.backend === "sandbox" &&
+									offer.freeMinutes === 0) ||
+								(offer.provider === "kubernetes" &&
+									offer.backend === "isolated-container" &&
+									offer.freeMinutes === 0 &&
+									offer.priceMicrosPerMinute === 0)
 							: !offer.backend || offer.backend === "gh-actions",
 					),
 				},

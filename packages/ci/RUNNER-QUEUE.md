@@ -32,7 +32,25 @@ Without an admitted connection for the **current** repository full name, the rel
 
 ### 3. Isolated host (required for most CI here)
 
-Admission sets **`isolatedRequired`** when the repo is **public**, on **`pull_request`**, or when the connection is isolated-only. That path needs the **hosted Vercel Sandbox** backend configured on the relay—not the standalone Docker relay’s bridge-only mode.
+Admission sets **`isolatedRequired`** when the repo is **public**, on **`pull_request`**, or when the connection is isolated-only. That path needs an **isolated JIT host** on the relay—not the standalone Docker relay’s bridge-only mode.
+
+**Paid path:** Vercel Sandbox (`provider: vercel`, `backend: sandbox`) on the hosted relay.
+
+**Free path (budget exhausted):** add a zero-price **`kubernetes`** offer with **`backend: isolated-container`** and `runsOn: hobo-isolated-worker` (see [`packages/ci/data-models/fixtures/valid/isolated-container-offer.json`](../ci/data-models/fixtures/valid/isolated-container-offer.json)). Routing picks it when Sandbox reservation would exceed **`offer.budgetMicros`**. Launch requires the **isolated worker sidecar** on an operator-owned free VM (Docker + the same `DATABASE_URL` as the relay):
+
+```sh
+# On Oracle Always Free / similar (not on Vercel serverless):
+export DATABASE_URL=… # same Postgres as hobo-ci.vercel.app
+export HOBO_CI_CONFIG_JSON=…
+export HOBO_CI_GITHUB_APP_ID=…
+export HOBO_CI_GITHUB_APP_PRIVATE_KEY=…
+export HOBO_CI_WEBHOOK_SECRET=…
+export HOBO_CI_PUBLIC_URL=https://hobo-ci.vercel.app
+export HOBO_CI_WORKER_PROVIDER_ACCOUNT_ID=oracle-free-vm
+node --import tsx packages/ci-gh-actions/scripts/isolated-worker-daemon.mts
+```
+
+Each job runs in a **fresh Docker container** with the official Actions runner JIT (`labels: [hobo]`). This preserves PR isolation without Sandbox spend.
 
 From [`packages/ci-gh-actions/ONBOARDING.md`](../ci-gh-actions/ONBOARDING.md):
 

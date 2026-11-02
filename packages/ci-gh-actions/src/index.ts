@@ -19,6 +19,17 @@ export { createHostedAppBootstrap } from "./hosted-app-bootstrap.js";
 export { createHostedAppOnboarding } from "./hosted-app-onboarding.js";
 export { createHostedControlPlane } from "./hosted-control.js";
 export {
+	isIsolatedContainerOffer,
+	isIsolatedHostOffer,
+	isSandboxOffer,
+} from "./isolated-backend.js";
+export { createCliDockerDriver } from "./isolated-worker/cli-docker-driver.js";
+export { createCompositeIsolatedHost } from "./isolated-worker/composite-host.js";
+export {
+	createIsolatedContainerController,
+	type IsolatedContainerController,
+} from "./isolated-worker/container-controller.js";
+export {
 	HostedRelay,
 	type HostedRelayStore,
 	type IsolatedRunnerHost,

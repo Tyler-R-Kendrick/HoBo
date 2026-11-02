@@ -26,6 +26,9 @@ import {
 	getRun,
 } from "./github.js";
 import type { IdentityVerifier } from "./oidc.js";
+import {
+	isIsolatedHostOffer,
+} from "./isolated-backend.js";
 
 /** Isolated executions are supplied by the hosting runtime and must fail closed. */
 export interface IsolatedRunnerHost {
@@ -388,6 +391,7 @@ export class HostedRelay {
 		return lease ? `reserved:${lease.id}` : "waiting-for-budget-or-capacity";
 	}
 	private queuedDemand(lease: Lease): Job {
+		const offer = providerOffer(this.account(lease), lease);
 		return create(JobSchema, {
 			id: lease.jobId,
 			runId: lease.originalRunId,
@@ -397,7 +401,7 @@ export class HostedRelay {
 			installationId: lease.installationId,
 			labels: ["hobo"],
 			action: "queued",
-			isolatedRequired: lease.provider === "vercel",
+			isolatedRequired: isIsolatedHostOffer(offer),
 		});
 	}
 	private async launchEligible(lease: Lease): Promise<boolean> {
@@ -445,8 +449,10 @@ export class HostedRelay {
 		const cheapest = route(
 			{
 				...account,
-				offers: account.offers.filter(
-					(entry) => !entry.backend || entry.backend === "gh-actions",
+				offers: account.offers.filter((entry) =>
+					isIsolatedHostOffer(offer)
+						? isIsolatedHostOffer(entry)
+						: !entry.backend || entry.backend === "gh-actions",
 				),
 			},
 			others,
@@ -511,9 +517,8 @@ export class HostedRelay {
 				const preflightRevision = await this.refreshConfig();
 				const connection = this.binding(candidate);
 				const offer = providerOffer(this.account(candidate), candidate);
-				const isSandbox =
-					candidate.provider === "vercel" && offer.backend === "sandbox";
-				if (connection.isolatedOnly && !isSandbox) {
+				const isolatedHost = isIsolatedHostOffer(offer);
+				if (connection.isolatedOnly && !isolatedHost) {
 					const demand = this.queuedDemand(candidate);
 					demand.isolatedRequired = true;
 					await this.options.store.cancelAndRequeue(
@@ -527,7 +532,7 @@ export class HostedRelay {
 					currentJob.status !== "queued" ||
 					currentJob.run_attempt !== candidate.runAttempt ||
 					originalRun.run_attempt !== candidate.runAttempt ||
-					!(isSandbox
+					!(isolatedHost
 						? this.trustedSandboxOriginal(originalRun, connection)
 						: this.trustedOriginal(originalRun, connection)) ||
 					currentJob.labels.length !== 1 ||
@@ -545,7 +550,7 @@ export class HostedRelay {
 					);
 					continue;
 				}
-				if (isSandbox) {
+				if (isolatedHost) {
 					if (!this.options.isolatedHost)
 						throw new Error("isolated runner unavailable");
 					await this.options.isolatedHost.launch(candidate.id);

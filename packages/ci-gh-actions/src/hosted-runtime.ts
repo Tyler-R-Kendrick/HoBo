@@ -160,7 +160,9 @@ export function createHostedRelayRuntime(options: {
 					.map((lease) => lease.id),
 			);
 			for (const lease of leases) {
-				const sandbox = lease.provider === "vercel" && !!lease.sandboxName;
+				const sandbox =
+					(lease.provider === "vercel" || lease.provider === "kubernetes") &&
+					!!lease.sandboxName;
 				if (
 					lease.state !== "dispatching" &&
 					lease.state !== "claiming" &&
@@ -234,7 +236,11 @@ export function createHostedRelayRuntime(options: {
 				)
 					continue;
 				try {
-					if (lease.provider === "vercel" && lease.sandboxName) {
+					if (
+						(lease.provider === "vercel" ||
+							lease.provider === "kubernetes") &&
+						lease.sandboxName
+					) {
 						const host = options.isolatedHost ?? options.isolatedRecoveryHost;
 						if (host) {
 							let assignedJobCompleted = false;

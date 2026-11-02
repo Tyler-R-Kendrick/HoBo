@@ -57,9 +57,16 @@ package ci
  validUntil: string & !=""
  sourceUrl: string & =~"^https://"
  bridgeAcknowledged: bool
- backend?: "" | "gh-actions" | "dagger" | "cf" | "sandbox" | "ado"
+ backend?: "" | "gh-actions" | "dagger" | "cf" | "sandbox" | "ado" | "isolated-container"
  if provider == "azure-devops" {backend: "ado"}
  if backend != _|_ {if backend == "ado" {provider: "azure-devops"}}
+ if backend == "sandbox" {provider: "vercel"}
+ if backend == "isolated-container" {
+  provider: "kubernetes"
+  freeMinutes: 0
+  priceMicrosPerMinute: 0
+  runsOn: "hobo-isolated-worker"
+ }
  sandboxPricing?: #SandboxPricing
  sandboxAllowance?: #SandboxAllowance
  if provider == "local" {

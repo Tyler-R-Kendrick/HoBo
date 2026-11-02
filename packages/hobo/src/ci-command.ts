@@ -10,6 +10,7 @@ import {
 	CiRelayClientError,
 	createCiRelayClient,
 } from "@hobo/ci-gh-actions/client";
+import { loadCiProjectFromDirectory } from "@hobo/ci-gh-actions";
 import {
 	type CommandModule,
 	type CommandResult,
@@ -71,6 +72,39 @@ function trustedOrigin(value: string): string {
 	return url.origin;
 }
 
+function relayOriginFromProject(value: string, allowInsecureLoopback: boolean): string {
+	let url: URL;
+	try {
+		url = new URL(value);
+	} catch {
+		throw new CiSetupUsage("Select a valid relay origin from CI project config.");
+	}
+	const loopback =
+		allowInsecureLoopback &&
+		url.protocol === "http:" &&
+		(url.hostname === "localhost" || url.hostname === "127.0.0.1");
+	if (
+		(!loopback && url.protocol !== "https:") ||
+		url.username ||
+		url.password ||
+		url.pathname !== "/" ||
+		url.search ||
+		url.hash
+	)
+		throw new CiSetupUsage(
+			"CI project relay origin must be HTTPS or loopback HTTP with allowInsecureLoopback.",
+		);
+	return url.origin;
+}
+
+function parseSavedRelayOrigin(value: string): string {
+	try {
+		return trustedOrigin(value);
+	} catch {
+		return relayOriginFromProject(value, true);
+	}
+}
+
 async function boundedText(path: string, limit: number): Promise<string> {
 	const file = await open(path, constants.O_RDONLY | constants.O_NONBLOCK);
 	try {
@@ -96,7 +130,7 @@ async function readLink(path: string): Promise<CiLink | undefined> {
 			CiRepositoryLinkSchema,
 			await boundedText(path, 8192),
 		);
-		link.relayOrigin = trustedOrigin(link.relayOrigin);
+		link.relayOrigin = parseSavedRelayOrigin(link.relayOrigin);
 		if (
 			!/^[A-Za-z0-9_-]{1,80}$/.test(link.accountId) ||
 			!validRepository(link.repository)
@@ -144,6 +178,8 @@ function parseCiArgs(args: readonly string[]) {
 		strict: true,
 		options: {
 			relay: { type: "string" },
+			config: { type: "string" },
+			environment: { type: "string" },
 			repo: { type: "string" },
 			remote: { type: "string" },
 			"token-file": { type: "string" },
@@ -369,6 +405,32 @@ export function createCiCommand(
 					});
 				const link =
 					values.relay && values.repo ? undefined : await readLink(path);
+				let allowInsecureLoopback = false;
+				let selectedEnvironment: string | undefined;
+				let jobAdmission: "push" | "pull" | undefined;
+				if (!values.relay) {
+					try {
+						const project = await loadCiProjectFromDirectory({
+							repositoryRoot: root,
+							configPath:
+								typeof values.config === "string"
+									? values.config
+									: undefined,
+							environment:
+								typeof values.environment === "string"
+									? values.environment
+									: undefined,
+							env,
+						});
+						selectedEnvironment = project.environmentName;
+						allowInsecureLoopback =
+							project.environment.allowInsecureLoopback;
+						jobAdmission = project.environment.jobAdmission ?? undefined;
+						values.relay = project.environment.relayOrigin;
+					} catch {
+						/* Fall back to saved link or explicit env relay URL. */
+					}
+				}
 				let relay =
 					values.relay ??
 					env.HOBO_CI_RELAY_URL ??
@@ -379,9 +441,11 @@ export function createCiCommand(
 					relay = (await ask("HoBo CI relay HTTPS origin: ")).trim();
 				if (!relay)
 					return usage(
-						"Select your CI relay with --relay <https-origin> or HOBO_CI_RELAY_URL. The selection is saved after setup.",
+						"Select your CI relay with --relay, HOBO_CI_RELAY_URL, or .hobo/ci.json (see hobo ci --help).",
 					);
-				const origin = trustedOrigin(relay);
+				const origin = allowInsecureLoopback
+					? relayOriginFromProject(relay, true)
+					: trustedOrigin(relay);
 				const tokenFile =
 					values["token-file"] ?? env.HOBO_CI_ACCOUNT_TOKEN_FILE;
 				if (tokenFile && env.HOBO_CI_ACCOUNT_TOKEN)
@@ -403,6 +467,7 @@ export function createCiCommand(
 					: (env.HOBO_CI_ACCOUNT_TOKEN ?? "");
 				const clientOptions: Parameters<typeof createCiRelayClient>[0] = {
 					origin,
+					allowInsecureLoopback,
 					accountToken: () => credential,
 				};
 				if (deps.fetch) clientOptions.fetch = deps.fetch;
@@ -443,6 +508,8 @@ export function createCiCommand(
 							revision: state.revision,
 							isolated: existing?.isolatedOnly ?? false,
 							installationId: existing?.installationId,
+							environment: selectedEnvironment,
+							jobAdmission,
 						},
 					};
 				if (existing) {
@@ -599,6 +666,8 @@ export function createCiCommand(
 						accountId: state.account.id,
 						enabled: true,
 						unchanged: false,
+						environment: selectedEnvironment,
+						jobAdmission,
 					},
 				};
 			} catch (error) {

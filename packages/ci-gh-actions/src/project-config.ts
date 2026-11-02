@@ -29,11 +29,13 @@ const SecretDeclarations = z
 const JsonValue = z.json();
 const JsonObject = z.record(z.string(), JsonValue);
 type JsonData = z.infer<typeof JsonValue>;
+const JobAdmission = z.enum(["push", "pull"]);
 const EnvironmentFields = z
 	.object({
 		relayOrigin: z.string().min(1).max(2048),
 		githubWebhookOrigin: z.string().min(1).max(2048).optional(),
 		allowInsecureLoopback: z.boolean().optional(),
+		jobAdmission: JobAdmission.optional(),
 		secrets: SecretDeclarations.optional(),
 		policy: JsonValue,
 	})
@@ -63,6 +65,8 @@ export interface CiProjectEnvironment {
 	/** Declared public GitHub ingress; reachability and registration are separate. */
 	readonly githubWebhookOrigin: string | undefined;
 	readonly allowInsecureLoopback: boolean;
+	/** Push accepts signed GitHub webhooks at the relay; pull polls GitHub for queued jobs. */
+	readonly jobAdmission: "push" | "pull" | undefined;
 	/** Logical names and required phases only; secret values are never configured here. */
 	readonly secrets: Readonly<Record<string, CiSecretRequirement>>;
 	readonly policy: ParsedCiPolicy;
@@ -97,6 +101,7 @@ export interface CiProjectEnvironmentTemplate {
 	relayOrigin?: string;
 	githubWebhookOrigin?: string;
 	allowInsecureLoopback?: boolean;
+	jobAdmission?: "push" | "pull";
 	secrets?: Readonly<
 		Record<string, { readonly requiredFor: readonly CiSecretPhase[] }>
 	>;
@@ -228,7 +233,8 @@ export function parseCiProjectConfig(
 		if (organization && !validatedConfigs.has(organization))
 			throw new Error("organization configuration is not validated");
 		const authored = CiProjectDocumentSchema.parse(JSON.parse(json));
-		const input = ProjectInput.parse(resolveCiProjectReferences(authored));
+		const { selection: _ignoredSelection, ...documentBody } = authored;
+		const input = ProjectInput.parse(resolveCiProjectReferences(documentBody));
 		const entries = Object.entries(input.environments ?? {});
 		const environments = Object.fromEntries(
 			entries.map(([name, rawEntry]) => {
@@ -249,6 +255,7 @@ export function parseCiProjectConfig(
 							? githubWebhookOrigin(entry.githubWebhookOrigin)
 							: undefined,
 						allowInsecureLoopback,
+						jobAdmission: entry.jobAdmission,
 						secrets: Object.freeze(
 							Object.fromEntries(
 								Object.entries(entry.secrets ?? {}).map(

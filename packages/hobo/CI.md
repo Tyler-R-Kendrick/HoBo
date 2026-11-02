@@ -16,6 +16,12 @@ Human `hobo login` credentials do not authorize the CI account API.
 hobo ci connect --relay https://ci.example.com
 ```
 
+Prefer the committed **`.hobo/ci.json`** profile when present. It names each
+environment's `relayOrigin`, optional `jobAdmission` (`push` for hosted relays,
+`pull` for loopback laptops), and `selection` rules for branch/CD routing. Local
+overrides belong in gitignored **`.hobo/ci.local.json`** or `HOBO_CI_ENVIRONMENT`.
+`hobo ci enable` reads that file before `--relay` / `HOBO_CI_RELAY_URL`.
+
 `enable` and `connect` run the same setup. The CLI detects the sole Git remote,
 prompts when several exist, and asks before enabling isolated runners. Subsequent
 commands reuse a unique remote matching the saved repository. Use

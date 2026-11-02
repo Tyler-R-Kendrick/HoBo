@@ -51,6 +51,7 @@ const provider = z
 			"depot",
 			"warpbuild",
 			"kubernetes",
+			"hobo-box-worker",
 			"local",
 			"vercel",
 		]),
@@ -96,11 +97,32 @@ const partialPolicy = policy
 		budget: z.union([budget.partial(), reference("budgets")]).optional(),
 	})
 	.partial();
+const jobAdmission = z.enum(["push", "pull"]);
+const selectionMatch = z
+	.object({
+		refPrefix: z.string().min(1).max(200).optional(),
+		branch: z.string().min(1).max(255).optional(),
+		events: z.array(z.string().min(1).max(100)).max(16).optional(),
+	})
+	.strict();
+const selectionRule = z
+	.object({
+		environment: name,
+		match: selectionMatch.optional(),
+	})
+	.strict();
+const selection = z
+	.object({
+		rules: z.array(selectionRule).max(32).optional(),
+		forkPullRequestEnvironment: name.optional(),
+	})
+	.strict();
 const fields = z
 	.object({
 		relayOrigin: z.string().min(1).max(2048),
 		githubWebhookOrigin: z.string().min(1).max(2048).optional(),
 		allowInsecureLoopback: z.boolean().optional(),
+		jobAdmission: jobAdmission.optional(),
 		secrets: z.union([secrets, reference("secrets")]).optional(),
 		policy,
 	})
@@ -128,6 +150,7 @@ export const CiProjectDocumentSchema = z
 	.object({
 		$schema: z.string().max(2048).optional(),
 		defaultEnvironment: name.optional(),
+		selection: selection.optional(),
 		definitions: definitions.optional(),
 		templates: z
 			.record(name, template)

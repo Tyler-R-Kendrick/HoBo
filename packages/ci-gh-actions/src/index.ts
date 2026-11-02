@@ -86,3 +86,28 @@ export {
 	createWebhookRepair,
 	PostgresWebhookRepairClaims,
 } from "./webhook-repair.js";
+export { signIngressForward, verifyIngressForward } from "./ingress-forward.js";
+export {
+	assertRelayOriginAllowed,
+	CI_PROJECT_LOCAL_OVERRIDE_PATH,
+	DEFAULT_CI_PROJECT_PATH,
+	type CiJobAdmission,
+	type CiWebhookRoutingContext,
+	type ResolvedCiRelayRoute,
+	inferJobAdmission,
+	isForkPullRequestRun,
+	loadCiProjectConfigDocument,
+	mergeCiProjectLocalOverlay,
+	parseCiProjectSelection,
+	resolveCiConfigRefForRun,
+	resolveCiRelayRoute,
+	resolveExplicitCiEnvironmentName,
+	selectEnvironmentForWebhook,
+} from "./relay-routing.js";
+export { loadCiProjectFromDirectory } from "./project-config-loader.js";
+export {
+	createGithubCiProjectFetcher,
+	createWebhookIngressHandler,
+	type CiProjectContentFetcher,
+} from "./webhook-ingress.js";
+export { createJobPollAdmissionWorker } from "./job-poll-admission.js";

@@ -44,7 +44,7 @@ package ci
 }
 #Offer: {
  id: string & !=""
- provider: "github" | "blacksmith" | "depot" | "warpbuild" | "kubernetes" | "local" | "dagger" | "cloudflare" | "vercel" | "azure-devops"
+ provider: "github" | "blacksmith" | "depot" | "warpbuild" | "kubernetes" | "hobo-box-worker" | "local" | "dagger" | "cloudflare" | "vercel" | "azure-devops"
  providerAccountId: string & !=""
  enabled: bool
  runsOn: string & !=""
@@ -62,7 +62,7 @@ package ci
  if backend != _|_ {if backend == "ado" {provider: "azure-devops"}}
  if backend == "sandbox" {provider: "vercel"}
  if backend == "isolated-container" {
-  provider: "kubernetes"
+  provider: "hobo-box-worker" | "kubernetes"
   freeMinutes: 0
   priceMicrosPerMinute: 0
   runsOn: "hobo-isolated-worker"

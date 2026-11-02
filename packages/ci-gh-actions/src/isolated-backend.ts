@@ -9,7 +9,10 @@ export function isSandboxOffer(offer: Pick<Offer, "provider" | "backend">): bool
 export function isIsolatedContainerOffer(
 	offer: Pick<Offer, "provider" | "backend">,
 ): boolean {
-	return offer.provider === "kubernetes" && offer.backend === "isolated-container";
+	return (
+		(offer.provider === "hobo-box-worker" || offer.provider === "kubernetes") &&
+		offer.backend === "isolated-container"
+	);
 }
 
 export function isIsolatedHostOffer(
@@ -19,7 +22,11 @@ export function isIsolatedHostOffer(
 }
 
 export function isIsolatedHostLease(lease: Pick<Lease, "provider">): boolean {
-	return lease.provider === "vercel" || lease.provider === "kubernetes";
+	return (
+		lease.provider === "vercel" ||
+		lease.provider === "kubernetes" ||
+		lease.provider === "hobo-box-worker"
+	);
 }
 
 export function isolatedJobRequiresHost(

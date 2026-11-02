@@ -12,7 +12,11 @@ export function createCompositeIsolatedHost(options: {
 			const lease = await options.store.get(id);
 			if (!lease) return;
 			if (lease.provider === "vercel") await options.sandbox?.launch(id);
-			else if (lease.provider === "kubernetes") await options.worker?.launch(id);
+			else if (
+				lease.provider === "kubernetes" ||
+				lease.provider === "hobo-box-worker"
+			)
+				await options.worker?.launch(id);
 			else throw new Error("unsupported isolated provider");
 		},
 		async reconcile(id: string, forceStop?: boolean) {
@@ -20,7 +24,10 @@ export function createCompositeIsolatedHost(options: {
 			if (!lease) return;
 			if (lease.provider === "vercel")
 				await options.sandbox?.reconcile(id, forceStop);
-			else if (lease.provider === "kubernetes")
+			else if (
+				lease.provider === "kubernetes" ||
+				lease.provider === "hobo-box-worker"
+			)
 				await options.worker?.reconcile(id, forceStop);
 		},
 	};

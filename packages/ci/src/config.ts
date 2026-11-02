@@ -58,10 +58,12 @@ export function parseConfiguration(json: string): Configuration {
 				(offer.provider === "cloudflare" && offer.backend !== "cf") ||
 				(offer.provider === "vercel" && offer.backend !== "sandbox") ||
 				(offer.backend === "sandbox" && offer.provider !== "vercel") ||
-				(offer.provider === "kubernetes" &&
+				(((offer.provider === "kubernetes" ||
+					offer.provider === "hobo-box-worker") &&
 					offer.backend !== "isolated-container") ||
 				(offer.backend === "isolated-container" &&
-					offer.provider !== "kubernetes")
+					offer.provider !== "kubernetes" &&
+					offer.provider !== "hobo-box-worker"))
 			)
 				throw new Error(
 					"native provider requires its matching execution backend",
@@ -73,6 +75,7 @@ export function parseConfiguration(json: string): Configuration {
 					"depot",
 					"warpbuild",
 					"kubernetes",
+					"hobo-box-worker",
 					"local",
 					"dagger",
 					"cloudflare",

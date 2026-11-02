@@ -32,20 +32,29 @@ export function createRelayRequestHandler(
 		if (request.method === "POST" && request.url === "/github/webhooks") {
 			try {
 				const signature = request.headers["x-hub-signature-256"];
+				const ingressForward = request.headers["x-hobo-ingress-forward"];
 				const event = request.headers["x-github-event"];
+				const hasForward =
+					!Array.isArray(ingressForward) &&
+					typeof ingressForward === "string" &&
+					ingressForward.length > 0;
+				const hasGithubSignature =
+					!Array.isArray(signature) &&
+					typeof signature === "string" &&
+					signature.length > 0;
 				if (
-					Array.isArray(signature) ||
 					Array.isArray(event) ||
-					!signature ||
-					!event
+					!event ||
+					(!hasGithubSignature && !hasForward)
 				) {
 					response.writeHead(401).end('{"error":"signature required"}');
 					return;
 				}
 				const result = await relay.webhook(
 					await body(request),
-					signature,
+					hasGithubSignature ? signature : "",
 					event,
+					hasForward ? ingressForward : undefined,
 				);
 				response.writeHead(202).end(JSON.stringify({ status: result }));
 			} catch (error) {

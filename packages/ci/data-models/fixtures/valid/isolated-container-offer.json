@@ -1,6 +1,6 @@
 {
   "id": "oracle-free-isolated",
-  "provider": "kubernetes",
+  "provider": "hobo-box-worker",
   "providerAccountId": "oracle-free-vm",
   "enabled": true,
   "runsOn": "hobo-isolated-worker",

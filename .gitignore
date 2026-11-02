@@ -40,6 +40,8 @@ sandboxes/
 .hobo/
 # Committed Dagger check config for CI/local parity (see packages/ci/README.md)
 !.hobo/dagger.json
+!.hobo/ci.json
+.hobo/ci.local.json
 # OS-released codegen/build lock database, sidecars and interrupted staging trees.
 .hobo-codegen.lock
 .hobo-codegen.lock-*

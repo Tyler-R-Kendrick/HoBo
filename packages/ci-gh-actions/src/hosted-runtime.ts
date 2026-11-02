@@ -161,7 +161,9 @@ export function createHostedRelayRuntime(options: {
 			);
 			for (const lease of leases) {
 				const sandbox =
-					(lease.provider === "vercel" || lease.provider === "kubernetes") &&
+					(lease.provider === "vercel" ||
+						lease.provider === "kubernetes" ||
+						lease.provider === "hobo-box-worker") &&
 					!!lease.sandboxName;
 				if (
 					lease.state !== "dispatching" &&
@@ -238,7 +240,8 @@ export function createHostedRelayRuntime(options: {
 				try {
 					if (
 						(lease.provider === "vercel" ||
-							lease.provider === "kubernetes") &&
+							lease.provider === "kubernetes" ||
+							lease.provider === "hobo-box-worker") &&
 						lease.sandboxName
 					) {
 						const host = options.isolatedHost ?? options.isolatedRecoveryHost;

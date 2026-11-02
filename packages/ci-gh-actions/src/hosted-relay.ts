@@ -29,6 +29,7 @@ import type { IdentityVerifier } from "./oidc.js";
 import {
 	isIsolatedHostOffer,
 } from "./isolated-backend.js";
+import { verifyIngressForward } from "./ingress-forward.js";
 
 /** Isolated executions are supplied by the hosting runtime and must fail closed. */
 export interface IsolatedRunnerHost {
@@ -123,6 +124,7 @@ export class HostedRelay {
 			github: GithubTransport;
 			identity: IdentityVerifier;
 			webhookSecret: string;
+			ingressForwardSecret?: string;
 			isolatedHost?: IsolatedRunnerHost;
 			/** Deny workflow bridge use when repository-wide runner trust is not fenced. */
 			denyUnisolated?: boolean;
@@ -229,7 +231,17 @@ export class HostedRelay {
 		raw: Buffer,
 		signature: string,
 		event: string,
+		ingressForward?: string,
 	): Promise<string> {
+		if (
+			this.options.ingressForwardSecret &&
+			verifyIngressForward(
+				this.options.ingressForwardSecret,
+				raw,
+				ingressForward,
+			)
+		)
+			return this.processWebhook(raw, event);
 		const expected = createHmac("sha256", this.options.webhookSecret)
 			.update(raw)
 			.digest();

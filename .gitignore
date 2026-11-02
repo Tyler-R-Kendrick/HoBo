@@ -37,8 +37,7 @@ sandboxes/
 # Pinned toolchain binaries downloaded on demand (e.g. CUE v0.14.0)
 .tools/
 # Local yard/broker tooling installs (prefer $HOBO_HOME; belt-and-suspenders)
-.hobo/
-# Committed Dagger check config for CI/local parity (see packages/ci/README.md)
+.hobo/*
 !.hobo/dagger.json
 !.hobo/ci.json
 .hobo/ci.local.json

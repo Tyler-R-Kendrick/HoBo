@@ -33,7 +33,7 @@ function lint(root: string) {
 	});
 }
 
-test("only the reviewed manual HoBo acceptance recipe is enabled", async () => {
+test("reviewed enabled workflow recipes pass lint", async () => {
 	const actual = await readFile(
 		new URL("../.github/workflows/hobo-ci-acceptance.yml", import.meta.url),
 		"utf8",
@@ -45,7 +45,7 @@ test("only the reviewed manual HoBo acceptance recipe is enabled", async () => {
 	);
 	const result = lint(await fixture({ [enabled]: actual }));
 	assert.equal(result.status, 0, result.stderr);
-	assert.match(result.stdout, /1 reviewed manual HoBo acceptance workflow/);
+	assert.match(result.stdout, /reviewed enabled workflow/);
 });
 test("a checkout without enabled workflows still passes", async () => {
 	assert.equal(lint(await fixture()).status, 0);
@@ -56,7 +56,7 @@ test("every other recognized workflow filename remains forbidden", async () => {
 			await fixture({ [enabled]: template, [name]: template }),
 		);
 		assert.equal(result.status, 1);
-		assert.match(result.stderr, /not the approved manual HoBo acceptance/);
+		assert.match(result.stderr, /not in the reviewed allowlist/);
 	}
 });
 for (const [name, original, changed] of [
